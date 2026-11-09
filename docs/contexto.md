@@ -4,15 +4,15 @@ Resumen operativo para quienes implementan la aplicación. La especificación co
 
 ## Stack
 
-Next.js 15 (App Router) con TypeScript, Supabase (Postgres y OAuth), pnpm y Vitest. Sin Tailwind: los estilos usan los tokens CSS de `src/styles` (variables `--st-*`, `--fg-*`, `--accent`, `--r-*`). Fuentes Archivo y Manrope ya cargadas en el layout.
+Next.js 15 (App Router) con TypeScript, Neon Postgres como base de datos, Neon Auth para el ingreso del asistente mediante OAuth, pnpm y Vitest. El acceso a datos se realiza desde el servidor con `@neondatabase/serverless`. Sin Tailwind: los estilos usan los tokens CSS de `src/styles` (variables `--st-*`, `--fg-*`, `--accent`, `--r-*`). Fuentes Archivo y Manrope ya cargadas en el layout.
 
 ## Estructura y propiedad de archivos
 
 | Área | Ruta | Contenido |
 |---|---|---|
 | Dominio | `src/lib/domain/` | Funciones puras y pruebas. Contrato en `config.ts` y `types.ts`. |
-| Base de datos | `supabase/migrations/` | Esquema y funciones SQL transaccionales. |
-| Acceso a datos | `src/lib/supabase/`, `src/lib/api/` | Clientes y consultas compartidas. |
+| Base de datos | `db/migrations/`, `db/seed.sql` | Esquema y funciones SQL transaccionales. Ver `db/README.md`. |
+| Acceso a datos | `src/lib/db/`, `src/lib/api/` | Clientes de Neon y consultas compartidas. |
 | Inversionista | `src/app/(inversionista)/` | Móvil. Ingreso OAuth, inversión, resultado. |
 | Jurado | `src/app/jurado/` | Laptop. Acceso con código y voto. |
 | Operador | `src/app/operador/` | Laptop. Consola de ronda. |
