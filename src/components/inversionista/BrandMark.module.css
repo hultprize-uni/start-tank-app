@@ -1,0 +1,43 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.mark {
+  flex: none;
+  background: var(--grad-brand);
+  border-radius: var(--r-leaf);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: var(--ls-display);
+  color: var(--fg-1);
+}
+
+.md {
+  gap: var(--sp-3);
+}
+
+.md .mark {
+  width: 26px;
+  height: 26px;
+}
+
+.md .name {
+  font-size: 18px;
+}
+
+.sm {
+  gap: var(--sp-2);
+}
+
+.sm .mark {
+  width: 20px;
+  height: 20px;
+}
+
+.sm .name {
+  font-size: 15px;
+}
