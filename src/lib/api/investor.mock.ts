@@ -8,17 +8,21 @@ import {
   getRoundCap,
 } from "@/lib/api/investor.rules";
 import type {
+  InvestorActions,
   InvestorPhase,
   InvestorViewModel,
+  ResultadoInversion,
   StandingEntry,
   StandingInfo,
   StartupInfo,
+  UseInvestorStateResult,
   VerdictInfo,
 } from "@/lib/api/investor.types";
 
 /**
  * Simulación del estado del inversionista. Devuelve la forma que tendrá la API real
- * (InvestorViewModel) con datos de ejemplo y transiciones de tiempo fijo.
+ * (InvestorViewModel) con datos de ejemplo y transiciones de tiempo fijo. Se activa solo con
+ * NEXT_PUBLIC_USE_MOCKS=true, mediante el despachador de investor.state.ts.
  */
 
 const TOTAL_ROUNDS = 5;
@@ -72,18 +76,6 @@ interface MockState {
   position: number;
   previousPosition: number;
   hits: number;
-}
-
-export interface InvestorActions {
-  /** Inicia sesión con OAuth. En la simulación solo avanza a la fase programada. */
-  login: () => void;
-  /** Confirma una inversión en la ronda abierta. Valida el monto contra las reglas del evento. */
-  invest: (amount: number) => void;
-}
-
-export interface UseInvestorStateResult {
-  vm: InvestorViewModel;
-  actions: InvestorActions;
 }
 
 const INITIAL_STATE: MockState = {
@@ -247,7 +239,8 @@ function simulateRoomInvestment(s: MockState): MockState {
   };
 }
 
-export function useInvestorState(): UseInvestorStateResult {
+/** Hook de simulación con la misma forma que useInvestorState de la API real. */
+export function useInvestorMockState(): UseInvestorStateResult {
   const [state, setState] = useState<MockState>(INITIAL_STATE);
 
   useEffect(() => {
@@ -272,11 +265,7 @@ export function useInvestorState(): UseInvestorStateResult {
     return () => window.clearInterval(timer);
   }, [state.phase]);
 
-  const login = useCallback(() => {
-    setState((s) => (s.phase === "login" ? { ...s, phase: "scheduled" } : s));
-  }, []);
-
-  const invest = useCallback((amount: number) => {
+  const invest = useCallback(async (amount: number): Promise<ResultadoInversion> => {
     setState((s) => {
       if (s.phase !== "open" && s.phase !== "lastCall") return s;
       const remainingCap = getRoundCap(s.roundStartBalance) - s.invested;
@@ -290,10 +279,11 @@ export function useInvestorState(): UseInvestorStateResult {
         investors: s.invested > 0 ? s.investors : s.investors + 1,
       };
     });
+    return { ok: true };
   }, []);
 
   const vm = useMemo(() => deriveViewModel(state), [state]);
-  const actions = useMemo<InvestorActions>(() => ({ login, invest }), [login, invest]);
+  const actions = useMemo<InvestorActions>(() => ({ invest }), [invest]);
 
-  return { vm, actions };
+  return { vm, status: "ready", errorMessage: null, actions };
 }

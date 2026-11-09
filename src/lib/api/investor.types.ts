@@ -101,3 +101,25 @@ export interface InvestorViewModel {
   verdict: VerdictInfo | null;
   standing: StandingInfo | null;
 }
+
+/** Resultado de confirmar una inversión. El mensaje explica el motivo del rechazo. */
+export type ResultadoInversion = { ok: true } | { ok: false; mensaje: string };
+
+/** Acciones del portal del inversionista. */
+export interface InvestorActions {
+  /** Registra una inversión de monto entero en la ronda abierta. */
+  invest: (amount: number) => Promise<ResultadoInversion>;
+}
+
+/** Estado de la última carga del view model. */
+export type InvestorLoadStatus = "loading" | "ready" | "error";
+
+/** Contrato del hook de estado del portal, común a la API real y a la simulación. */
+export interface UseInvestorStateResult {
+  /** View model vigente; nulo hasta la primera respuesta correcta. */
+  vm: InvestorViewModel | null;
+  status: InvestorLoadStatus;
+  /** Mensaje del último fallo de carga, o nulo. */
+  errorMessage: string | null;
+  actions: InvestorActions;
+}
