@@ -1,3 +1,5 @@
+import { OperatorPortal } from "@/components/operador/OperatorPortal";
+
 export default function Page() {
-  return <main>Portal del operador</main>;
+  return <OperatorPortal />;
 }
