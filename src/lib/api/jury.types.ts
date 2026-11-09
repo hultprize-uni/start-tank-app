@@ -29,6 +29,8 @@ export interface JuryVoteView {
   confirming: boolean;
   /** Indica si el voto se está enviando. */
   submitting: boolean;
+  /** Mensaje del último intento de voto fallido. Es null cuando no hay error. */
+  errorMessage: string | null;
 }
 
 /** Conteo de votos de la ronda actual. */

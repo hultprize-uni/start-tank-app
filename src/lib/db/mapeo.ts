@@ -438,7 +438,7 @@ export function construirVistaJurado(datos: DatosJurado): JuryViewModel {
     jurorLabel: datos.nombre,
     round: activa ? { number: activa.numero, startupName: activa.startup_nombre } : null,
     criteria: CRITERIOS_JURADO,
-    vote: { draft: null, confirming: false, submitting: false },
+    vote: { draft: null, confirming: false, submitting: false, errorMessage: null },
     votes: { emitted: emitidos, total: datos.totalJurados },
   };
 }

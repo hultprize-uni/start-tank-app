@@ -163,3 +163,10 @@
     justify-content: space-between;
   }
 }
+
+.error {
+  margin: 0;
+  color: var(--negative);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
