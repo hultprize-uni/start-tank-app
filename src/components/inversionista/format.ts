@@ -12,7 +12,8 @@ export function formatSignedCoins(value: number): string {
 
 /** Formatea una variación de precio con flecha y signo. */
 export function formatPriceChange(value: number): string {
-  if (value >= 0) return `▲ +${value}`;
+  if (value === 0) return "= 0";
+  if (value > 0) return `▲ +${value}`;
   return `▼ −${Math.abs(value)}`;
 }
 
