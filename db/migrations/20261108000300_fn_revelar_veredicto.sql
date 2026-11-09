@@ -89,9 +89,8 @@ begin
 end;
 $$;
 
--- La función interna no debe ser invocable desde ningún rol de cliente.
-revoke all on function fn_liquidar_ronda(bigint, numeric, varchar, boolean)
-  from public, anon, authenticated, service_role;
+-- La función interna no debe ser invocable por public; la invocan únicamente las funciones de revelación y acción del esquema.
+revoke all on function fn_liquidar_ronda(bigint, numeric, varchar, boolean) from public;
 
 -- Revelación del veredicto. Calcula el multiplicador y liquida la ronda.
 --
@@ -213,7 +212,6 @@ begin
 end;
 $$;
 
--- Acceso restringido: la función la invoca el servidor de la aplicación con el rol service_role,
+-- Acceso restringido: la función la invoca el servidor de la aplicación con el rol propietario,
 -- que valida el código de acceso del operador antes de llamarla.
-revoke all on function fn_revelar_veredicto(bigint, bigint) from public, anon, authenticated;
-grant execute on function fn_revelar_veredicto(bigint, bigint) to service_role;
+revoke all on function fn_revelar_veredicto(bigint, bigint) from public;
