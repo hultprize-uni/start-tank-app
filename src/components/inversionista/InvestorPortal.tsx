@@ -86,7 +86,7 @@ export function InvestorPortal() {
 
   return (
     <main className={styles.portal}>
-      <PortalHeader balance={vm.wallet?.balance ?? null} />
+      {vm.phase !== "login" && <PortalHeader balance={vm.wallet?.balance ?? null} />}
 
       <div className={styles.content}>{renderScreen(vm, actions, openSheet)}</div>
 
