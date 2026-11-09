@@ -1,0 +1,118 @@
+.panel {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--sp-6);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-card);
+  background: var(--bg-card);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--accent-2);
+  font-size: var(--fs-eyebrow);
+  font-weight: 800;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: 32px;
+  line-height: 1.05;
+}
+
+.lead {
+  margin: 0;
+  color: var(--fg-2);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+}
+
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.fieldset:disabled {
+  opacity: 0.6;
+}
+
+.legend {
+  padding: 0;
+  margin-bottom: var(--sp-2);
+  color: var(--fg-3);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.digits {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+
+.digit {
+  width: 100%;
+  height: 56px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--bg-band);
+  color: var(--fg-1);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 900;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.digit:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.digit[aria-invalid="true"] {
+  border-color: var(--negative);
+}
+
+.error {
+  margin: 0;
+  color: var(--negative);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.submit {
+  height: 44px;
+  padding: 0 var(--sp-5);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submit:hover {
+  background: var(--st-pink-hot);
+}
+
+.submit:disabled {
+  background: var(--st-ink-700);
+  color: var(--fg-4);
+  cursor: not-allowed;
+}
+
+.submit:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
