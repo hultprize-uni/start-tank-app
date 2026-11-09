@@ -1,0 +1,37 @@
+.screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-4);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.ods {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--st-orchid);
+}
+
+.description {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--fg-2);
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--fg-3);
+}
