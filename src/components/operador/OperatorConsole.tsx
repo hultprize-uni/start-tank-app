@@ -21,6 +21,10 @@ import styles from "./OperatorConsole.module.css";
 
 interface OperatorConsoleProps {
   viewModel: OperatorViewModel;
+  /** Aviso de la última operación fallida o pendiente de API. */
+  notice: string | null;
+  /** Indica si la consola usa los datos de muestra. Solo en ese modo se simulan votos. */
+  modoMuestra: boolean;
   onRunAction: (id: OperatorActionId) => void;
   onUndo: () => void;
   onCancelRound: (mode: CancelMode) => void;
@@ -32,6 +36,8 @@ interface OperatorConsoleProps {
 /** Consola de la ronda del operador en laptop. Compone los paneles y la barra de herramientas. */
 export function OperatorConsole({
   viewModel,
+  notice,
+  modoMuestra,
   onRunAction,
   onUndo,
   onCancelRound,
@@ -63,6 +69,12 @@ export function OperatorConsole({
         screenSynced={viewModel.screenSynced}
       />
 
+      {notice !== null ? (
+        <p className={styles.errorText} role="alert">
+          {notice}
+        </p>
+      ) : null}
+
       <div className={styles.layout}>
         <div className={styles.column}>
           <section className={styles.panel} aria-labelledby="estado-ronda">
@@ -76,7 +88,7 @@ export function OperatorConsole({
           <ActionsPanel actions={viewModel.actions} onRunAction={onRunAction} />
           <JurorVotesPanel
             jurors={viewModel.jurors}
-            canSimulateVote={votingOpen}
+            canSimulateVote={votingOpen && modoMuestra}
             onSimulateVote={onSimulateJurorVote}
           />
         </div>
@@ -123,6 +135,12 @@ export function OperatorConsole({
           Exportar saldos y posiciones
         </button>
       </div>
+
+      {modoMuestra ? null : (
+        <p className={styles.muted}>
+          Pendiente de API: deshacer la última acción y el modo manual.
+        </p>
+      )}
 
       {showManual ? (
         <ManualSettlementPanel

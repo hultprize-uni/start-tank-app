@@ -5,23 +5,28 @@ import { useState, type FormEvent } from "react";
 import styles from "./AccessGate.module.css";
 
 interface AccessGateProps {
-  /** Valida el código ingresado. Devuelve true cuando el acceso se concede. */
-  onSubmit: (code: string) => boolean;
+  /** Valida el código ingresado. Devuelve el mensaje de error, o null cuando el acceso se concede. */
+  onSubmit: (code: string) => Promise<string | null>;
+  /** Aviso mostrado al llegar al acceso, por ejemplo cuando la sesión venció. */
+  aviso?: string | null;
 }
 
 /** Pantalla de acceso al portal del operador mediante código de acceso. */
-export function AccessGate({ onSubmit }: AccessGateProps) {
+export function AccessGate({ onSubmit, aviso = null }: AccessGateProps) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!onSubmit(code)) {
-      setError("El código no es válido. Verifica el código de acceso del operador.");
-      return;
-    }
-    setError(null);
+    if (enviando) return;
+    setEnviando(true);
+    const mensaje = await onSubmit(code);
+    setEnviando(false);
+    setError(mensaje);
   }
+
+  const mensaje = error ?? aviso;
 
   return (
     <main className={styles.page}>
@@ -46,17 +51,17 @@ export function AccessGate({ onSubmit }: AccessGateProps) {
             value={code}
             onChange={(event) => setCode(event.target.value)}
             aria-invalid={error !== null}
-            aria-describedby={error ? "codigo-error" : undefined}
+            aria-describedby={mensaje ? "codigo-error" : undefined}
           />
-          {error ? (
+          {mensaje ? (
             <p id="codigo-error" className={styles.error} role="alert">
-              {error}
+              {mensaje}
             </p>
           ) : null}
           <button
             type="submit"
             className={styles.submit}
-            disabled={code.trim().length === 0}
+            disabled={code.trim().length === 0 || enviando}
           >
             Entrar
           </button>
