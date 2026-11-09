@@ -186,3 +186,26 @@
 .acentoCyan {
   color: var(--accent-2);
 }
+
+.rejillaCuatro {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2cqw;
+}
+
+.hileraPuntos {
+  display: flex;
+  gap: 2cqw;
+}
+
+.decisionRespalda {
+  color: var(--positive);
+}
+
+.decisionRechaza {
+  color: var(--negative);
+}
+
+.decisionAbstencion {
+  color: var(--fg-3);
+}
