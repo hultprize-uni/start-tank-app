@@ -124,7 +124,6 @@ begin
 end;
 $$;
 
--- Acceso restringido: la función la invoca el servidor de la aplicación con el rol service_role,
+-- Acceso restringido: la función la invoca el servidor de la aplicación con el rol propietario,
 -- que valida la identidad del asistente antes de llamarla.
-revoke all on function fn_registrar_inversion(bigint, bigint, numeric) from public, anon, authenticated;
-grant execute on function fn_registrar_inversion(bigint, bigint, numeric) to service_role;
+revoke all on function fn_registrar_inversion(bigint, bigint, numeric) from public;
