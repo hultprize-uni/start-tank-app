@@ -1,0 +1,66 @@
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-inner);
+  background: var(--bg-band);
+}
+
+.heading {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-inner);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.current {
+  background: rgba(18, 177, 231, 0.14);
+  color: var(--st-cyan-light);
+}
+
+.position {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.balance {
+  font-variant-numeric: tabular-nums;
+}
+
+.gap {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--fg-4);
+}
