@@ -1,6 +1,7 @@
 import type { MarketInfo, RoundInfo, StartupInfo, WalletInfo } from "@/lib/api/investor.types";
 import { ActionButton } from "./ActionButton";
 import { formatCoins } from "./format";
+import { LastCallCountdown } from "./LastCallCountdown";
 import { MarketCard } from "./MarketCard";
 import { StatusBadge } from "./StatusBadge";
 import styles from "./MarketScreen.module.css";
@@ -10,24 +11,42 @@ interface MarketScreenProps {
   startup: StartupInfo;
   market: MarketInfo;
   wallet: WalletInfo;
+  /** Segundos de la última llamada. Nulo mientras el mercado está abierto. */
+  countdownSeconds: number | null;
   onInvest: () => void;
 }
 
-/** Mercado abierto: precio en vivo, monto invertido frente al tope de la ronda y acceso a Invertir. */
-export function MarketScreen({ round, startup, market, wallet, onInvest }: MarketScreenProps) {
+/** Mercado abierto y última llamada: precio en vivo, tope de la ronda y acceso a Invertir. */
+export function MarketScreen({
+  round,
+  startup,
+  market,
+  wallet,
+  countdownSeconds,
+  onInvest,
+}: MarketScreenProps) {
   const capRatio = wallet.roundCap > 0 ? wallet.investedInRound / wallet.roundCap : 0;
   const fillPercent = Math.min(100, capRatio * 100);
+  const isLastCall = countdownSeconds !== null;
 
   return (
     <section className={styles.screen}>
       <div className={styles.status}>
-        <StatusBadge tone="cyan" live>
-          Mercado abierto
-        </StatusBadge>
+        {isLastCall ? (
+          <StatusBadge tone="yellow" live>
+            Última llamada
+          </StatusBadge>
+        ) : (
+          <StatusBadge tone="cyan" live>
+            Mercado abierto
+          </StatusBadge>
+        )}
         <span className={styles.round}>
           Ronda {round.number} de {round.total}
         </span>
       </div>
+
+      {isLastCall && <LastCallCountdown seconds={countdownSeconds} />}
 
       <MarketCard startup={startup} market={market} />
 
