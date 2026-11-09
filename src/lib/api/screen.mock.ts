@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
 import { EVENT_CONFIG } from "@/lib/domain/config";
 import type {
   FilaInversionista,
@@ -11,8 +10,9 @@ import type {
 } from "./screen.types";
 
 /*
- * Fuente simulada de la pantalla del evento. Reemplazar `simularLectura` por
- * las consultas a Neon sin cambiar la interfaz `ScreenViewModel`.
+ * Fuente simulada de la pantalla del evento. Se usa solo con NEXT_PUBLIC_USE_MOCKS=true o con el
+ * parámetro de fase en desarrollo; el hook `useScreenState` (screen.client.ts) la consume en esos
+ * casos. Produce la misma interfaz `ScreenViewModel` que devuelve `GET /api/pantalla`.
  */
 
 /** Fase que se muestra cuando no se fuerza una por query. */
@@ -163,18 +163,3 @@ export function simularLectura(fase: ScreenPhase, tick: number): ScreenViewModel
   }
 }
 
-/**
- * Hook de lectura de la pantalla. Sondea cada `EVENT_CONFIG.screenPollMs`.
- * `faseForzada` reemplaza la fase mock; el servidor la pasa solo en desarrollo.
- */
-export function useScreenState(faseForzada?: ScreenPhase): ScreenViewModel {
-  const [tick, setTick] = useState(0);
-  const fase = faseForzada ?? FASE_MOCK;
-
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), EVENT_CONFIG.screenPollMs);
-    return () => clearInterval(id);
-  }, []);
-
-  return useMemo(() => simularLectura(fase, tick), [fase, tick]);
-}

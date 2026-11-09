@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { UltimaLlamada } from "@/lib/api/screen.types";
 import { CabeceraRonda } from "./CabeceraRonda";
 import { MetricasMercado } from "./MetricasMercado";
@@ -16,25 +15,13 @@ function formatearCuenta(segundos: number): string {
 }
 
 interface CuentaRegresivaProps {
-  segundosIniciales: number;
+  /** Segundos restantes calculados por el hook con la hora del servidor. */
+  segundos: number;
 }
 
-/*
- * Cuenta local de un segundo. La pantalla la reinicia con cada lectura del
- * estado (la clave cambia con `actualizadoEn`), de modo que la cifra
- * siempre parte del valor recibido de la fuente.
- */
-function CuentaRegresiva({ segundosIniciales }: CuentaRegresivaProps) {
-  const [restantes, setRestantes] = useState(segundosIniciales);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setRestantes((segundos) => Math.max(0, segundos - 1));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const inminente = restantes <= UMBRAL_INMINENTE;
+/* Presenta la cuenta recibida. El hook `useScreenState` la recalcula cada segundo. */
+function CuentaRegresiva({ segundos }: CuentaRegresivaProps) {
+  const inminente = segundos <= UMBRAL_INMINENTE;
 
   return (
     <section aria-label="Cuenta regresiva de la última llamada">
@@ -43,9 +30,9 @@ function CuentaRegresiva({ segundosIniciales }: CuentaRegresivaProps) {
         className={`${styles.cifraGrande} ${styles.cifraAcento} ${inminente ? styles.pulso : ""}`}
         role="timer"
       >
-        {formatearCuenta(restantes)}
+        {formatearCuenta(segundos)}
       </p>
-      {inminente && restantes > 0 ? (
+      {inminente && segundos > 0 ? (
         <p className={styles.subtitulo}>El mercado cierra en segundos.</p>
       ) : null}
     </section>
@@ -66,7 +53,7 @@ export function FaseUltimaLlamada({ vm }: FaseUltimaLlamadaProps) {
         acumulado={vm.acumulado}
         inversoresUnicos={vm.inversoresUnicos}
       />
-      <CuentaRegresiva key={vm.actualizadoEn} segundosIniciales={vm.segundosRestantes} />
+      <CuentaRegresiva segundos={vm.segundosRestantes} />
     </>
   );
 }
