@@ -1,0 +1,10 @@
+:root{
+--font-display:var(--font-archivo),Archivo,sans-serif;--font-body:var(--font-manrope),Manrope,system-ui,sans-serif;
+--fs-hero:clamp(42px,6.4vw,88px);/* @kind font */--fs-h2:clamp(32px,4.4vw,58px);/* @kind font */--fs-h3:19px;--fs-lead:19px;--fs-body:15px;--fs-small:13px;--fs-eyebrow:11.5px;
+--ls-display:-.035em;--ls-eyebrow:.14em;
+}
+body{background:var(--bg-page);color:var(--fg-1);font-family:var(--font-body);-webkit-font-smoothing:antialiased;margin:0}
+h1,h2,h3{font-family:var(--font-display);font-weight:900;letter-spacing:var(--ls-display);margin:0}
+a{color:var(--link);text-decoration:none}a:hover{color:var(--link-hover)}
+.st-eyebrow{font-size:var(--fs-eyebrow);font-weight:800;letter-spacing:var(--ls-eyebrow);text-transform:uppercase}
+.st-num{font-family:var(--font-display);font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.04em}

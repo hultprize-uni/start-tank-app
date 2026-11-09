@@ -1,0 +1,9 @@
+@import "../styles/colors.css";
+@import "../styles/shape.css";
+@import "../styles/typography.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
