@@ -27,7 +27,7 @@ function renderScreen(
 
   switch (vm.phase) {
     case "login":
-      return <LoginScreen onLogin={actions.login} />;
+      return <LoginScreen />;
     case "scheduled":
       return round && startup ? <ScheduledScreen round={round} startup={startup} /> : null;
     case "open":
