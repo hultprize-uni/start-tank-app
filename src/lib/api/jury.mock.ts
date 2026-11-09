@@ -32,7 +32,7 @@ const INITIAL_STATE: JuryViewModel = {
   jurorLabel: null,
   round: null,
   criteria: MOCK_CRITERIA,
-  vote: { draft: null, confirming: false, submitting: false },
+  vote: { draft: null, confirming: false, submitting: false, errorMessage: null },
   votes: { emitted: 0, total: MOCK_JURY_TOTAL },
 };
 
@@ -130,7 +130,7 @@ export function useJuryState(): { state: JuryViewModel; actions: JuryActions } {
       setState((prev) => ({
         ...prev,
         screen: "voto_registrado",
-        vote: { draft: null, confirming: false, submitting: false },
+        vote: { draft: null, confirming: false, submitting: false, errorMessage: null },
         votes: {
           ...prev.votes,
           emitted: Math.min(prev.votes.emitted + 1, prev.votes.total),

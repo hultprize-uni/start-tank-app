@@ -87,6 +87,12 @@ export function VotePanel({
         </button>
       </footer>
 
+      {vote.errorMessage !== null && (
+        <p className={styles.error} role="alert">
+          {vote.errorMessage}
+        </p>
+      )}
+
       {vote.confirming && vote.draft !== null && (
         <VoteConfirmDialog
           decision={vote.draft}
