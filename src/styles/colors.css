@@ -1,0 +1,14 @@
+:root{
+--st-ink-900:#0B0714;--st-ink-800:#0E0A1B;--st-ink-700:#1A1330;--st-indigo:#292563;--st-purple:#8A2890;
+--st-pink:#EA4899;--st-pink-light:#F384BC;--st-pink-hot:#F356A6;--st-cyan:#12B1E7;--st-cyan-light:#8BDAF5;--st-yellow:#FDD40E;--st-orchid:#CE89D2;
+--st-lav-100:#D8D6F5;--st-lav-200:#C9C5E8;--st-lav-300:#B0ADE2;--st-lav-400:#9D98C8;--st-lav-500:#7E78AE;
+--st-white:#FFFFFF;
+--bg-page:var(--st-ink-900);--bg-band:var(--st-ink-800);--bg-card:var(--st-ink-900);
+--fg-1:#FFFFFF;--fg-2:var(--st-lav-200);--fg-3:var(--st-lav-400);--fg-4:var(--st-lav-500);
+--accent:var(--st-pink);--accent-2:var(--st-cyan);--accent-3:var(--st-yellow);
+--link:var(--st-pink-light);--link-hover:#FFFFFF;
+--line-1:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);--line-strong:rgba(255,255,255,.28);
+--positive:var(--st-cyan);--negative:var(--st-pink);--warning:var(--st-yellow);
+--grad-brand:linear-gradient(135deg,#12B1E7,#8A2890 55%,#EA4899);/* @kind color */
+--grad-hero:linear-gradient(158deg,#292563 0%,#8A2890 44%,#EA4899 82%,#F356A6 100%);/* @kind color */
+}
