@@ -539,7 +539,7 @@ function toViewModel(state: MockState): OperatorViewModel {
       done: false,
       enabled: revealed && state.roundIndex < TOTAL_ROUNDS - 1,
       blockedReason: !revealed
-        ? "Disponible al liquidar o anular la ronda"
+        ? "Se habilita al liquidar o anular la ronda"
         : state.roundIndex >= TOTAL_ROUNDS - 1
           ? "Es la última startup del evento"
           : null,
