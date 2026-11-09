@@ -16,7 +16,7 @@ import type {
 
 /**
  * Implementación mock del estado del operador.
- * Reemplazar el reductor por llamadas a Supabase cuando exista la capa de datos; la interfaz
+ * Reemplazar el reductor por llamadas a Neon cuando exista la capa de datos; la interfaz
  * de OperatorStateApi se conserva.
  */
 

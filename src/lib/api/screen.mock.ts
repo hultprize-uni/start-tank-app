@@ -12,7 +12,7 @@ import type {
 
 /*
  * Fuente simulada de la pantalla del evento. Reemplazar `simularLectura` por
- * las consultas a Supabase sin cambiar la interfaz `ScreenViewModel`.
+ * las consultas a Neon sin cambiar la interfaz `ScreenViewModel`.
  */
 
 /** Fase que se muestra cuando no se fuerza una por query. */

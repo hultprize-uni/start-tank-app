@@ -63,7 +63,6 @@ exception
 end;
 $$;
 
--- Acceso restringido: la función la invoca el servidor de la aplicación con el rol service_role,
+-- Acceso restringido: la función la invoca el servidor de la aplicación con el rol propietario,
 -- que valida el código de acceso del jurado antes de llamarla.
-revoke all on function fn_registrar_voto(bigint, bigint, varchar) from public, anon, authenticated;
-grant execute on function fn_registrar_voto(bigint, bigint, varchar) to service_role;
+revoke all on function fn_registrar_voto(bigint, bigint, varchar) from public;
