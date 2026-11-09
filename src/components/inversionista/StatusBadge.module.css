@@ -1,0 +1,37 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  font-family: var(--font-body);
+  font-size: var(--fs-eyebrow);
+  font-weight: 800;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.yellow {
+  background: rgba(253, 212, 14, 0.14);
+  color: var(--st-yellow);
+}
+
+.cyan {
+  background: rgba(18, 177, 231, 0.16);
+  color: var(--st-cyan-light);
+}
+
+.pink {
+  background: rgba(234, 72, 153, 0.16);
+  color: var(--st-pink-light);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: currentColor;
+  animation: stPulse 1.6s ease-in-out infinite;
+}
