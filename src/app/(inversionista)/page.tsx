@@ -1,3 +1,5 @@
+import { InvestorPortal } from "@/components/inversionista/InvestorPortal";
+
 export default function Page() {
-  return <main>Portal del inversionista</main>;
+  return <InvestorPortal />;
 }
