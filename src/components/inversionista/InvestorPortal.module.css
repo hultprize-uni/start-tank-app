@@ -15,3 +15,11 @@
   flex: 1;
   flex-direction: column;
 }
+
+.loading {
+  margin: 0;
+  padding-top: var(--sp-5);
+  color: var(--fg-3);
+  font-size: 14px;
+  text-align: center;
+}

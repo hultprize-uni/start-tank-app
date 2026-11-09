@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type InvestorActions, useInvestorState } from "@/lib/api/investor.mock";
+import { useInvestorState } from "@/lib/api/investor.state";
 import type { InvestorViewModel } from "@/lib/api/investor.types";
 import { FinalScreen } from "./FinalScreen";
 import { formatCoins } from "./format";
@@ -18,11 +18,7 @@ import styles from "./InvestorPortal.module.css";
 const TOAST_DURATION_MS = 2_600;
 
 /** Pantalla del inversionista según la fase de la ronda. Las pantallas no tienen estado propio. */
-function renderScreen(
-  vm: InvestorViewModel,
-  actions: InvestorActions,
-  onInvest: () => void,
-): React.ReactNode {
+function renderScreen(vm: InvestorViewModel, onInvest: () => void): React.ReactNode {
   const { round, startup, wallet, market, verdict, standing } = vm;
 
   switch (vm.phase) {
@@ -55,16 +51,16 @@ function renderScreen(
   }
 }
 
-/** Contenedor del portal del inversionista: conecta el estado de la simulación con las pantallas. */
+/** Contenedor del portal del inversionista: conecta el estado del servidor con las pantallas. */
 export function InvestorPortal() {
-  const { vm, actions } = useInvestorState();
+  const { vm, status, errorMessage, actions } = useInvestorState();
   /** Número de ronda para la que la hoja Invertir fue abierta. Evita reabrirla en la siguiente ronda. */
   const [sheetRound, setSheetRound] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const canInvest = vm.phase === "open" || vm.phase === "lastCall";
-  const isSheetVisible =
-    canInvest && vm.round !== null && sheetRound === vm.round.number;
+  const canInvest = vm !== null && (vm.phase === "open" || vm.phase === "lastCall");
+  const ronda = vm?.round ?? null;
+  const isSheetVisible = canInvest && ronda !== null && sheetRound === ronda.number;
 
   useEffect(() => {
     if (toast === null) return;
@@ -72,25 +68,39 @@ export function InvestorPortal() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    if (errorMessage !== null) setToast(errorMessage);
+  }, [errorMessage]);
+
   const openSheet = () => {
-    if (vm.round) setSheetRound(vm.round.number);
+    if (ronda) setSheetRound(ronda.number);
   };
 
   const closeSheet = () => setSheetRound(null);
 
-  const confirmInvestment = (amount: number) => {
-    actions.invest(amount);
+  const confirmInvestment = async (amount: number) => {
     setSheetRound(null);
-    setToast(`Inversión confirmada · −${formatCoins(amount)}`);
+    const resultado = await actions.invest(amount);
+    setToast(resultado.ok ? `Inversión confirmada · −${formatCoins(amount)}` : resultado.mensaje);
   };
+
+  const mensajeEstado = status === "error" && errorMessage !== null ? errorMessage : "Cargando...";
 
   return (
     <main className={styles.portal}>
-      {vm.phase !== "login" && <PortalHeader balance={vm.wallet?.balance ?? null} />}
+      {vm !== null && vm.phase !== "login" && <PortalHeader balance={vm.wallet?.balance ?? null} />}
 
-      <div className={styles.content}>{renderScreen(vm, actions, openSheet)}</div>
+      <div className={styles.content}>
+        {vm !== null ? (
+          renderScreen(vm, openSheet)
+        ) : (
+          <p className={styles.loading} role="status">
+            {mensajeEstado}
+          </p>
+        )}
+      </div>
 
-      {isSheetVisible && vm.startup && vm.wallet && (
+      {isSheetVisible && vm?.startup && vm.wallet && (
         <InvestSheet
           startupName={vm.startup.name}
           wallet={vm.wallet}
