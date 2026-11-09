@@ -209,3 +209,27 @@
 .decisionAbstencion {
   color: var(--fg-3);
 }
+
+.rejillaDos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3cqw;
+  min-height: 0;
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.valorFila {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.tituloGanadora {
+  color: var(--accent-3);
+  font-size: 7cqw;
+}
