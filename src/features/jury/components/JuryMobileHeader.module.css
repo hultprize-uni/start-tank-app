@@ -11,6 +11,12 @@
   width: auto;
 }
 
+.end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .session {
   text-align: right;
 }
