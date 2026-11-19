@@ -64,7 +64,8 @@ describe("buildOperatorView", () => {
     expect(actions.close).toMatchObject({ enabled: true, done: false });
     expect(actions.open).toMatchObject({ enabled: false, done: true });
     expect(actions.reveal).toMatchObject({ enabled: false, done: false });
-    expect(vm?.canCancel).toBe(true);
+    // La anulación solo se ofrece con la ronda cerrada o en votación.
+    expect(vm?.canCancel).toBe(false);
   });
 
   it("indica cuántos votos faltan antes de revelar", () => {
@@ -80,7 +81,7 @@ describe("buildOperatorView", () => {
     );
     const revelar = vm?.actions.find((a) => a.id === "reveal");
 
-    expect(revelar).toMatchObject({ enabled: false, blockedReason: "Faltan 1 voto(s)" });
+    expect(revelar).toMatchObject({ enabled: false, blockedReason: "Bloqueado: falta 1 voto" });
     expect(vm?.jurors.map((j) => j.sense)).toEqual([null, null, null, null]);
   });
 
