@@ -1,19 +1,4 @@
-import { requireOperator, noSessionResponse } from "@/server/auth/code-session";
-import { readOperatorView } from "@/features/operator/server/queries";
-import { errorResponse, jsonResponse } from "@/server/http/responses";
+import { handleOperatorState } from "@/features/operator";
 
-/** Devuelve el view model de la consola del operador para la sesión vigente. */
-export async function GET() {
-  try {
-    await requireOperator();
-    const view = await readOperatorView();
-    if (view === null) {
-      return errorResponse(404, "NO_ROUNDS");
-    }
-    return jsonResponse(view);
-  } catch (error) {
-    const noSession = noSessionResponse(error);
-    if (noSession !== null) return noSession;
-    throw error;
-  }
-}
+/** Estado de la consola del operador. Delega en el manejador de la funcionalidad. */
+export const GET = handleOperatorState;

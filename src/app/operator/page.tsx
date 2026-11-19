@@ -1,4 +1,4 @@
-import { OperatorPortal } from "@/features/operator/components/OperatorPortal";
+import { OperatorPortal } from "@/features/operator";
 
 export default function Page() {
   return <OperatorPortal />;
