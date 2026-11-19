@@ -8,7 +8,7 @@ import { useInvestForm } from "./useInvestForm";
 const wallet: WalletInfo = { balance: 9_000, investedInRound: 0, roundCap: 2_700 };
 
 function setup(overrides: Partial<WalletInfo> = {}, result: InvestmentResult = { ok: true }) {
-  const onConfirm = vi.fn(async (_amount: number) => result);
+  const onConfirm = vi.fn<(amount: number) => Promise<InvestmentResult>>(async () => result);
   const hook = renderHook(
     ({ current }: { current: WalletInfo }) => useInvestForm(current, onConfirm),
     { initialProps: { current: { ...wallet, ...overrides } } },

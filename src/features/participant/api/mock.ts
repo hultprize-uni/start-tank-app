@@ -97,8 +97,15 @@ interface MockState {
   settled: SettledRound[];
 }
 
+/**
+ * Parámetro de URL que muestra la pantalla de ingreso en la simulación. Sin él, la simulación
+ * arranca con una sesión activa en la fase programada, como un asistente que ya ingresó.
+ */
+const SIGN_IN_PARAM = "sesion";
+const SIGN_IN_PARAM_VALUE = "ingreso";
+
 const INITIAL_STATE: MockState = {
-  phase: "login",
+  phase: "scheduled",
   roundIndex: 0,
   balance: EVENT_CONFIG.initialBalance,
   roundStartBalance: EVENT_CONFIG.initialBalance,
@@ -300,6 +307,14 @@ export function useParticipantMockState(): UseParticipantStateResult {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  // Se aplica después del primer render para que el servidor y el cliente coincidan en la hidratación.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get(SIGN_IN_PARAM) === SIGN_IN_PARAM_VALUE) {
+      setState((s) => ({ ...s, phase: "login" }));
+    }
+  }, []);
 
   useEffect(() => {
     const delay = PHASE_DURATION_MS[state.phase];
