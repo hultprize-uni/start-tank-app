@@ -1,7 +1,9 @@
-import { redirect } from "next/navigation";
-import { PAGE_ROUTES } from "@/shared/lib/api-routes";
+import { LandingPage, landingMetadata } from "@/features/landing";
 
-/** Página de inicio provisional: redirige al portal del participante hasta que exista la landing. */
+/* Metadatos de la portada, con SEO y etiquetas Open Graph. */
+export const metadata = landingMetadata;
+
+/* Portada pública del evento. Sus enlaces llevan a los portales y a la inscripción. */
 export default function Page() {
-  redirect(PAGE_ROUTES.participant);
+  return <LandingPage />;
 }
