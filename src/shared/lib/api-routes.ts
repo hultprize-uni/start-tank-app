@@ -13,6 +13,7 @@ export const API_ROUTES = {
     login: "/api/jury/login",
     state: "/api/jury/state",
     vote: "/api/jury/vote",
+    logout: "/api/jury/logout",
   },
   operator: {
     login: "/api/operator/login",

@@ -96,6 +96,11 @@ export async function startSession(
   response.cookies.set(COOKIE_NAMES[role], token, sessionCookieOptions());
 }
 
+/** Expira en la respuesta la cookie de sesión del rol indicado, con los mismos atributos de creación. */
+export function clearSessionCookie(response: NextResponse, role: SessionRole): void {
+  response.cookies.set(COOKIE_NAMES[role], "", { ...sessionCookieOptions(), maxAge: 0 });
+}
+
 /** Lee la cookie del rol indicado y exige un token válido. */
 async function requireSession<R extends SessionRole>(role: R): Promise<ActiveSession<R>> {
   const store = await cookies();
