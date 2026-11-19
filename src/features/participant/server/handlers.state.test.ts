@@ -7,7 +7,7 @@ const mockState = vi.hoisted(() => vi.fn());
 vi.mock("@/features/participant/server/session", () => ({ getParticipantSession: mockSession }));
 vi.mock("@/features/participant/server/queries", () => ({ readParticipantState: mockState }));
 
-import { GET } from "./route";
+import { handleParticipantState as GET } from "./handlers";
 
 const sampleView: ParticipantViewModel = {
   phase: "scheduled",
@@ -25,7 +25,7 @@ beforeEach(() => {
   mockState.mockReset();
 });
 
-describe("GET /api/inversionista/estado", () => {
+describe("GET /api/participant/state", () => {
   it("responde 401 sin sesión y no consulta la base", async () => {
     mockSession.mockResolvedValue(null);
 

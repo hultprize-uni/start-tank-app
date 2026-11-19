@@ -7,7 +7,7 @@ const sqlMock = vi.hoisted(() => vi.fn());
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("@/server/db/client", () => ({ sql: sqlMock }));
 
-import { POST } from "./route";
+import { handleOperatorAction as POST } from "./handlers";
 
 /** Configura el almacén de cookies simulado con los pares indicados. */
 function setCookies(values: Record<string, string>): void {
@@ -18,7 +18,7 @@ function setCookies(values: Record<string, string>): void {
 }
 
 function request(action: unknown): Request {
-  return new Request("http://localhost/api/operador/accion", {
+  return new Request("http://localhost/api/operator/action", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action }),
@@ -31,7 +31,7 @@ beforeEach(() => {
   vi.mocked(cookies).mockReset();
 });
 
-describe("POST /api/operador/accion", () => {
+describe("POST /api/operator/action", () => {
   it("rechaza la petición sin cookie de sesión", async () => {
     setCookies({});
     const response = await POST(request("CLOSE"));

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { USE_MOCKS } from "@/shared/lib/env";
 import type { Decision } from "@/shared/domain/types";
-import { JURY_SESSION_EXPIRED_MESSAGE, readJuryState, loginJury, voteJury } from "../api/client";
+import { readJuryState, loginJury, voteJury } from "../api/client";
 import { useJuryState as useJuryStateMock } from "../api/mock";
 import type { JuryAccessView, JuryActions, JuryViewModel, JuryVoteView } from "../types";
 

@@ -6,11 +6,11 @@ const registerMock = vi.hoisted(() => vi.fn());
 vi.mock("@/features/participant/server/session", () => ({ getParticipantSession: mockSession }));
 vi.mock("@/features/participant/server/queries", () => ({ registerInvestment: registerMock }));
 
-import { POST } from "./route";
+import { handleParticipantInvest as POST } from "./handlers";
 
 /** Crea una petición JSON al endpoint de inversión con el cuerpo indicado. */
 function request(body: unknown): Request {
-  return new Request("http://localhost/api/inversionista/invertir", {
+  return new Request("http://localhost/api/participant/invest", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: typeof body === "string" ? body : JSON.stringify(body),
@@ -23,7 +23,7 @@ beforeEach(() => {
   mockSession.mockResolvedValue({ userId: 7, balance: 10_000, name: "Ana" });
 });
 
-describe("POST /api/inversionista/invertir", () => {
+describe("POST /api/participant/invest", () => {
   it("responde 401 sin sesión y no invoca la función de inversión", async () => {
     mockSession.mockResolvedValue(null);
 
