@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_CONFIG } from "@/shared/domain/config";
-import { investAmount, fetchParticipantState, NO_SESSION } from "./investor.client";
-import { useInvestorMockState } from "./investor.mock";
+import { investAmount, fetchParticipantState, NO_SESSION } from "../api/client";
+import { useParticipantMockState } from "../api/mock";
 import type {
-  InvestorActions,
-  InvestorLoadStatus,
-  InvestorViewModel,
+  ParticipantActions,
+  ParticipantLoadStatus,
+  ParticipantViewModel,
   InvestmentResult,
-  UseInvestorStateResult,
-} from "./investor.types";
+  UseParticipantStateResult,
+} from "../types";
 
 /*
  * Estado del portal del inversionista. Por defecto consulta la API real; la simulación solo se
@@ -19,7 +19,7 @@ import type {
 const UPDATE_FAILED_MESSAGE = "No fue posible actualizar la ronda. Reintentando.";
 
 /** View model de la fase de ingreso, usado cuando la API responde sin sesión. */
-const LOGIN_VIEW: InvestorViewModel = {
+const LOGIN_VIEW: ParticipantViewModel = {
   phase: "login",
   round: null,
   startup: null,
@@ -34,9 +34,9 @@ const LOGIN_VIEW: InvestorViewModel = {
  * Hook del estado real. Consulta /api/inversionista/estado al montar y cada
  * EVENT_CONFIG.investorPollMs. Al recargar la página, el estado se reanuda desde el servidor.
  */
-export function useInvestorRemoteState(): UseInvestorStateResult {
-  const [vm, setVm] = useState<InvestorViewModel | null>(null);
-  const [status, setStatus] = useState<InvestorLoadStatus>("loading");
+export function useParticipantRemoteState(): UseParticipantStateResult {
+  const [vm, setVm] = useState<ParticipantViewModel | null>(null);
+  const [status, setStatus] = useState<ParticipantLoadStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const refreshRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -80,11 +80,11 @@ export function useInvestorRemoteState(): UseInvestorStateResult {
     return result;
   }, []);
 
-  const actions = useMemo<InvestorActions>(() => ({ invest }), [invest]);
+  const actions = useMemo<ParticipantActions>(() => ({ invest }), [invest]);
 
   return { vm, status, errorMessage, actions };
 }
 
 /** Estado del portal: API real, o simulación cuando NEXT_PUBLIC_USE_MOCKS vale "true". */
-export const useInvestorState: () => UseInvestorStateResult =
-  process.env.NEXT_PUBLIC_USE_MOCKS === "true" ? useInvestorMockState : useInvestorRemoteState;
+export const useParticipantState: () => UseParticipantStateResult =
+  process.env.NEXT_PUBLIC_USE_MOCKS === "true" ? useParticipantMockState : useParticipantRemoteState;

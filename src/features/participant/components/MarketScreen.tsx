@@ -1,4 +1,4 @@
-import type { MarketInfo, RoundInfo, StartupInfo, WalletInfo } from "@/lib/api/investor.types";
+import type { MarketInfo, RoundInfo, StartupInfo, WalletInfo } from "../types";
 import { ActionButton } from "./ActionButton";
 import { formatCoins } from "./format";
 import { LastCallCountdown } from "./LastCallCountdown";

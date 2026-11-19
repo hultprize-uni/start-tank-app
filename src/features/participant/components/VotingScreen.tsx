@@ -1,4 +1,4 @@
-import type { RoundInfo, StartupInfo, WalletInfo } from "@/lib/api/investor.types";
+import type { RoundInfo, StartupInfo, WalletInfo } from "../types";
 import { ActionButton } from "./ActionButton";
 import { formatCoins } from "./format";
 import { StatusBadge } from "./StatusBadge";

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockSession = vi.hoisted(() => vi.fn());
 const registerMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/auth/investor", () => ({ getInvestorSession: mockSession }));
+vi.mock("@/lib/auth/investor", () => ({ getParticipantSession: mockSession }));
 vi.mock("@/lib/db/investor-queries", () => ({ registerInvestment: registerMock }));
 
 import { POST } from "./route";

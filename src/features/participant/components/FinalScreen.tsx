@@ -1,4 +1,4 @@
-import type { StandingInfo } from "@/lib/api/investor.types";
+import type { StandingInfo } from "../types";
 import { formatCoins } from "./format";
 import { Leaderboard } from "./Leaderboard";
 import { StatusBadge } from "./StatusBadge";

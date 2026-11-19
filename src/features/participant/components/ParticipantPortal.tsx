@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useInvestorState } from "@/lib/api/investor.state";
-import type { InvestorViewModel } from "@/lib/api/investor.types";
+import { useParticipantState } from "../hooks/useParticipantState";
+import type { ParticipantViewModel } from "../types";
 import { FinalScreen } from "./FinalScreen";
 import { formatCoins } from "./format";
 import { InvestSheet } from "./InvestSheet";
@@ -13,12 +13,12 @@ import { ResultScreen } from "./ResultScreen";
 import { ScheduledScreen } from "./ScheduledScreen";
 import { Toast } from "./Toast";
 import { VotingScreen } from "./VotingScreen";
-import styles from "./InvestorPortal.module.css";
+import styles from "./ParticipantPortal.module.css";
 
 const TOAST_DURATION_MS = 2_600;
 
 /** Pantalla del inversionista según la fase de la ronda. Las pantallas no tienen estado propio. */
-function renderScreen(vm: InvestorViewModel, onInvest: () => void): React.ReactNode {
+function renderScreen(vm: ParticipantViewModel, onInvest: () => void): React.ReactNode {
   const { round, startup, wallet, market, verdict, standing } = vm;
 
   switch (vm.phase) {
@@ -52,8 +52,8 @@ function renderScreen(vm: InvestorViewModel, onInvest: () => void): React.ReactN
 }
 
 /** Contenedor del portal del inversionista: conecta el estado del servidor con las pantallas. */
-export function InvestorPortal() {
-  const { vm, status, errorMessage, actions } = useInvestorState();
+export function ParticipantPortal() {
+  const { vm, status, errorMessage, actions } = useParticipantState();
   /** Número de ronda para la que la hoja Invertir fue abierta. Evita reabrirla en la siguiente ronda. */
   const [sheetRound, setSheetRound] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);

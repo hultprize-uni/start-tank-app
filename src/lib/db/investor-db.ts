@@ -1,20 +1,20 @@
 import { neon } from "@neondatabase/serverless";
 
 /** Fila devuelta por la consulta de aprovisionamiento de la tabla usuario. */
-export interface InvestorRow {
+export interface ParticipantRow {
   id_usuario: number | string;
   saldo_actual: number | string;
   nombre: string | null;
 }
 
 /** Función de consulta con plantillas etiquetadas, compatible con el cliente de Neon. */
-export type InvestorSql = (
+export type ParticipantSql = (
   strings: TemplateStringsArray,
   ...params: unknown[]
-) => Promise<InvestorRow[]>;
+) => Promise<ParticipantRow[]>;
 
 /** Datos del asistente proporcionados por Neon Auth. */
-export interface InvestorIdentity {
+export interface ParticipantIdentity {
   /** Identificador del usuario en Neon Auth. */
   externalId: string;
   email: string | null;
@@ -22,16 +22,16 @@ export interface InvestorIdentity {
 }
 
 /** Billetera del inversionista tal como se expone a la aplicación. */
-export interface InvestorAccount {
+export interface ParticipantAccount {
   userId: number;
   balance: number;
   name: string | null;
 }
 
-let client: InvestorSql | undefined;
+let client: ParticipantSql | undefined;
 
 /** Devuelve el cliente de Neon. Se crea en la primera llamada para no leer DATABASE_URL durante el build. */
-export function getInvestorSql(): InvestorSql {
+export function getParticipantSql(): ParticipantSql {
   if (client !== undefined) {
     return client;
   }
@@ -40,7 +40,7 @@ export function getInvestorSql(): InvestorSql {
     throw new Error("Variable de entorno ausente: DATABASE_URL");
   }
   // El tipo de filas del driver es genérico; la forma de InvestorRow se valida en provisionInvestor.
-  const sql = neon(url) as unknown as InvestorSql;
+  const sql = neon(url) as unknown as ParticipantSql;
   client = sql;
   return sql;
 }
@@ -49,10 +49,10 @@ export function getInvestorSql(): InvestorSql {
  * Crea la billetera del asistente en el primer ingreso y reanuda la existente en los siguientes.
  * La cláusula ON CONFLICT evita duplicados gracias a la restricción única (proveedor_oauth, id_externo).
  */
-export async function provisionInvestor(
-  sql: InvestorSql,
-  identity: InvestorIdentity,
-): Promise<InvestorAccount> {
+export async function provisionParticipant(
+  sql: ParticipantSql,
+  identity: ParticipantIdentity,
+): Promise<ParticipantAccount> {
   const rows = await sql`
     insert into usuario (proveedor_oauth, id_externo, correo, nombre)
     values ('google', ${identity.externalId}, ${identity.email}, ${identity.name})

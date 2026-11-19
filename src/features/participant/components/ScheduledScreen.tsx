@@ -1,4 +1,4 @@
-import type { RoundInfo, StartupInfo } from "@/lib/api/investor.types";
+import type { RoundInfo, StartupInfo } from "../types";
 import { StatusBadge } from "./StatusBadge";
 import styles from "./ScheduledScreen.module.css";
 

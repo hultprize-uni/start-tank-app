@@ -1,4 +1,4 @@
-import type { StandingEntry, StandingInfo } from "@/lib/api/investor.types";
+import type { StandingEntry, StandingInfo } from "../types";
 import { formatCoins } from "./format";
 import styles from "./Leaderboard.module.css";
 

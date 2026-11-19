@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { authClient } from "@/lib/auth/neon-auth-client";
+import { authClient } from "../api/auth-client";
 import { EVENT_CONFIG } from "@/shared/domain/config";
+import { PAGE_ROUTES } from "@/shared/lib/api-routes";
 import { ActionButton } from "./ActionButton";
 import { BrandMark } from "./BrandMark";
 import { formatCoins } from "./format";
@@ -21,7 +22,7 @@ export function LoginScreen() {
     try {
       const { error: signInError } = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: PAGE_ROUTES.participant,
       });
       if (signInError) {
         setError(SIGN_IN_ERROR);

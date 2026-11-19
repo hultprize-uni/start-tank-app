@@ -1,7 +1,7 @@
-import { getRoundCap } from "@/lib/api/investor.rules";
+import { getRoundCap } from "@/features/participant/rules";
 import type {
-  InvestorPhase,
-  InvestorViewModel,
+  ParticipantPhase,
+  ParticipantViewModel,
   MarketInfo,
   RoundInfo,
   StandingEntry,
@@ -9,7 +9,7 @@ import type {
   StartupInfo,
   VerdictInfo,
   WalletInfo,
-} from "@/lib/api/investor.types";
+} from "@/features/participant/types";
 import { EVENT_CONFIG } from "@/shared/domain/config";
 import type { Decision, RoundState } from "@/shared/domain/types";
 import { parseSdg } from "./mapeo";
@@ -184,13 +184,13 @@ function buildVerdict(
  * activa; si no hay ronda activa, de la última terminada y de la existencia de rondas pendientes.
  * Es una función pura: no accede a la base de datos.
  */
-export function buildParticipantState(data: ParticipantStateData): InvestorViewModel {
+export function buildParticipantState(data: ParticipantStateData): ParticipantViewModel {
   const sorted = sortRounds(data.rounds);
   const active = sorted.find((r) => ACTIVE_STATES.has(r.estado));
   const pending = sorted.find((r) => r.estado === "SCHEDULED");
   const last = finished(data.rounds).pop();
 
-  let phase: InvestorPhase;
+  let phase: ParticipantPhase;
   let reference: ParticipantRoundRow | undefined;
   if (active !== undefined) {
     reference = active;
@@ -343,7 +343,7 @@ async function queryParticipantCount(roundId: string): Promise<number> {
  * Lee el view model del inversionista para la sesión indicada. Las consultas del leaderboard se
  * ejecutan solo cuando existe una ronda terminada.
  */
-export async function readParticipantState(userId: number): Promise<InvestorViewModel> {
+export async function readParticipantState(userId: number): Promise<ParticipantViewModel> {
   const [balance, rounds, investments] = await Promise.all([
     queryBalance(userId),
     queryParticipantRounds(),

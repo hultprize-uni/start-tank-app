@@ -1,5 +1,5 @@
 import { participantError } from "@/lib/api/investor.errors";
-import { getInvestorSession } from "@/lib/auth/investor";
+import { getParticipantSession } from "@/lib/auth/investor";
 import { readParticipantState } from "@/lib/db/investor-queries";
 import { jsonResponse } from "@/server/http/responses";
 
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 /** Devuelve el InvestorViewModel del asistente de la sesión vigente, o 401 sin sesión. */
 export async function GET() {
-  const session = await getInvestorSession();
+  const session = await getParticipantSession();
   if (session === null) {
     const error = participantError("NO_SESSION");
     return jsonResponse({ error: error.code, message: error.message }, error.status);

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { authClient } from "@/lib/auth/neon-auth-client";
+import { PAGE_ROUTES } from "@/shared/lib/api-routes";
+import { authClient } from "../api/auth-client";
 import { ActionButton } from "./ActionButton";
 import styles from "./PortalHeader.module.css";
 
@@ -14,7 +15,7 @@ export function SignOutButton() {
     try {
       await authClient.signOut();
     } finally {
-      window.location.assign("/");
+      window.location.assign(PAGE_ROUTES.participant);
     }
   };
 

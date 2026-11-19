@@ -6,18 +6,18 @@ import {
   getMarketPrice,
   getMultiplier,
   getRoundCap,
-} from "@/lib/api/investor.rules";
+} from "../rules";
 import type {
-  InvestorActions,
-  InvestorPhase,
-  InvestorViewModel,
+  ParticipantActions,
+  ParticipantPhase,
+  ParticipantViewModel,
   InvestmentResult,
   StandingEntry,
   StandingInfo,
   StartupInfo,
-  UseInvestorStateResult,
+  UseParticipantStateResult,
   VerdictInfo,
-} from "@/lib/api/investor.types";
+} from "../types";
 
 /**
  * Simulación del estado del inversionista. Devuelve la forma que tendrá la API real
@@ -32,7 +32,7 @@ const REFERENCE_POSITION = 40;
 const COINS_PER_POSITION = 150;
 
 /** Duración simulada de cada fase, en milisegundos. La última llamada usa el conteo configurado. */
-const PHASE_DURATION_MS: Partial<Record<InvestorPhase, number>> = {
+const PHASE_DURATION_MS: Partial<Record<ParticipantPhase, number>> = {
   scheduled: 8_000,
   open: 25_000,
   voting: 8_000,
@@ -63,7 +63,7 @@ const ROUND_DECISIONS: Decision[][] = [
 const TOP_NAMES = ["Sofía Mendoza", "Carlos Ruiz", "Lucía Paredes"];
 
 interface MockState {
-  phase: InvestorPhase;
+  phase: ParticipantPhase;
   /** Índice de la ronda en curso, desde 0. */
   roundIndex: number;
   balance: number;
@@ -134,7 +134,7 @@ function buildStanding(s: MockState): StandingInfo {
   };
 }
 
-function deriveViewModel(s: MockState): InvestorViewModel {
+function deriveViewModel(s: MockState): ParticipantViewModel {
   if (s.phase === "login") {
     return {
       phase: s.phase,
@@ -240,7 +240,7 @@ function simulateRoomInvestment(s: MockState): MockState {
 }
 
 /** Hook de simulación con la misma forma que useInvestorState de la API real. */
-export function useInvestorMockState(): UseInvestorStateResult {
+export function useParticipantMockState(): UseParticipantStateResult {
   const [state, setState] = useState<MockState>(INITIAL_STATE);
 
   useEffect(() => {
@@ -283,7 +283,7 @@ export function useInvestorMockState(): UseInvestorStateResult {
   }, []);
 
   const vm = useMemo(() => deriveViewModel(state), [state]);
-  const actions = useMemo<InvestorActions>(() => ({ invest }), [invest]);
+  const actions = useMemo<ParticipantActions>(() => ({ invest }), [invest]);
 
   return { vm, status: "ready", errorMessage: null, actions };
 }

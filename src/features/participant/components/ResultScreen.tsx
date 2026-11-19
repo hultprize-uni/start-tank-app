@@ -4,7 +4,7 @@ import type {
   StandingInfo,
   StartupInfo,
   VerdictInfo,
-} from "@/lib/api/investor.types";
+} from "../types";
 import { formatCoins, formatMultiplier, formatSignedCoins } from "./format";
 import { Leaderboard } from "./Leaderboard";
 import { StatusBadge } from "./StatusBadge";

@@ -6,8 +6,8 @@ import {
   getInvestmentIssue,
   getMultiplier,
   type InvestmentIssue,
-} from "@/lib/api/investor.rules";
-import type { WalletInfo } from "@/lib/api/investor.types";
+} from "../rules";
+import type { WalletInfo } from "../types";
 import { ActionButton } from "./ActionButton";
 import { formatCoins, formatMultiplier } from "./format";
 import styles from "./InvestSheet.module.css";

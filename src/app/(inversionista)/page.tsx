@@ -1,5 +1,5 @@
-import { InvestorPortal } from "@/components/inversionista/InvestorPortal";
+import { ParticipantPortal } from "@/features/participant/components/ParticipantPortal";
 
 export default function Page() {
-  return <InvestorPortal />;
+  return <ParticipantPortal />;
 }

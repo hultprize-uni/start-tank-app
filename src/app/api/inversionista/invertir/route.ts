@@ -1,5 +1,5 @@
 import { participantError } from "@/lib/api/investor.errors";
-import { getInvestorSession } from "@/lib/auth/investor";
+import { getParticipantSession } from "@/lib/auth/investor";
 import { registerInvestment } from "@/lib/db/investor-queries";
 import { readJsonBody, jsonResponse } from "@/server/http/responses";
 
@@ -26,7 +26,7 @@ function readAmount(body: Record<string, unknown> | null): number | null {
  * monto, tope, saldo y estado de la ronda se validan en fn_registrar_inversion.
  */
 export async function POST(request: Request) {
-  const session = await getInvestorSession();
+  const session = await getParticipantSession();
   if (session === null) {
     return participantErrorResponse("NO_SESSION");
   }

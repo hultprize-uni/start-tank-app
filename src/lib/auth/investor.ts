@@ -1,11 +1,11 @@
-import { getInvestorSql, provisionInvestor } from "@/lib/db/investor-db";
+import { getParticipantSql, provisionParticipant } from "@/lib/db/investor-db";
 import { getNeonAuth } from "@/server/auth/neon-auth";
 
 /**
  * Lee la sesión de Neon Auth y devuelve la billetera del asistente.
  * Crea la fila de usuario en el primer ingreso. Devuelve null si no hay sesión.
  */
-export async function getInvestorSession(): Promise<{
+export async function getParticipantSession(): Promise<{
   userId: number;
   balance: number;
   name: string | null;
@@ -15,7 +15,7 @@ export async function getInvestorSession(): Promise<{
   if (!user) {
     return null;
   }
-  const account = await provisionInvestor(getInvestorSql(), {
+  const account = await provisionParticipant(getParticipantSql(), {
     externalId: user.id,
     email: user.email ?? null,
     name: user.name ?? null,

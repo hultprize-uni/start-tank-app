@@ -1,7 +1,7 @@
 import type { Decision } from "@/shared/domain/types";
 
 /** Fases de la pantalla del inversionista, en orden de la ronda. */
-export type InvestorPhase =
+export type ParticipantPhase =
   | "login"
   | "scheduled"
   | "open"
@@ -90,8 +90,8 @@ export interface StandingInfo {
  * hook de simulación, con la misma forma. Los campos son nulos cuando la fase
  * no los requiere.
  */
-export interface InvestorViewModel {
-  phase: InvestorPhase;
+export interface ParticipantViewModel {
+  phase: ParticipantPhase;
   round: RoundInfo | null;
   startup: StartupInfo | null;
   wallet: WalletInfo | null;
@@ -106,20 +106,20 @@ export interface InvestorViewModel {
 export type InvestmentResult = { ok: true } | { ok: false; message: string };
 
 /** Acciones del portal del inversionista. */
-export interface InvestorActions {
+export interface ParticipantActions {
   /** Registra una inversión de monto entero en la ronda abierta. */
   invest: (amount: number) => Promise<InvestmentResult>;
 }
 
 /** Estado de la última carga del view model. */
-export type InvestorLoadStatus = "loading" | "ready" | "error";
+export type ParticipantLoadStatus = "loading" | "ready" | "error";
 
 /** Contrato del hook de estado del portal, común a la API real y a la simulación. */
-export interface UseInvestorStateResult {
+export interface UseParticipantStateResult {
   /** View model vigente; nulo hasta la primera respuesta correcta. */
-  vm: InvestorViewModel | null;
-  status: InvestorLoadStatus;
+  vm: ParticipantViewModel | null;
+  status: ParticipantLoadStatus;
   /** Mensaje del último fallo de carga, o nulo. */
   errorMessage: string | null;
-  actions: InvestorActions;
+  actions: ParticipantActions;
 }

@@ -1,4 +1,5 @@
-import type { InvestorViewModel, InvestmentResult } from "./investor.types";
+import { API_ROUTES } from "@/shared/lib/api-routes";
+import type { ParticipantViewModel, InvestmentResult } from "../types";
 
 /*
  * Llamadas HTTP del portal del inversionista. Reciben la función fetch como parámetro para que las
@@ -6,17 +7,11 @@ import type { InvestorViewModel, InvestmentResult } from "./investor.types";
  * en la inversión: los devuelve como resultado con mensaje para mostrarlo al asistente.
  */
 
-/** Ruta del view model del inversionista. */
-export const PARTICIPANT_STATE_ROUTE = "/api/inversionista/estado";
-
-/** Ruta de registro de inversiones. */
-export const PARTICIPANT_INVEST_ROUTE = "/api/inversionista/invertir";
-
 /** Señal de sesión ausente: la API responde 401 cuando el asistente no ha ingresado. */
 export const NO_SESSION = "NO_SESSION" as const;
 
 /** Respuesta del estado: el view model o la señal de sesión ausente. */
-export type StateResponse = InvestorViewModel | typeof NO_SESSION;
+export type StateResponse = ParticipantViewModel | typeof NO_SESSION;
 
 /** Función de solicitud HTTP compatible con fetch. */
 export type FetchFunction = (input: string, init?: RequestInit) => Promise<Response>;
@@ -31,14 +26,14 @@ const INVESTMENT_FAILED_MESSAGE = "No fue posible registrar la inversión. Inten
 export async function fetchParticipantState(
   fetchFn: FetchFunction = fetch,
 ): Promise<StateResponse> {
-  const response = await fetchFn(PARTICIPANT_STATE_ROUTE, { cache: "no-store" });
+  const response = await fetchFn(API_ROUTES.participant.state, { cache: "no-store" });
   if (response.status === 401) {
     return NO_SESSION;
   }
   if (!response.ok) {
     throw new Error(`El estado del inversionista respondió ${response.status}`);
   }
-  return (await response.json()) as InvestorViewModel;
+  return (await response.json()) as ParticipantViewModel;
 }
 
 /**
@@ -50,7 +45,7 @@ export async function investAmount(
   fetchFn: FetchFunction = fetch,
 ): Promise<InvestmentResult> {
   try {
-    const response = await fetchFn(PARTICIPANT_INVEST_ROUTE, {
+    const response = await fetchFn(API_ROUTES.participant.invest, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount }),

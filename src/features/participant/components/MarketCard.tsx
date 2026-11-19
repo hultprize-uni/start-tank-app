@@ -1,4 +1,4 @@
-import type { MarketInfo, StartupInfo } from "@/lib/api/investor.types";
+import type { MarketInfo, StartupInfo } from "../types";
 import { formatCoins, formatPriceChange } from "./format";
 import styles from "./MarketCard.module.css";
 

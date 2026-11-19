@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { type InvestorRow, type InvestorSql, provisionInvestor } from "./investor-db";
+import { type ParticipantRow, type ParticipantSql, provisionParticipant } from "./investor-db";
 
 /**
  * Crea una consulta simulada que reproduce el comportamiento de la tabla usuario:
  * una fila por par (proveedor_oauth, id_externo) y un saldo inicial de 10,000.
  */
 function createFakeUserTable() {
-  const rows = new Map<string, InvestorRow & { state: string }>();
+  const rows = new Map<string, ParticipantRow & { state: string }>();
   const queries: string[] = [];
   let nextId = 1;
 
-  const sql: InvestorSql = async (strings, ...params) => {
+  const sql: ParticipantSql = async (strings, ...params) => {
     queries.push(strings.join("?"));
     const [externalId, , name] = params as [string, string | null, string | null];
     let row = rows.get(externalId);
@@ -32,7 +32,7 @@ describe("provisionInvestor", () => {
   it("crea la billetera de 10,000 en el primer ingreso", async () => {
     const table = createFakeUserTable();
 
-    const account = await provisionInvestor(table.sql, identity);
+    const account = await provisionParticipant(table.sql, identity);
 
     expect(account).toEqual({ userId: 1, balance: 10_000, name: "Ana Pérez" });
     expect(table.rows.size).toBe(1);
@@ -41,8 +41,8 @@ describe("provisionInvestor", () => {
   it("reanuda la misma billetera en el segundo ingreso sin duplicarla", async () => {
     const table = createFakeUserTable();
 
-    const first = await provisionInvestor(table.sql, identity);
-    const second = await provisionInvestor(table.sql, identity);
+    const first = await provisionParticipant(table.sql, identity);
+    const second = await provisionParticipant(table.sql, identity);
 
     expect(second).toEqual(first);
     expect(table.rows.size).toBe(1);
@@ -51,8 +51,8 @@ describe("provisionInvestor", () => {
   it("separa las billeteras de cuentas externas distintas", async () => {
     const table = createFakeUserTable();
 
-    const ana = await provisionInvestor(table.sql, identity);
-    const luis = await provisionInvestor(table.sql, {
+    const ana = await provisionParticipant(table.sql, identity);
+    const luis = await provisionParticipant(table.sql, {
       externalId: "usr_neon_002",
       email: "luis@example.com",
       name: null,
@@ -66,15 +66,15 @@ describe("provisionInvestor", () => {
   it("usa la clave de conflicto por proveedor y id externo con proveedor google", async () => {
     const table = createFakeUserTable();
 
-    await provisionInvestor(table.sql, identity);
+    await provisionParticipant(table.sql, identity);
 
     expect(table.queries[0]).toContain("on conflict (proveedor_oauth, id_externo)");
     expect(table.queries[0]).toContain("'google'");
   });
 
   it("falla si la consulta no devuelve filas", async () => {
-    const emptySql: InvestorSql = async () => [];
+    const emptySql: ParticipantSql = async () => [];
 
-    await expect(provisionInvestor(emptySql, identity)).rejects.toThrow();
+    await expect(provisionParticipant(emptySql, identity)).rejects.toThrow();
   });
 });

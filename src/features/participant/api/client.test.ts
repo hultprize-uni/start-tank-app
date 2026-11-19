@@ -3,21 +3,20 @@ import {
   type FetchFunction,
   investAmount,
   fetchParticipantState,
-  PARTICIPANT_STATE_ROUTE,
-  PARTICIPANT_INVEST_ROUTE,
   NO_SESSION,
-} from "./investor.client";
-import type { InvestorViewModel } from "./investor.types";
+} from "./client";
+import { API_ROUTES } from "@/shared/lib/api-routes";
+import type { ParticipantViewModel } from "../types";
 
 /** Respuesta JSON simulada con el estado HTTP indicado. */
-function jsonResponse(body: unknown, state = 200): Response {
+function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
-    status: state,
+    status,
     headers: { "Content-Type": "application/json" },
   });
 }
 
-const sampleView: InvestorViewModel = {
+const sampleView: ParticipantViewModel = {
   phase: "open",
   round: { number: 2, total: 5 },
   startup: { name: "Nodo Solar", sdg: "ODS 7 · Energía asequible y no contaminante", description: "" },
@@ -28,12 +27,12 @@ const sampleView: InvestorViewModel = {
   standing: null,
 };
 
-describe("obtenerEstadoInversionista", () => {
+describe("fetchParticipantState", () => {
   it("devuelve la señal de sesión ausente ante un 401", async () => {
     const fetchFn = vi.fn<FetchFunction>(async () => jsonResponse({ error: "NO_SESSION" }, 401));
 
     await expect(fetchParticipantState(fetchFn)).resolves.toBe(NO_SESSION);
-    expect(fetchFn).toHaveBeenCalledWith(PARTICIPANT_STATE_ROUTE, { cache: "no-store" });
+    expect(fetchFn).toHaveBeenCalledWith(API_ROUTES.participant.state, { cache: "no-store" });
   });
 
   it("devuelve el view model tal como lo entrega la API", async () => {
@@ -49,7 +48,7 @@ describe("obtenerEstadoInversionista", () => {
   });
 });
 
-describe("invertirMonto", () => {
+describe("investAmount", () => {
   it("envía solo el monto en el cuerpo y devuelve éxito", async () => {
     const fetchFn = vi.fn<FetchFunction>(async () => jsonResponse({ ok: true, saldo: 9_700 }));
 
@@ -57,7 +56,7 @@ describe("invertirMonto", () => {
 
     expect(result).toEqual({ ok: true });
     const [route, init] = fetchFn.mock.calls[0];
-    expect(route).toBe(PARTICIPANT_INVEST_ROUTE);
+    expect(route).toBe(API_ROUTES.participant.invest);
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toEqual({ amount: 300 });
   });

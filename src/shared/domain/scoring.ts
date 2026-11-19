@@ -16,7 +16,7 @@ export interface StartupStanding {
 }
 
 /** Registro de un asistente con los respaldos obtenidos por cada una de sus inversiones. */
-export interface InvestorRecord {
+export interface ParticipantRecord {
   id: string;
   investmentBacks: readonly number[];
 }
@@ -81,7 +81,7 @@ export function countHits(investmentBacks: readonly number[]): number {
  * Ante empate se devuelve el primero en el orden de entrada. Devuelve undefined
  * cuando la lista está vacía.
  */
-export function bestEye(investors: readonly InvestorRecord[]): BestEye | undefined {
+export function bestEye(investors: readonly ParticipantRecord[]): BestEye | undefined {
   let best: BestEye | undefined;
 
   for (const investor of investors) {

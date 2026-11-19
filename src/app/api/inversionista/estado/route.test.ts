@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { InvestorViewModel } from "@/lib/api/investor.types";
+import type { ParticipantViewModel } from "@/features/participant/types";
 
 const mockSession = vi.hoisted(() => vi.fn());
 const mockState = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/auth/investor", () => ({ getInvestorSession: mockSession }));
+vi.mock("@/lib/auth/investor", () => ({ getParticipantSession: mockSession }));
 vi.mock("@/lib/db/investor-queries", () => ({ readParticipantState: mockState }));
 
 import { GET } from "./route";
 
-const sampleView: InvestorViewModel = {
+const sampleView: ParticipantViewModel = {
   phase: "scheduled",
   round: { number: 1, total: 5 },
   startup: { name: "AgroSense", sdg: "ODS 2 · Hambre cero", description: "Descripción" },
