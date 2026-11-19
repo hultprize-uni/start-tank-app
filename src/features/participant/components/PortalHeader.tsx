@@ -1,25 +1,20 @@
-import { BrandMark } from "./BrandMark";
-import { formatCoins } from "../format";
+import { BrandLogo } from "@/shared/ui";
 import { SignOutButton } from "./SignOutButton";
+import { WalletBalance } from "./WalletBalance";
 import styles from "./PortalHeader.module.css";
 
 interface PortalHeaderProps {
-  /** Saldo en coins. Nulo oculta el bloque de saldo, por ejemplo antes del ingreso. */
-  balance: number | null;
+  /** Saldo disponible en coins. */
+  balance: number;
 }
 
-/** Encabezado del portal con la marca, el saldo disponible y el cierre de sesión. */
+/** Cabecera del móvil: marca, saldo y cierre de sesión. */
 export function PortalHeader({ balance }: PortalHeaderProps) {
   return (
     <header className={styles.header}>
-      <BrandMark size="sm" />
+      <BrandLogo variant="horizontal" className={styles.logo} />
       <div className={styles.actions}>
-        {balance !== null && (
-          <div className={styles.balance}>
-            <span className={styles.label}>Saldo</span>
-            <span className={styles.value}>{formatCoins(balance)}</span>
-          </div>
-        )}
+        <WalletBalance balance={balance} />
         <SignOutButton />
       </div>
     </header>

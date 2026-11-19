@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/shared/ui";
 import { PAGE_ROUTES } from "@/shared/lib/api-routes";
 import { authClient } from "../api/auth-client";
-import { ActionButton } from "./ActionButton";
-import styles from "./PortalHeader.module.css";
 
 /** Cierra la sesión de Neon Auth y devuelve al inversionista a la pantalla de ingreso. */
 export function SignOutButton() {
@@ -20,8 +19,8 @@ export function SignOutButton() {
   };
 
   return (
-    <ActionButton variant="ghost" size="md" onClick={signOut} disabled={pending} className={styles.signOut}>
+    <Button variant="ghost" size="md" onClick={signOut} disabled={pending}>
       Cerrar sesión
-    </ActionButton>
+    </Button>
   );
 }

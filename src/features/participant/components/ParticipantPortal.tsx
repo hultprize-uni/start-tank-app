@@ -89,7 +89,7 @@ export function ParticipantPortal() {
 
   return (
     <main className={styles.portal}>
-      {vm !== null && vm.phase !== "login" && <PortalHeader balance={vm.wallet?.balance ?? null} />}
+      {vm !== null && vm.phase !== "login" && <PortalHeader balance={vm.wallet?.balance ?? 0} />}
 
       <div className={styles.content}>
         {vm !== null ? (
