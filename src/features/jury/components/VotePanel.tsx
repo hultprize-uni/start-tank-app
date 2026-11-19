@@ -1,104 +1,71 @@
+import { SegmentedChoice, Toast, Button } from "@/shared/ui";
 import type { Decision } from "@/shared/domain/types";
-import type {
-  JuryCriterion,
-  JuryRoundView,
-  JuryVoteView,
-} from "../types";
-import { CriteriaReminder } from "./CriteriaReminder";
+import type { JuryActions, JuryVoteView } from "../types";
+import { DECISION_COPY, DECISION_ORDER } from "./copy";
 import { VoteConfirmDialog } from "./VoteConfirmDialog";
-import { DECISION_LABELS, DECISION_ORDER } from "./decisions";
 import styles from "./VotePanel.module.css";
 
+/** Valor del grupo cuando ninguna decisión está elegida. No corresponde a ninguna opción. */
+const NO_CHOICE = "";
+
 interface VotePanelProps {
-  round: JuryRoundView;
-  criteria: readonly JuryCriterion[];
+  startupName: string;
   vote: JuryVoteView;
-  onSelect: (decision: Decision) => void;
-  onRequestConfirm: () => void;
-  onCancelConfirm: () => void;
-  onConfirm: () => void;
+  actions: JuryActions;
 }
 
 /** Ronda en votación: elección de la decisión y confirmación del voto definitivo. */
-export function VotePanel({
-  round,
-  criteria,
-  vote,
-  onSelect,
-  onRequestConfirm,
-  onCancelConfirm,
-  onConfirm,
-}: VotePanelProps) {
+export function VotePanel({ startupName, vote, actions }: VotePanelProps) {
   const hasDraft = vote.draft !== null;
 
   return (
     <section className={styles.panel} aria-labelledby="votar-titulo">
-      <header className={styles.header}>
-        <div className={styles.heading}>
-          <p className={styles.eyebrow}>Ronda {round.number} · En votación</p>
-          <h1 id="votar-titulo" className={styles.title}>
-            {round.startupName}
-          </h1>
-        </div>
-        <CriteriaReminder criteria={criteria} />
-      </header>
+      <h2 id="votar-titulo" className={styles.title}>
+        ¿Respaldas a {startupName}?
+      </h2>
 
-      <div className={styles.options} role="group" aria-label="Decisión">
-        {DECISION_ORDER.map((decision) => {
-          const { title, hint } = DECISION_LABELS[decision];
-          const selected = vote.draft === decision;
-          const className = [
-            styles.option,
-            decision === "ABSTAIN" ? styles.optionAbstain : "",
-            selected ? styles.optionSelected : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
+      <SegmentedChoice<Decision | typeof NO_CHOICE>
+        label="Decisión de voto"
+        value={vote.draft ?? NO_CHOICE}
+        disabled={vote.submitting}
+        className={styles.choices}
+        options={DECISION_ORDER.map((decision) => ({
+          value: decision,
+          label: (
+            <span className={styles.option}>
+              <span className={styles.optionTitle}>{DECISION_COPY[decision].choice}</span>
+              <span className={styles.optionText}>{DECISION_COPY[decision].description}</span>
+            </span>
+          ),
+        }))}
+        onChange={(value) => {
+          if (value !== NO_CHOICE) actions.selectDecision(value);
+        }}
+      />
 
-          return (
-            <button
-              key={decision}
-              type="button"
-              className={className}
-              aria-pressed={selected}
-              disabled={vote.submitting}
-              onClick={() => onSelect(decision)}
-            >
-              <span className={styles.optionTitle}>{title}</span>
-              {hint !== null && (
-                <span className={styles.optionHint}>{hint}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <p className={styles.note}>El voto es definitivo. Solo puedes votar una vez por ronda.</p>
 
-      <footer className={styles.footer}>
-        <p className={styles.note}>
-          Tu voto es definitivo. Solo puedes votar una vez por ronda.
-        </p>
-        <button
-          type="button"
-          className={styles.confirm}
-          disabled={!hasDraft || vote.submitting}
-          onClick={onRequestConfirm}
-        >
-          Confirmar voto
-        </button>
-      </footer>
+      <Button
+        size="lg"
+        fullWidth
+        disabled={!hasDraft || vote.submitting}
+        onClick={actions.requestConfirm}
+      >
+        Confirmar voto
+      </Button>
 
       {vote.errorMessage !== null && (
-        <p className={styles.error} role="alert">
+        <Toast tone="negative" role="alert">
           {vote.errorMessage}
-        </p>
+        </Toast>
       )}
 
       {vote.confirming && vote.draft !== null && (
         <VoteConfirmDialog
           decision={vote.draft}
           submitting={vote.submitting}
-          onCancel={onCancelConfirm}
-          onConfirm={onConfirm}
+          onCancel={actions.cancelConfirm}
+          onConfirm={actions.confirmVote}
         />
       )}
     </section>

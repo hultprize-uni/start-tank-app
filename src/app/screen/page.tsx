@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import { ScreenClient, parsePhase } from "@/features/screen";
+
+/* Metadatos de la pantalla. No se indexa: es una vista operativa del evento. */
+export const metadata: Metadata = {
+  title: "Pantalla del evento | Start Tank",
+  robots: { index: false, follow: false },
+};
 
 interface ScreenPageProps {
   searchParams: Promise<{ phase?: string | string[] }>;

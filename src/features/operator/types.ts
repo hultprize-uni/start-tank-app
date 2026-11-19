@@ -1,7 +1,7 @@
 /**
  * Contrato del view model de la consola del operador.
  * Los componentes presentacionales reciben únicamente estos tipos; el origen de los datos
- * (mock o API real) queda encapsulado en el hook de estado.
+ * (muestra o API real) queda encapsulado en el hook de estado.
  */
 
 /** Estados que una ronda recorre en orden. El estado CANCELLED puede alcanzarse desde varios puntos. */
@@ -27,12 +27,7 @@ export interface JurorVoteView {
   sense: JurorSense | null;
 }
 
-export type OperatorActionId =
-  | "open"
-  | "last_call"
-  | "close"
-  | "reveal"
-  | "next";
+export type OperatorActionId = "open" | "last_call" | "close" | "reveal" | "next";
 
 export interface OperatorActionView {
   id: OperatorActionId;
@@ -46,11 +41,11 @@ export interface OperatorActionView {
 /** Modo de anulación: devolver lo invertido al saldo, o liquidar a 1.0x. */
 export type CancelMode = "refund" | "settle_1x";
 
-export type ManualResult = "approved" | "not_approved";
-
-export interface ManualSettlementInput {
-  multiplier: number;
-  result: ManualResult;
+/** Modo manual: el operador fija cuántos jurados respaldan la startup y desbloquea el veredicto. */
+export interface ManualModeView {
+  enabled: boolean;
+  /** Jurados que respaldan, entre 0 y el tamaño del jurado. */
+  backs: number;
 }
 
 export interface RoundView {
@@ -59,8 +54,16 @@ export interface RoundView {
   startupName: string;
   status: RoundStatus;
   multiplier: number | null;
-  result: ManualResult | null;
   cancelMode: CancelMode | null;
+}
+
+/** Fila de la lista de rondas del evento, usada en la barra lateral. */
+export interface RoundSummaryView {
+  number: number;
+  startupName: string;
+  status: RoundStatus;
+  /** Multiplicador liquidado. Es null mientras la ronda no esté liquidada. */
+  multiplier: number | null;
 }
 
 export interface MarketView {
@@ -70,15 +73,28 @@ export interface MarketView {
   connectedAttendees: number;
   /** Precio en vivo de la startup. */
   price: number;
+  /** Segundos restantes de la última llamada. Es null fuera de esa fase. */
+  lastCallRemaining: number | null;
+}
+
+/** Puntaje de una startup liquidada. Se ordena de mayor a menor puntaje. */
+export interface StandingView {
+  roundNumber: number;
+  startupName: string;
+  /** Puntaje entre 0 y 1: peso del jurado por la fracción de respaldo más peso de la tracción. */
+  score: number;
+  /** Fracción de respaldo del jurado, entre 0 y 1. */
+  fraction: number | null;
 }
 
 export interface LogEntryView {
   id: string;
-  /** Hora en formato HH:MM. */
+  /** Hora en formato HH:MM:SS. */
   time: string;
+  /** Número de la ronda a la que pertenece la acción. */
+  roundNumber: number;
   label: string;
   operator: string;
-  detail: string | null;
 }
 
 export interface BalanceRow {
@@ -99,14 +115,18 @@ export interface PositionRow {
 
 export interface OperatorViewModel {
   round: RoundView;
-  screenSynced: boolean;
+  /** Todas las rondas del evento, en orden. */
+  rounds: RoundSummaryView[];
   actions: OperatorActionView[];
   jurors: JurorVoteView[];
   market: MarketView;
+  /** Puntajes de las startups liquidadas, de mayor a menor. */
+  standings: StandingView[];
   log: LogEntryView[];
   canUndo: boolean;
   canCancel: boolean;
   canManualSettle: boolean;
+  manualMode: ManualModeView;
   balances: BalanceRow[];
   positions: PositionRow[];
 }

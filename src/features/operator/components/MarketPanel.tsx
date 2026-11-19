@@ -1,44 +1,51 @@
+import { StatBlock } from "@/shared/ui";
+
+import { formatCoins, formatMultiplier } from "../labels";
 import type { MarketView } from "../types";
 
-import { formatCoins } from "./labels";
-import styles from "./OperatorConsole.module.css";
+import panel from "./Panel.module.css";
 
 interface MarketPanelProps {
   market: MarketView;
+  /** Multiplicador de la ronda. Es null mientras la ronda no esté liquidada. */
+  multiplier: number | null;
 }
 
-/** Resumen del mercado de la ronda: monto acumulado, inversores únicos y precio en vivo. */
-export function MarketPanel({ market }: MarketPanelProps) {
+/** Resumen del mercado de la ronda: precio en vivo, monto acumulado, inversores y multiplicador. */
+export function MarketPanel({ market, multiplier }: MarketPanelProps) {
   return (
-    <section className={styles.panel} aria-labelledby="mercado-ronda">
-      <div className={styles.panelHeader}>
-        <h3 id="mercado-ronda" className={styles.panelTitle}>
+    <section className={panel.panel} aria-labelledby="mercado-ronda">
+      <div className={panel.header}>
+        <h2 id="mercado-ronda" className={panel.title}>
           Mercado
-        </h3>
+        </h2>
       </div>
-      <div className={styles.marketGrid}>
-        <div className={styles.marketStat}>
-          <span className={styles.muted}>Acumulado</span>
-          <p className={`${styles.marketValue} st-num`}>
-            {formatCoins(market.accumulated)}{" "}
-            <span className={styles.muted}>coins</span>
-          </p>
-        </div>
-        <div className={styles.marketStat}>
-          <span className={styles.muted}>Inversores únicos</span>
-          <p className={`${styles.marketValue} st-num`}>
-            {formatCoins(market.uniqueInvestors)}{" "}
-            <span className={styles.muted}>
-              de {formatCoins(market.connectedAttendees)}
-            </span>
-          </p>
-        </div>
-        <div className={styles.marketStat}>
-          <span className={styles.muted}>Precio en vivo</span>
-          <p className={`${styles.marketValue} ${styles.marketValueAccent} st-num`}>
-            {formatCoins(market.price)}
-          </p>
-        </div>
+      <div className={panel.statGrid}>
+        <StatBlock label="Precio en vivo" value={formatCoins(market.price)} size="lg" />
+        <StatBlock
+          label="Acumulado"
+          value={
+            <>
+              {formatCoins(market.accumulated)} <span className={panel.muted}>coins</span>
+            </>
+          }
+          size="lg"
+        />
+        <StatBlock
+          label="Inversores únicos"
+          value={
+            <>
+              {formatCoins(market.uniqueInvestors)}{" "}
+              <span className={panel.muted}>de {formatCoins(market.connectedAttendees)}</span>
+            </>
+          }
+          size="lg"
+        />
+        <StatBlock
+          label="Multiplicador"
+          value={multiplier === null ? "—" : formatMultiplier(multiplier)}
+          size="lg"
+        />
       </div>
     </section>
   );

@@ -1,0 +1,135 @@
+.rail {
+  position: sticky;
+  top: 16px;
+  display: none;
+  flex-direction: column;
+  gap: 18px;
+  box-sizing: border-box;
+  padding: 22px 20px;
+  border: 1px solid var(--line-1);
+  border-radius: 28px 28px 28px 72px;
+  background: color-mix(in srgb, var(--st-ink-800) 78%, transparent);
+}
+
+.logo {
+  height: 36px;
+  width: auto;
+  align-self: flex-start;
+}
+
+.event {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+}
+
+.session {
+  padding: 14px 16px;
+  border: 1px solid var(--line-1);
+  border-radius: 18px;
+  background: var(--bg-band);
+}
+
+.caption {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+}
+
+.juror {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.round {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-1);
+  border-radius: 16px;
+}
+
+.current {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.index {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 99px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 900;
+  background: var(--line-1);
+  color: var(--fg-3);
+}
+
+.pending {
+  opacity: 0.85;
+}
+
+.settled .index {
+  background: var(--st-cyan);
+  color: var(--fg-1);
+}
+
+.current .index {
+  background: var(--accent);
+  color: var(--fg-1);
+}
+
+.text {
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--fg-2);
+}
+
+.current .name {
+  color: var(--fg-1);
+}
+
+.sub {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg-3);
+}
+
+@media (min-width: 820px) {
+  .rail {
+    display: flex;
+  }
+}

@@ -9,12 +9,15 @@ import {
 } from "../api/client";
 import { buildSettlementCsv, downloadCsv } from "../api/export";
 import { useOperatorState as useOperatorStateMock } from "../api/mock";
-import type {
-  CancelMode,
-  ManualSettlementInput,
-  OperatorActionId,
-  OperatorViewModel,
-} from "../types";
+import type { CancelMode, OperatorActionId, OperatorViewModel } from "../types";
+
+/** Mensaje mostrado mientras la API no ofrece el modo manual. */
+export const MANUAL_MODE_PENDING_MESSAGE =
+  "Pendiente de API: el modo manual no está disponible.";
+
+/** Mensaje mostrado mientras la API no ofrece deshacer la última acción. */
+export const UNDO_PENDING_MESSAGE =
+  "Pendiente de API: deshacer la última acción no está disponible.";
 
 /** Periodo del sondeo del estado de la consola, en milisegundos. */
 export const OPERATOR_POLL_INTERVAL_MS = 3_000;
@@ -28,7 +31,8 @@ export interface OperatorPortalState {
   runAction: (id: OperatorActionId) => void;
   undo: () => void;
   cancelRound: (mode: CancelMode) => void;
-  settleManually: (input: ManualSettlementInput) => void;
+  setManualMode: (enabled: boolean) => void;
+  setManualBacks: (backs: number) => void;
   simulateJurorVote: (jurorId: string) => void;
   exportCsv: () => void;
 }
@@ -95,11 +99,15 @@ function useOperatorStateApi(options: OperatorOptions = {}): OperatorPortalState
   );
 
   const undo = useCallback(() => {
-    setNotice("Pendiente de API: deshacer la última acción no está disponible.");
+    setNotice(UNDO_PENDING_MESSAGE);
   }, []);
 
-  const settleManually = useCallback(() => {
-    setNotice("Pendiente de API: el modo manual no está disponible.");
+  const setManualMode = useCallback(() => {
+    setNotice(MANUAL_MODE_PENDING_MESSAGE);
+  }, []);
+
+  const setManualBacks = useCallback(() => {
+    setNotice(MANUAL_MODE_PENDING_MESSAGE);
   }, []);
 
   const simulateJurorVote = useCallback(() => {
@@ -124,11 +132,22 @@ function useOperatorStateApi(options: OperatorOptions = {}): OperatorPortalState
       runAction,
       undo,
       cancelRound,
-      settleManually,
+      setManualMode,
+      setManualBacks,
       simulateJurorVote,
       exportCsv,
     }),
-    [viewModel, notice, runAction, undo, cancelRound, settleManually, simulateJurorVote, exportCsv],
+    [
+      viewModel,
+      notice,
+      runAction,
+      undo,
+      cancelRound,
+      setManualMode,
+      setManualBacks,
+      simulateJurorVote,
+      exportCsv,
+    ],
   );
 }
 

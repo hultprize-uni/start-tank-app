@@ -1,9 +1,6 @@
-import {
-  ROUND_STATUS_SEQUENCE,
-  type RoundStatus,
-} from "../types";
+import { ROUND_STATUS_SEQUENCE, type RoundStatus } from "../types";
+import { ROUND_STATUS_LABELS } from "../labels";
 
-import { ROUND_STATUS_LABELS } from "./labels";
 import styles from "./OperatorConsole.module.css";
 
 interface StatusLineProps {
@@ -13,9 +10,7 @@ interface StatusLineProps {
 /** Línea de estados de la ronda: marca los estados recorridos y el estado actual. */
 export function StatusLine({ status }: StatusLineProps) {
   const cancelled = status === "CANCELLED";
-  const currentIndex = ROUND_STATUS_SEQUENCE.findIndex(
-    (item) => item === status,
-  );
+  const currentIndex = ROUND_STATUS_SEQUENCE.findIndex((item) => item === status);
   const lastIndex = ROUND_STATUS_SEQUENCE.length - 1;
 
   return (
@@ -30,11 +25,7 @@ export function StatusLine({ status }: StatusLineProps) {
             current ? styles.statusStepCurrent : "",
           ].join(" ");
           return (
-            <li
-              key={item}
-              className={className}
-              aria-current={current ? "step" : undefined}
-            >
+            <li key={item} className={className} aria-current={current ? "step" : undefined}>
               {ROUND_STATUS_LABELS[item]}
               {index < lastIndex ? (
                 <span className={styles.statusArrow} aria-hidden="true">
@@ -45,10 +36,7 @@ export function StatusLine({ status }: StatusLineProps) {
           );
         })}
         {cancelled ? (
-          <li
-            className={`${styles.statusStep} ${styles.statusStepCurrent}`}
-            aria-current="step"
-          >
+          <li className={`${styles.statusStep} ${styles.statusStepCurrent}`} aria-current="step">
             {ROUND_STATUS_LABELS.CANCELLED}
           </li>
         ) : null}

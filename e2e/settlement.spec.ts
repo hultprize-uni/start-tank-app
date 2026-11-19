@@ -31,7 +31,7 @@ test.describe("liquidacion de la ronda", () => {
     try {
       const screen = await screenContext.newPage();
       await screen.goto("/screen");
-      await expect(screen.getByText("Liquidación", { exact: true })).toBeVisible({
+      await expect(screen.getByRole("region", { name: "Liquidación de la ronda" })).toBeVisible({
         timeout: 15_000,
       });
       await expect(screen.getByText("1.40 x", { exact: true })).toBeVisible();

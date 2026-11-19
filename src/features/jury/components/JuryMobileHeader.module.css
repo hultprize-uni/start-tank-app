@@ -1,0 +1,37 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  flex: none;
+  height: 28px;
+  width: auto;
+}
+
+.session {
+  text-align: right;
+}
+
+.caption {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+}
+
+.juror {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+@media (min-width: 820px) {
+  .header {
+    display: none;
+  }
+}

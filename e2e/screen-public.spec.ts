@@ -11,10 +11,10 @@ test.describe("pantalla publica", () => {
     // La solicitud de API y la página se hacen sin cookies de sesión: la pantalla es pública.
     const response = await request.get(API.screen);
     expect(response.status()).toBe(200);
-    expect(((await response.json()) as { phase: string }).phase).toBe("BETWEEN_ROUNDS");
+    expect(((await response.json()) as { phase: string }).phase).toBe("WAITING");
 
     await page.goto("/screen");
-    await expect(page.getByText("Entre rondas", { exact: true })).toBeVisible();
-    await expect(page.getByText("Clasificación", { exact: true })).toBeVisible();
+    await expect(page.getByText("A continuación", { exact: true })).toBeVisible();
+    await expect(page.getByText("El mercado abrirá en breve.", { exact: true })).toBeVisible();
   });
 });

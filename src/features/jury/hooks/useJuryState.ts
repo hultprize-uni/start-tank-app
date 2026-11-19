@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { USE_MOCKS } from "@/shared/lib/env";
 import type { Decision } from "@/shared/domain/types";
+import { JURY_CRITERIA } from "../criteria";
 import { readJuryState, loginJury, voteJury } from "../api/client";
-import { useJuryState as useJuryStateMock } from "../api/mock";
+import { useJuryStateMock } from "../api/mock";
 import type { JuryAccessView, JuryActions, JuryViewModel, JuryVoteView } from "../types";
 
 /** Periodo del sondeo del estado del jurado, en milisegundos. */
@@ -18,21 +19,26 @@ const INITIAL_VOTE: JuryVoteView = {
   errorMessage: null,
 };
 
-const INITIAL_STATE: JuryViewModel = {
+/** Estado antes del ingreso: pantalla de acceso con código. */
+export const INITIAL_JURY_STATE: JuryViewModel = {
   screen: "access",
+  phase: null,
   access: INITIAL_ACCESS,
   jurorLabel: null,
   round: null,
-  criteria: [],
+  rail: [],
+  criteria: JURY_CRITERIA,
   vote: INITIAL_VOTE,
   votes: { emitted: 0, total: 0 },
+  ownVote: null,
+  reveal: null,
 };
 
 /**
  * Combina el estado recibido del servidor con los datos locales del voto. El borrador y la
  * confirmación solo se conservan mientras la ronda siga en votación.
  */
-function mergeState(prev: JuryViewModel, view: JuryViewModel): JuryViewModel {
+export function mergeJuryState(prev: JuryViewModel, view: JuryViewModel): JuryViewModel {
   const sameVoting = prev.screen === "voting" && view.screen === "voting";
   return {
     ...view,
@@ -45,8 +51,8 @@ function mergeState(prev: JuryViewModel, view: JuryViewModel): JuryViewModel {
  * Estado del portal del jurado conectado a la API. Tras el acceso con código, sondea el estado
  * cada JURY_POLL_INTERVAL_MS y devuelve al acceso cuando la sesión deja de ser válida.
  */
-function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
-  const [state, setState] = useState<JuryViewModel>(INITIAL_STATE);
+export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
+  const [state, setState] = useState<JuryViewModel>(INITIAL_JURY_STATE);
   const [sessionActive, setSessionActive] = useState(false);
   const stateRef = useRef(state);
 
@@ -56,13 +62,13 @@ function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
 
   const endSession = useCallback((message: string) => {
     setSessionActive(false);
-    setState({ ...INITIAL_STATE, access: { status: "idle", errorMessage: message } });
+    setState({ ...INITIAL_JURY_STATE, access: { status: "idle", errorMessage: message } });
   }, []);
 
   const refresh = useCallback(async () => {
     const result = await readJuryState();
     if (result.ok) {
-      setState((prev) => mergeState(prev, result.value));
+      setState((prev) => mergeJuryState(prev, result.value));
     } else if (result.sessionExpired) {
       endSession(result.message);
     }
@@ -74,6 +80,23 @@ function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
     const id = window.setInterval(() => void refresh(), JURY_POLL_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [sessionActive, refresh]);
+
+  /*
+   * Al montar, consulta el estado para restaurar una sesión vigente (por ejemplo tras recargar la
+   * página). Si la lectura falla, el portal permanece en el acceso por código.
+   */
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const result = await readJuryState();
+      if (!active || !result.ok) return;
+      setState((prev) => mergeJuryState(prev, result.value));
+      setSessionActive(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const submitCode = useCallback((code: string) => {
     setState((prev) => ({ ...prev, access: { status: "validating", errorMessage: null } }));
@@ -120,7 +143,12 @@ function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
     void (async () => {
       const result = await voteJury(decision);
       if (result.ok) {
-        setState((prev) => ({ ...prev, screen: "vote_registered", vote: INITIAL_VOTE }));
+        setState((prev) => ({
+          ...prev,
+          screen: "vote_registered",
+          ownVote: decision,
+          vote: INITIAL_VOTE,
+        }));
         await refresh();
         return;
       }

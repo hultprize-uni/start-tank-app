@@ -34,7 +34,9 @@ export async function signInOperator(page: Page): Promise<void> {
   await page.goto("/operator");
   await page.getByLabel("Código de acceso").fill(OPERATOR_CODE);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Portal del operador" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Controles del operador" })).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 /**
@@ -55,7 +57,7 @@ export async function runOperatorAction(page: Page, label: string): Promise<void
 export async function driveRoundToVoting(page: Page): Promise<void> {
   await signInOperator(page);
   await runOperatorAction(page, "Abrir mercado");
-  await runOperatorAction(page, "Última llamada");
+  await runOperatorAction(page, "Declarar última llamada");
   await runOperatorAction(page, "Cerrar mercado");
   await expect(currentRoundStep(page)).toContainText("En votación");
 }
