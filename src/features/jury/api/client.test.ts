@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { readJuryState, loginJury, voteJury } from "./jury";
+import { API_ROUTES } from "@/shared/lib/api-routes";
+import { readJuryState, loginJury, voteJury } from "./client";
 
 /** Construye una respuesta JSON con el estado HTTP indicado. */
-function jsonResponse(body: unknown, state = 200): Response {
+function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
-    status: state,
+    status,
     headers: { "Content-Type": "application/json" },
   });
 }
@@ -34,7 +35,7 @@ describe("loginJurado", () => {
     const result = await loginJury("4821");
 
     expect(result.ok).toBe(true);
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/jurado/login");
+    expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.jury.login);
     expect(sentBody(fetchMock.mock.calls[0])).toEqual({ code: "4821" });
   });
 
@@ -77,7 +78,7 @@ describe("leerEstadoJurado", () => {
 
     const result = await readJuryState();
 
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/jurado/estado");
+    expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.jury.state);
     expect(result).toEqual({ ok: true, value: view });
   });
 
@@ -101,7 +102,7 @@ describe("votarJurado", () => {
     const result = await voteJury("BACK");
 
     expect(result.ok).toBe(true);
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/jurado/voto");
+    expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.jury.vote);
     expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST" });
     expect(sentBody(fetchMock.mock.calls[0])).toEqual({ decision: "BACK" });
   });

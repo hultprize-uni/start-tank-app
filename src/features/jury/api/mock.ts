@@ -4,7 +4,7 @@ import type {
   JuryActions,
   JuryCriterion,
   JuryViewModel,
-} from "@/lib/api/jury.types";
+} from "../types";
 
 /** Código de acceso válido en el mock. */
 export const MOCK_JURY_CODE = "4821";

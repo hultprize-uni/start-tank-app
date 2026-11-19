@@ -1,4 +1,4 @@
-import type { JuryRoundView, JuryVotesView } from "@/lib/api/jury.types";
+import type { JuryRoundView, JuryVotesView } from "../types";
 import styles from "./VoteRegistered.module.css";
 
 interface VoteRegisteredProps {

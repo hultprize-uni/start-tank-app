@@ -1,4 +1,4 @@
-import type { JuryCriterion, JuryRoundView } from "@/lib/api/jury.types";
+import type { JuryCriterion, JuryRoundView } from "../types";
 import { CriteriaReminder } from "./CriteriaReminder";
 import styles from "./WaitingScreen.module.css";
 

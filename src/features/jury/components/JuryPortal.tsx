@@ -1,6 +1,6 @@
 "use client";
 
-import { useJuryState } from "@/lib/api/jury";
+import { useJuryState } from "../hooks/useJuryState";
 import { AccessForm } from "./AccessForm";
 import { JuryShell } from "./JuryShell";
 import { VotePanel } from "./VotePanel";

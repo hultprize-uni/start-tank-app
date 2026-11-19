@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { JuryPortal } from "@/components/jurado/JuryPortal";
+import { JuryPortal } from "@/features/jury/components/JuryPortal";
 
 export const metadata: Metadata = {
   title: "Portal del jurado | Start Tank",

@@ -3,7 +3,7 @@ import type {
   JuryCriterion,
   JuryRoundView,
   JuryVoteView,
-} from "@/lib/api/jury.types";
+} from "../types";
 import { CriteriaReminder } from "./CriteriaReminder";
 import { VoteConfirmDialog } from "./VoteConfirmDialog";
 import { DECISION_LABELS, DECISION_ORDER } from "./decisions";

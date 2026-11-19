@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import type { JuryAccessView } from "@/lib/api/jury.types";
+import type { JuryAccessView } from "../types";
 import styles from "./AccessForm.module.css";
 
 const CODE_LENGTH = 4;

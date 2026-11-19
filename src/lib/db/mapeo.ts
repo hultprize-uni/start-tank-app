@@ -2,7 +2,7 @@ import { EVENT_CONFIG } from "@/shared/domain/config";
 import { pickWinner, startupScore, type StartupStanding } from "@/shared/domain/scoring";
 import { calcVerdict } from "@/shared/domain/verdict";
 import type { Decision, RoundState } from "@/shared/domain/types";
-import type { JuryCriterion, JuryScreen, JuryViewModel } from "@/lib/api/jury.types";
+import type { JuryCriterion, JuryScreen, JuryViewModel } from "@/features/jury/types";
 import type {
   BalanceRow,
   CancelMode,

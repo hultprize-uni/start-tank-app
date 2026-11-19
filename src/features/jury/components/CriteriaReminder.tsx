@@ -1,4 +1,4 @@
-import type { JuryCriterion } from "@/lib/api/jury.types";
+import type { JuryCriterion } from "../types";
 import styles from "./CriteriaReminder.module.css";
 
 interface CriteriaReminderProps {
