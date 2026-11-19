@@ -281,10 +281,10 @@ describe("fn_accion_operador: one active round at a time", () => {
    * Defecto conocido: fn_accion_operador bloquea solo la fila de la ronda que se abre y consulta las
    * demás rondas sin bloqueo. Dos aperturas simultáneas de rondas distintas pueden leer ambas que
    * ninguna ronda está activa y terminar con dos rondas abiertas. La prueba confirma el defecto
-   * con una apertura pendiente sin confirmar. Se usa it.fails para que la suite pase mientras el
-   * defecto exista; al corregirlo, la prueba falla y debe cambiarse a it.
+   * con una apertura pendiente sin confirmar. La migración 20261109000000 lo corrige serializando
+   * las acciones del operador con un bloqueo asesor.
    */
-  it.fails("never leaves two rounds active when two openings run concurrently", async () => {
+  it("never leaves two rounds active when two openings run concurrently", async () => {
     const operatorId = await getOperatorId(db.pool);
     const first = await getRoundId(db.pool, 1);
     const second = await getRoundId(db.pool, 2);
@@ -298,8 +298,11 @@ describe("fn_accion_operador: one active round at a time", () => {
         [operatorId, first],
       );
       firstOpening = rows[0].resultado;
-      const secondOpening = await operatorAction(db.pool, operatorId, second, "ABRIR");
+      // La segunda apertura queda en espera del bloqueo hasta que la primera confirme.
+      const secondPromise = operatorAction(db.pool, operatorId, second, "ABRIR");
+      await new Promise((resolve) => setTimeout(resolve, 300));
       await pending.query("commit");
+      const secondOpening = await secondPromise;
 
       expect(firstOpening).toMatchObject({ ok: true });
       expect(secondOpening).toMatchObject({ ok: false, error: "OTRA_RONDA_ACTIVA" });
