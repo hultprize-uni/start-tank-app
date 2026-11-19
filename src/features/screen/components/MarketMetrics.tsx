@@ -1,5 +1,5 @@
-import styles from "./pantalla.module.css";
-import { formatInteger } from "./formato";
+import styles from "./screen.module.css";
+import { formatInteger } from "./format";
 
 interface MarketMetricsProps {
   price: number;

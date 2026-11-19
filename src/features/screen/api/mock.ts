@@ -7,12 +7,12 @@ import type {
   ScreenViewModel,
   WinningStartup,
   RevealedVote,
-} from "./screen.types";
+} from "../types";
 
 /*
  * Fuente simulada de la pantalla del evento. Se usa solo con NEXT_PUBLIC_USE_MOCKS=true o con el
- * parámetro de fase en desarrollo; el hook `useScreenState` (screen.client.ts) la consume en esos
- * casos. Produce la misma interfaz `ScreenViewModel` que devuelve `GET /api/pantalla`.
+ * parámetro de fase en desarrollo; el hook `useScreenState` (hooks/useScreenState.ts) la consume en esos
+ * casos. Produce la misma interfaz `ScreenViewModel` que devuelve `GET /api/screen`.
  */
 
 /** Fase que se muestra cuando no se fuerza una por query. */

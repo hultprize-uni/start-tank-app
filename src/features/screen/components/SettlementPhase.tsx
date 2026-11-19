@@ -1,8 +1,8 @@
 import type { Decision } from "@/shared/domain/types";
-import type { Settlement } from "@/lib/api/screen.types";
-import { RoundHeader } from "./CabeceraRonda";
-import { formatInteger, formatMultiplier, formatPercentage } from "./formato";
-import styles from "./pantalla.module.css";
+import type { Settlement } from "../types";
+import { RoundHeader } from "./RoundHeader";
+import { formatInteger, formatMultiplier, formatPercentage } from "./format";
+import styles from "./screen.module.css";
 
 const DECISION_LABEL: Record<Decision, string> = {
   BACK: "Respalda",

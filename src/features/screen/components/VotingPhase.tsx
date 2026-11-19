@@ -1,6 +1,6 @@
-import type { Voting } from "@/lib/api/screen.types";
-import { RoundHeader } from "./CabeceraRonda";
-import styles from "./pantalla.module.css";
+import type { Voting } from "../types";
+import { RoundHeader } from "./RoundHeader";
+import styles from "./screen.module.css";
 
 interface VotingPhaseProps {
   vm: Voting;

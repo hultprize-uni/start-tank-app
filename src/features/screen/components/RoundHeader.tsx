@@ -1,5 +1,5 @@
-import type { RoundRef } from "@/lib/api/screen.types";
-import styles from "./pantalla.module.css";
+import type { RoundRef } from "../types";
+import styles from "./screen.module.css";
 
 interface RoundHeaderProps {
   round: RoundRef;

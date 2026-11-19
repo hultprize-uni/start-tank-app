@@ -1,17 +1,17 @@
 "use client";
 
-import { useScreenState } from "@/lib/api/screen.client";
-import type { ScreenPhase, ScreenViewModel } from "@/lib/api/screen.types";
-import { phaseLabel } from "./fases";
-import { ClosingPhase } from "./FaseCierre";
-import { BetweenRoundsPhase } from "./FaseEntreRondas";
-import { SettlementPhase } from "./FaseLiquidacion";
-import { MarketPhase } from "./FaseMercado";
-import { LastCallPhase } from "./FaseUltimaLlamada";
-import { VotingPhase } from "./FaseVotacion";
-import { ScreenStage } from "./PantallaEscenario";
-import { PhaseSelector } from "./SelectorFase";
-import styles from "./pantalla.module.css";
+import { useScreenState } from "../hooks/useScreenState";
+import type { ScreenPhase, ScreenViewModel } from "../types";
+import { phaseLabel } from "./phases";
+import { ClosingPhase } from "./ClosingPhase";
+import { BetweenRoundsPhase } from "./BetweenRoundsPhase";
+import { SettlementPhase } from "./SettlementPhase";
+import { MarketPhase } from "./MarketPhase";
+import { LastCallPhase } from "./LastCallPhase";
+import { VotingPhase } from "./VotingPhase";
+import { ScreenStage } from "./ScreenStage";
+import { PhaseSelector } from "./PhaseSelector";
+import styles from "./screen.module.css";
 
 interface ScreenClientProps {
   /** Fase forzada por la query `fase`. El servidor la envia solo en desarrollo. */
@@ -38,7 +38,7 @@ function renderPhase(vm: ScreenViewModel) {
 
 /** Vista de solo lectura de la pantalla. Consulta el estado del evento y lo presenta por fase. */
 export function ScreenClient({ forcedPhase: forcedPhase, showSelector: showSelector }: ScreenClientProps) {
-  const { vm, offline: offline } = useScreenState(forcedPhase);
+  const { vm, offline } = useScreenState(forcedPhase);
 
   if (vm === null) {
     return (

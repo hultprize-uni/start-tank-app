@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { ScreenPhase } from "@/lib/api/screen.types";
-import { SCREEN_PHASES } from "./fases";
-import styles from "./pantalla.module.css";
+import { PAGE_ROUTES } from "@/shared/lib/api-routes";
+import type { ScreenPhase } from "../types";
+import { SCREEN_PHASES } from "./phases";
+import styles from "./screen.module.css";
 
 interface PhaseSelectorProps {
   currentPhase: ScreenPhase;
@@ -21,7 +22,7 @@ export function PhaseSelector({ currentPhase: currentPhase }: PhaseSelectorProps
       <span>Fase (solo desarrollo)</span>
       <select
         value={currentPhase}
-        onChange={(event) => router.push(`/pantalla?fase=${event.target.value}`)}
+        onChange={(event) => router.push(`${PAGE_ROUTES.screen}?phase=${event.target.value}`)}
       >
         {SCREEN_PHASES.map((phase) => (
           <option key={phase.value} value={phase.value}>

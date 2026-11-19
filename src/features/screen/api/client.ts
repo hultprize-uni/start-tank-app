@@ -1,16 +1,12 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
 import { EVENT_CONFIG } from "@/shared/domain/config";
-import { MOCK_PHASE, simulateReading } from "./screen.mock";
-import type { ScreenPhase, ScreenViewModel } from "./screen.types";
+import { API_ROUTES } from "@/shared/lib/api-routes";
+import type { ScreenPhase, ScreenViewModel } from "../types";
 
 /*
  * Lectura del estado de la pantalla. El cliente consulta la ruta GET de solo lectura cada
  * `EVENT_CONFIG.screenPollMs` y no conserva estado fuera de memoria: al recargar la página, la
  * primera consulta reconstruye la vista. Ninguna función de este módulo ejecuta escrituras.
  */
-
-/** Ruta pública de lectura de la pantalla. */
-export const SCREEN_ROUTE = "/api/pantalla";
 
 /** Fases válidas del view model. Se usan para validar la respuesta del servidor. */
 const VALID_PHASES: readonly ScreenPhase[] = [
@@ -62,7 +58,7 @@ export async function fetchScreen(
   fetchImpl: typeof fetch = fetch,
 ): Promise<QueryResult> {
   try {
-    const response = await fetchImpl(SCREEN_ROUTE, {
+    const response = await fetchImpl(API_ROUTES.screen.state, {
       method: "GET",
       cache: "no-store",
       headers: { Accept: "application/json" },
@@ -134,66 +130,4 @@ export function startPolling(options: {
   trigger();
   const id = setInterval(trigger, options.intervalMs);
   return () => clearInterval(id);
-}
-
-/** Estado de la pantalla que consumen los componentes de fase. */
-export interface ScreenReading {
-  /** View model listo para presentar. Nulo cuando aún no hay datos o el evento no tiene rondas. */
-  vm: ScreenViewModel | null;
-  /** Verdadero cuando la última consulta falló y se muestra la lectura anterior. */
-  offline: boolean;
-}
-
-/*
- * Hook de lectura de la pantalla. Por defecto sondea `GET /api/pantalla`. Con
- * `NEXT_PUBLIC_USE_MOCKS=true`, o cuando la página recibe `faseForzada` en desarrollo, usa la
- * fuente simulada de `screen.mock.ts` y no realiza consultas de red.
- */
-export function useScreenState(forcedPhase?: ScreenPhase): ScreenReading {
-  const simulated = process.env.NEXT_PUBLIC_USE_MOCKS === "true" || forcedPhase !== undefined;
-  const [tick, setTick] = useState(0);
-  const [state, setState] = useState<ScreenReadState>(INITIAL_STATE);
-  const [, repaint] = useReducer((n: number) => n + 1, 0);
-
-  useEffect(() => {
-    if (simulated) return;
-    return startPolling({
-      intervalMs: EVENT_CONFIG.screenPollMs,
-      poll: async () => {
-        const result = await fetchScreen();
-        const receivedAt = Date.now();
-        setState((previous) => reduceState(previous, result, receivedAt));
-      },
-    });
-  }, [simulated]);
-
-  useEffect(() => {
-    if (!simulated) return;
-    const id = setInterval(() => setTick((t) => t + 1), EVENT_CONFIG.screenPollMs);
-    return () => clearInterval(id);
-  }, [simulated]);
-
-  const base = useMemo<ScreenReadState>(() => {
-    if (!simulated) return state;
-    const vm = simulateReading(forcedPhase ?? MOCK_PHASE, tick);
-    return { vm, receivedAt: Date.parse(vm.updatedAt), offline: false };
-  }, [simulated, forcedPhase, tick, state]);
-
-  const inLastCall = base.vm?.phase === "LAST_CALL";
-
-  // La cuenta regresiva se recalcula cada segundo mientras la fase es ULTIMA_LLAMADA.
-  useEffect(() => {
-    if (!inLastCall) return;
-    const id = setInterval(repaint, 1000);
-    return () => clearInterval(id);
-  }, [inLastCall]);
-
-  if (base.vm !== null && base.vm.phase === "LAST_CALL" && base.receivedAt !== null) {
-    const secondsRemaining = liveSecondsRemaining(base.vm, base.receivedAt, Date.now());
-    return {
-      vm: { ...base.vm, secondsRemaining: secondsRemaining },
-      offline: base.offline,
-    };
-  }
-  return { vm: base.vm, offline: base.offline };
 }

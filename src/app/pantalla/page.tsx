@@ -1,5 +1,5 @@
-import { ScreenClient } from "@/components/pantalla/PantallaCliente";
-import { parsePhase } from "@/components/pantalla/fases";
+import { ScreenClient } from "@/features/screen/components/ScreenClient";
+import { parsePhase } from "@/features/screen/components/phases";
 
 interface ScreenPageProps {
   searchParams: Promise<{ phase?: string | string[] }>;

@@ -1,6 +1,6 @@
-import type { BetweenRounds } from "@/lib/api/screen.types";
-import { formatInteger } from "./formato";
-import styles from "./pantalla.module.css";
+import type { BetweenRounds } from "../types";
+import { formatInteger } from "./format";
+import styles from "./screen.module.css";
 
 /** Filas visibles por leaderboard. La pantalla muestra el total en el pie. */
 const VISIBLE_ROWS = 10;

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   INITIAL_STATE,
-  SCREEN_ROUTE,
   fetchScreen,
   startPolling,
   reduceState,
   liveSecondsRemaining,
-} from "./screen.client";
-import type { ScreenViewModel } from "./screen.types";
+} from "./client";
+import { API_ROUTES } from "@/shared/lib/api-routes";
+import type { ScreenViewModel } from "../types";
 
 const RONDA = {
   number: 4,
@@ -41,7 +41,7 @@ function jsonResponse(body: unknown, state = 200): Response {
   });
 }
 
-describe("consultarPantalla", () => {
+describe("fetchScreen", () => {
   it("consulta la ruta con GET, sin caché, y devuelve la lectura", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(MARKET));
 
@@ -50,7 +50,7 @@ describe("consultarPantalla", () => {
     expect(result).toEqual({ kind: "reading", vm: MARKET });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const [url, init] = fetchImpl.mock.calls[0];
-    expect(url).toBe(SCREEN_ROUTE);
+    expect(url).toBe(API_ROUTES.screen.state);
     expect(init?.method).toBe("GET");
     expect(init?.cache).toBe("no-store");
   });
@@ -84,7 +84,7 @@ describe("consultarPantalla", () => {
   });
 });
 
-describe("reducirEstado", () => {
+describe("reduceState", () => {
   it("conserva la última lectura cuando la red falla", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
@@ -126,7 +126,7 @@ describe("reducirEstado", () => {
   });
 });
 
-describe("segundosRestantesEnVivo", () => {
+describe("liveSecondsRemaining", () => {
   const vm = LAST_CALL as Extract<ScreenViewModel, { phase: "LAST_CALL" }>;
   const receivedAt = Date.parse(vm.updatedAt);
 
@@ -147,7 +147,7 @@ describe("segundosRestantesEnVivo", () => {
   });
 });
 
-describe("iniciarSondeo", () => {
+describe("startPolling", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });

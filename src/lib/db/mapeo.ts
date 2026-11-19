@@ -25,7 +25,7 @@ import type {
   RoundRef,
   ScreenViewModel,
   RevealedVote,
-} from "@/lib/api/screen.types";
+} from "@/features/screen/types";
 
 /*
  * Constructores puros de los view models de pantalla, jurado y operador. Reciben las filas que

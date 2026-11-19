@@ -1,6 +1,6 @@
-import type { Closing } from "@/lib/api/screen.types";
-import { formatInteger, formatPercentage } from "./formato";
-import styles from "./pantalla.module.css";
+import type { Closing } from "../types";
+import { formatInteger, formatPercentage } from "./format";
+import styles from "./screen.module.css";
 
 interface ClosingPhaseProps {
   vm: Closing;

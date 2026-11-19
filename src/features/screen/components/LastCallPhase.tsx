@@ -1,9 +1,9 @@
 "use client";
 
-import type { LastCall } from "@/lib/api/screen.types";
-import { RoundHeader } from "./CabeceraRonda";
-import { MarketMetrics } from "./MetricasMercado";
-import styles from "./pantalla.module.css";
+import type { LastCall } from "../types";
+import { RoundHeader } from "./RoundHeader";
+import { MarketMetrics } from "./MarketMetrics";
+import styles from "./screen.module.css";
 
 /** Umbral en segundos a partir del cual la cuenta se muestra como cierre inminente. */
 const IMMINENT_THRESHOLD = 10;

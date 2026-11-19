@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import styles from "./pantalla.module.css";
+import styles from "./screen.module.css";
 
 interface ScreenStageProps {
   /** Etiqueta de la fase activa, mostrada en el encabezado. */

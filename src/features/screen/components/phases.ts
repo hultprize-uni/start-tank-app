@@ -1,4 +1,4 @@
-import type { ScreenPhase } from "@/lib/api/screen.types";
+import type { ScreenPhase } from "../types";
 
 /** Orden de las fases en la jornada y etiqueta de cada una en el encabezado. */
 export const SCREEN_PHASES: { value: ScreenPhase; label: string }[] = [

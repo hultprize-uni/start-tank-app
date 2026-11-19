@@ -1,6 +1,6 @@
-import type { OpenMarket } from "@/lib/api/screen.types";
-import { RoundHeader } from "./CabeceraRonda";
-import { MarketMetrics } from "./MetricasMercado";
+import type { OpenMarket } from "../types";
+import { RoundHeader } from "./RoundHeader";
+import { MarketMetrics } from "./MarketMetrics";
 
 interface MarketPhaseProps {
   vm: OpenMarket;
