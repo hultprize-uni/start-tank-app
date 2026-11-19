@@ -1,7 +1,7 @@
 import {
   ROUND_STATUS_SEQUENCE,
   type RoundStatus,
-} from "@/lib/api/operator.types";
+} from "../types";
 
 import { ROUND_STATUS_LABELS } from "./labels";
 import styles from "./OperatorConsole.module.css";

@@ -1,7 +1,7 @@
 import type {
   OperatorActionId,
   OperatorActionView,
-} from "@/lib/api/operator.types";
+} from "../types";
 
 import styles from "./OperatorConsole.module.css";
 

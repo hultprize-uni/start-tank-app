@@ -1,23 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import type {
-  CancelMode,
-  ManualSettlementInput,
-  OperatorActionId,
-  OperatorActionView,
-  OperatorViewModel,
-} from "@/lib/api/operator.types";
-
-import { buildSettlementCsv, downloadCsv } from "./operator.export";
-import { SERVER_ERROR_MESSAGE, OFFLINE_MESSAGE, requestJson } from "../../shared/lib/http-client";
-import { USE_MOCKS } from "../../shared/lib/env";
-import {
-  useOperatorState as useOperatorStateMock,
-  verifyOperatorCode,
-} from "./operator.mock";
-
-/** Periodo del sondeo del estado de la consola, en milisegundos. */
-export const OPERATOR_POLL_INTERVAL_MS = 3_000;
+import { API_ROUTES } from "@/shared/lib/api-routes";
+import { OFFLINE_MESSAGE, SERVER_ERROR_MESSAGE, requestJson } from "@/shared/lib/http-client";
+import { USE_MOCKS } from "@/shared/lib/env";
+import { verifyOperatorCode } from "./mock";
+import type { OperatorActionId, OperatorActionView, OperatorViewModel } from "../types";
 
 /** Mensaje cuando la sesión del operador ha dejado de ser válida. */
 export const OPERATOR_SESSION_EXPIRED_MESSAGE =
@@ -33,7 +18,7 @@ const CANCEL_UNAVAILABLE_MESSAGE = "La ronda no se puede anular en su estado act
 
 const NO_API_EQUIVALENT_MESSAGE = "Esta acción no tiene equivalente en la API.";
 
-/** Acciones que la API acepta en POST /api/operador/accion. */
+/** Acciones que la API acepta en POST /api/operator/action. */
 type ApiAction =
   | "OPEN"
   | "LAST_CALL"
@@ -78,31 +63,12 @@ const STEPS_BY_REQUEST: Readonly<Record<OperatorRequest, readonly ApiAction[]>> 
   cancel_settle_1x: ["CANCEL_SETTLE_1X"],
 };
 
-/** Estado del portal del operador que consumen los componentes. */
-export interface OperatorPortalState {
-  /** Null mientras no llega la primera respuesta del servidor. */
-  viewModel: OperatorViewModel | null;
-  /** Aviso visible de la última operación fallida o pendiente. Es null cuando no hay aviso. */
-  notice: string | null;
-  runAction: (id: OperatorActionId) => void;
-  undo: () => void;
-  cancelRound: (mode: CancelMode) => void;
-  settleManually: (input: ManualSettlementInput) => void;
-  simulateJurorVote: (jurorId: string) => void;
-  exportar: () => void;
-}
-
-interface OperatorOptions {
-  /** Se invoca cuando la sesión del operador deja de ser válida. */
-  onSessionExpired?: () => void;
-}
-
 /** Valida el código del operador y establece la cookie de sesión. Devuelve el mensaje de error o null. */
 export async function loginOperator(code: string): Promise<string | null> {
   if (USE_MOCKS) {
     return verifyOperatorCode(code) ? null : INVALID_OPERATOR_CODE_MESSAGE;
   }
-  const response = await requestJson<{ ok: boolean; name: string }>("/api/operador/login", {
+  const response = await requestJson<{ ok: boolean; name: string }>(API_ROUTES.operator.login, {
     method: "POST",
     body: { code },
   });
@@ -115,7 +81,7 @@ export async function loginOperator(code: string): Promise<string | null> {
 
 /** Lee el view model completo de la consola para la sesión vigente. */
 export async function readOperatorState(): Promise<OperatorResult<OperatorViewModel>> {
-  const response = await requestJson<OperatorViewModel>("/api/operador/estado");
+  const response = await requestJson<OperatorViewModel>(API_ROUTES.operator.state);
   if (response.ok) {
     return { ok: true, value: response.data };
   }
@@ -133,7 +99,7 @@ export async function readOperatorState(): Promise<OperatorResult<OperatorViewMo
 
 /** Envía una acción individual a la API. */
 async function sendAction(action: ApiAction) {
-  return requestJson<{ ok: boolean; state?: string | null }>("/api/operador/accion", {
+  return requestJson<{ ok: boolean; state?: string | null }>(API_ROUTES.operator.action, {
     method: "POST",
     body: { accion: action },
   });
@@ -208,7 +174,7 @@ export async function executeOperatorAction(
 export async function downloadExport(): Promise<OperatorResult> {
   let response: Response;
   try {
-    response = await fetch("/api/operador/export", { cache: "no-store" });
+    response = await fetch(API_ROUTES.operator.export, { cache: "no-store" });
   } catch {
     return { ok: false, sessionExpired: false, message: OFFLINE_MESSAGE };
   }
@@ -236,120 +202,3 @@ export async function downloadExport(): Promise<OperatorResult> {
   URL.revokeObjectURL(url);
   return { ok: true, value: null };
 }
-
-/**
- * Estado de la consola del operador conectado a la API. Sondea el estado cada
- * INTERVALO_SONDEO_OPERADOR_MS y notifica al portal cuando la sesión deja de ser válida.
- */
-function useOperatorStateApi(options: OperatorOptions = {}): OperatorPortalState {
-  const [viewModel, setViewModel] = useState<OperatorViewModel | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const viewRef = useRef<OperatorViewModel | null>(null);
-  const onExpiredRef = useRef(options.onSessionExpired);
-
-  useEffect(() => {
-    onExpiredRef.current = options.onSessionExpired;
-  });
-
-  const refresh = useCallback(async () => {
-    const result = await readOperatorState();
-    if (result.ok) {
-      viewRef.current = result.value;
-      setViewModel(result.value);
-      return;
-    }
-    if (result.sessionExpired) {
-      onExpiredRef.current?.();
-      return;
-    }
-    setNotice(result.message);
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-    const id = window.setInterval(() => void refresh(), OPERATOR_POLL_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [refresh]);
-
-  const execute = useCallback(
-    async (request: OperatorRequest) => {
-      const result = await executeOperatorAction(request, viewRef.current);
-      if (!result.ok && result.sessionExpired) {
-        onExpiredRef.current?.();
-        return;
-      }
-      setNotice(result.ok ? null : result.message);
-      await refresh();
-    },
-    [refresh],
-  );
-
-  const runAction = useCallback((id: OperatorActionId) => void execute(id), [execute]);
-
-  const cancelRound = useCallback(
-    (mode: CancelMode) =>
-      void execute(mode === "refund" ? "cancel_refund" : "cancel_settle_1x"),
-    [execute],
-  );
-
-  const undo = useCallback(() => {
-    setNotice("Pendiente de API: deshacer la última acción no está disponible.");
-  }, []);
-
-  const settleManually = useCallback(() => {
-    setNotice("Pendiente de API: el modo manual no está disponible.");
-  }, []);
-
-  const simulateJurorVote = useCallback(() => {
-    // Sin equivalente en la API: la simulación de votos pertenece a los datos de muestra.
-  }, []);
-
-  const exportar = useCallback(() => {
-    void (async () => {
-      const result = await downloadExport();
-      if (!result.ok && result.sessionExpired) {
-        onExpiredRef.current?.();
-        return;
-      }
-      setNotice(result.ok ? null : result.message);
-    })();
-  }, []);
-
-  return useMemo(
-    () => ({
-      viewModel,
-      notice,
-      runAction,
-      undo,
-      cancelRound,
-      settleManually,
-      simulateJurorVote,
-      exportar,
-    }),
-    [viewModel, notice, runAction, undo, cancelRound, settleManually, simulateJurorVote, exportar],
-  );
-}
-
-/** Adapta el estado de muestra al contrato del portal, con exportación local en el CSV de muestra. */
-function useOperatorStateMockAdapter(): OperatorPortalState {
-  const api = useOperatorStateMock();
-  const { viewModel } = api;
-
-  const exportar = useCallback(() => {
-    if (viewModel === null) return;
-    downloadCsv(
-      `start-tank-ronda-${viewModel.round.number}-saldos-posiciones.csv`,
-      buildSettlementCsv(viewModel),
-    );
-  }, [viewModel]);
-
-  return useMemo(() => ({ ...api, notice: null, exportar }), [api, exportar]);
-}
-
-/**
- * Estado del portal del operador. Usa los datos de muestra solo con NEXT_PUBLIC_USE_MOCKS=true; en
- * otro caso consume la API. La selección ocurre en tiempo de compilación.
- */
-export const useOperatorState: (options?: OperatorOptions) => OperatorPortalState = USE_MOCKS
-  ? useOperatorStateMockAdapter
-  : useOperatorStateApi;

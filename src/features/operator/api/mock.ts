@@ -12,7 +12,7 @@ import type {
   OperatorViewModel,
   PositionRow,
   RoundStatus,
-} from "./operator.types";
+} from "../types";
 
 /**
  * Implementación mock del estado del operador.

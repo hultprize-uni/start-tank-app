@@ -1,4 +1,4 @@
-import type { OperatorViewModel } from "./operator.types";
+import type { OperatorViewModel } from "../types";
 
 /** Marca de orden de bytes para que Excel reconozca la codificación UTF-8. */
 const UTF8_BOM = "﻿";

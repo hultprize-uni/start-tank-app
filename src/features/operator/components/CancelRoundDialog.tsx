@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { CancelMode } from "@/lib/api/operator.types";
+import type { CancelMode } from "../types";
 
 import styles from "./OperatorConsole.module.css";
 

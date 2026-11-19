@@ -1,4 +1,4 @@
-import type { LogEntryView } from "@/lib/api/operator.types";
+import type { LogEntryView } from "../types";
 
 import styles from "./OperatorConsole.module.css";
 

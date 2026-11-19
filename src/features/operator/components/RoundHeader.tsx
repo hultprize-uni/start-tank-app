@@ -1,4 +1,4 @@
-import type { RoundView } from "@/lib/api/operator.types";
+import type { RoundView } from "../types";
 
 import { ROUND_STATUS_LABELS, formatCoins } from "./labels";
 import styles from "./OperatorConsole.module.css";

@@ -1,4 +1,4 @@
-import type { MarketView } from "@/lib/api/operator.types";
+import type { MarketView } from "../types";
 
 import { formatCoins } from "./labels";
 import styles from "./OperatorConsole.module.css";

@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 
-import {
-  loginOperator,
-  OPERATOR_SESSION_EXPIRED_MESSAGE,
-  useOperatorState,
-} from "@/lib/api/operator";
+import { loginOperator, OPERATOR_SESSION_EXPIRED_MESSAGE } from "../api/client";
+import { useOperatorState } from "../hooks/useOperatorState";
 import { USE_MOCKS } from "@/shared/lib/env";
 
 import { AccessGate } from "./AccessGate";
@@ -74,7 +71,7 @@ function OperatorWorkspace({ onExpired }: OperatorWorkspaceProps) {
       onCancelRound={operator.cancelRound}
       onManualSettlement={operator.settleManually}
       onSimulateJurorVote={operator.simulateJurorVote}
-      onExport={operator.exportar}
+      onExport={operator.exportCsv}
     />
   );
 }

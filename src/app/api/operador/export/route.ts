@@ -1,5 +1,5 @@
 import { requireOperator, noSessionResponse } from "@/server/auth/code-session";
-import { buildSettlementCsv } from "@/lib/api/operator.export";
+import { buildSettlementCsv } from "@/features/operator/api/export";
 import { readOperatorView } from "@/lib/db/queries";
 import { NO_CACHE_HEADERS, errorResponse } from "@/server/http/responses";
 

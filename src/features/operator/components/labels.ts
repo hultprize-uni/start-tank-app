@@ -1,4 +1,4 @@
-import type { RoundStatus } from "@/lib/api/operator.types";
+import type { RoundStatus } from "../types";
 
 /** Etiquetas visibles de cada estado de ronda. */
 export const ROUND_STATUS_LABELS: Record<RoundStatus, string> = {

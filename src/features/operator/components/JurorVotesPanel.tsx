@@ -1,4 +1,4 @@
-import type { JurorSense, JurorVoteView } from "@/lib/api/operator.types";
+import type { JurorSense, JurorVoteView } from "../types";
 
 import styles from "./OperatorConsole.module.css";
 

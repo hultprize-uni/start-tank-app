@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import type {
   ManualResult,
   ManualSettlementInput,
-} from "@/lib/api/operator.types";
+} from "../types";
 
 import styles from "./OperatorConsole.module.css";
 

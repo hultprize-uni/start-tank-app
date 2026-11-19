@@ -7,7 +7,7 @@ import type {
   ManualSettlementInput,
   OperatorActionId,
   OperatorViewModel,
-} from "@/lib/api/operator.types";
+} from "../types";
 
 import { ActionLogPanel } from "./ActionLogPanel";
 import { ActionsPanel } from "./ActionsPanel";

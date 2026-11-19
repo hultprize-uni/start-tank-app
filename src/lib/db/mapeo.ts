@@ -14,7 +14,7 @@ import type {
   OperatorViewModel,
   PositionRow,
   RoundStatus,
-} from "@/lib/api/operator.types";
+} from "@/features/operator/types";
 import type {
   BetweenRounds,
   ScreenInvestorRow,

@@ -1,16 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { OperatorActionView, OperatorViewModel } from "./operator.types";
+import { API_ROUTES } from "@/shared/lib/api-routes";
+import type { OperatorActionView, OperatorViewModel } from "../types";
 import {
   executeOperatorAction,
   readOperatorState,
   loginOperator,
-} from "./operator";
+} from "./client";
 
 /** Construye una respuesta JSON con el estado HTTP indicado. */
-function jsonResponse(body: unknown, state = 200): Response {
+function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
-    status: state,
+    status,
     headers: { "Content-Type": "application/json" },
   });
 }
@@ -86,7 +87,7 @@ function view(options: {
 /** Cuerpos de las llamadas a la ruta de acciones, en orden. */
 function sentActions(fetchMock: ReturnType<typeof vi.fn>): unknown[] {
   return fetchMock.mock.calls
-    .filter((lastCall) => String(lastCall[0]) === "/api/operador/accion")
+    .filter((lastCall) => String(lastCall[0]) === API_ROUTES.operator.action)
     .map((lastCall) => JSON.parse(String((lastCall[1] as RequestInit).body)).accion);
 }
 
@@ -101,12 +102,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("loginOperador", () => {
+describe("loginOperator", () => {
   it("devuelve null cuando el código es aceptado", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ ok: true, name: "op.1" }));
 
     await expect(loginOperator("CODIGO-REAL")).resolves.toBeNull();
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/operador/login");
+    expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.operator.login);
   });
 
   it("devuelve el mensaje de error cuando el código es rechazado (401)", async () => {
@@ -118,7 +119,7 @@ describe("loginOperador", () => {
   });
 });
 
-describe("leerEstadoOperador", () => {
+describe("readOperatorState", () => {
   it("marca la sesión como vencida ante un 401", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
 
@@ -143,7 +144,7 @@ describe("leerEstadoOperador", () => {
   });
 });
 
-describe("ejecutarAccionOperador: revelar", () => {
+describe("executeOperatorAction: reveal", () => {
   it("no envía nada mientras falten votos y devuelve el motivo del servidor", async () => {
     const result = await executeOperatorAction(
       "reveal",
@@ -174,7 +175,7 @@ describe("ejecutarAccionOperador: revelar", () => {
   });
 });
 
-describe("ejecutarAccionOperador: cierre y anulación", () => {
+describe("executeOperatorAction: close and cancel", () => {
   it("habilita la votación después de cerrar el mercado", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ ok: true, state: "CLOSED" }))
