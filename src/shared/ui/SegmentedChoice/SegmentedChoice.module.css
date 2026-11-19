@@ -1,0 +1,73 @@
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-pill);
+  background: var(--line-1);
+}
+
+.option {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--fg-2);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 0.2s var(--ease-out),
+    color 0.2s var(--ease-out);
+}
+
+.option:hover {
+  color: var(--fg-1);
+}
+
+.option:has(.input:focus-visible) {
+  outline: 2px solid var(--st-cyan-light);
+  outline-offset: 2px;
+}
+
+/* El texto oscuro sobre el acento alcanza 5.5:1 de contraste */
+.selected {
+  background: var(--accent);
+  color: var(--bg-page);
+  font-weight: 800;
+}
+
+.selected:hover {
+  color: var(--bg-page);
+}
+
+.optionDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.text {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option {
+    transition: none;
+  }
+}

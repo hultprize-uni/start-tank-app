@@ -1,0 +1,42 @@
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-2);
+  border-left-width: 4px;
+  border-radius: var(--r-inner);
+  background: var(--st-ink-700);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.action {
+  flex-shrink: 0;
+}
+
+.neutral {
+  border-left-color: var(--line-strong);
+}
+
+.positive {
+  border-left-color: var(--positive);
+}
+
+.negative {
+  border-left-color: var(--negative);
+}
+
+.warning {
+  border-left-color: var(--warning);
+}

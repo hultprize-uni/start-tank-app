@@ -1,0 +1,18 @@
+.countdown {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ls-display);
+  line-height: 1;
+  color: var(--fg-1);
+}
+
+.default {
+  color: var(--fg-1);
+}
+
+.warning {
+  color: var(--st-yellow);
+}
