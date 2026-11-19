@@ -33,9 +33,12 @@ export function formatCoins(value: number): string {
   return value.toLocaleString("es-MX", { maximumFractionDigits: 0 });
 }
 
-/** Formatea un multiplicador con un decimal, por ejemplo 1.4x. */
+/**
+ * Formatea un multiplicador con hasta dos decimales y sin ceros finales: 1.4 se muestra como
+ * 1.4x, 1.27 como 1.27x y 1 como 1x.
+ */
 export function formatMultiplier(value: number): string {
-  return `${value.toFixed(1)}x`;
+  return `${Number(value.toFixed(2))}x`;
 }
 
 /** Formatea un puntaje entre 0 y 1 con dos decimales. */
