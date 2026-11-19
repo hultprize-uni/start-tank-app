@@ -13,12 +13,14 @@ export const API_ROUTES = {
     login: "/api/jury/login",
     state: "/api/jury/state",
     vote: "/api/jury/vote",
+    logout: "/api/jury/logout",
   },
   operator: {
     login: "/api/operator/login",
     state: "/api/operator/state",
     action: "/api/operator/action",
     export: "/api/operator/export",
+    logout: "/api/operator/logout",
   },
   screen: {
     state: "/api/screen",

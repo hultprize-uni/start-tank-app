@@ -170,6 +170,12 @@ export async function executeOperatorAction(
   return { ok: true, value: null };
 }
 
+/** Cierra la sesión del operador en el servidor. Un fallo de red no impide volver al acceso. */
+export async function logoutOperator(): Promise<void> {
+  if (USE_MOCKS) return;
+  await requestJson<{ ok: boolean }>(API_ROUTES.operator.logout, { method: "POST" });
+}
+
 /** Descarga el CSV de saldos y posiciones desde la ruta de exportación. */
 export async function downloadExport(): Promise<OperatorResult> {
   let response: Response;

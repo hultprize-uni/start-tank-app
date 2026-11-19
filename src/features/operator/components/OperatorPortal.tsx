@@ -6,6 +6,7 @@ import { USE_MOCKS } from "@/shared/lib/env";
 
 import {
   loginOperator,
+  logoutOperator,
   OPERATOR_SESSION_EXPIRED_MESSAGE,
   readOperatorState,
 } from "../api/client";
@@ -72,8 +73,10 @@ export function OperatorPortal() {
         setStatus("anonymous");
       }}
       onLogout={() => {
-        setNotice(null);
-        setStatus("anonymous");
+        void logoutOperator().finally(() => {
+          setNotice(null);
+          setStatus("anonymous");
+        });
       }}
     />
   );
