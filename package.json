@@ -15,7 +15,7 @@
     "@neon/auth": "^0.8.2",
     "@neondatabase/serverless": "^1.2.0",
     "jose": "^6.2.16",
-    "next": "15.5.4",
+    "next": "15.5.29",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
@@ -26,12 +26,18 @@
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9",
-    "eslint-config-next": "15.5.4",
+    "eslint-config-next": "15.5.29",
     "typescript": "^5",
     "vitest": "^5.1.0"
   },
   "packageManager": "pnpm@10.32.1",
   "engines": {
     "node": ">=22"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.18",
+      "sharp": ">=0.35.5"
+    }
   }
 }
