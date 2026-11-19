@@ -1,0 +1,378 @@
+/**
+ * Pruebas de integración de la liquidación de rondas (especificación, secciones 2.8, 2.9, 2.10
+ * y anulación de rondas). Ejercitan fn_revelar_veredicto, fn_liquidar_ronda y
+ * fn_accion_operador.
+ */
+import type { Pool } from "pg";
+import { describe, expect, it } from "vitest";
+import { registerTestDatabase } from "./helpers/database";
+import {
+  type Decision,
+  castVote,
+  closeForVoting,
+  createUser,
+  getBalance,
+  getInvestments,
+  getJurorIds,
+  getLeaderboard,
+  getOperatorId,
+  getPriceRow,
+  getRoundId,
+  getRoundState,
+  invest,
+  openRound,
+  openRoundNumber,
+  operatorAction,
+  settleRound,
+} from "./helpers/fixtures";
+
+const db = registerTestDatabase();
+
+interface Purchase {
+  userId: number;
+  amount: number;
+}
+
+/** Decisiones de los cuatro jurados con la cantidad indicada de respaldos, rechazos y abstenciones. */
+function decisionsFor(backing: number, rejecting: number, abstaining = 0): Decision[] {
+  return [
+    ...Array<Decision>(backing).fill("RESPALDA"),
+    ...Array<Decision>(rejecting).fill("RECHAZA"),
+    ...Array<Decision>(abstaining).fill("SE_ABSTIENE"),
+  ];
+}
+
+/**
+ * Ejecuta una ronda completa: abre el mercado, registra las compras, cierra la votación, registra
+ * los votos y revela el veredicto. Devuelve el identificador de la ronda y el resultado.
+ */
+async function playRound(
+  pool: Pool,
+  number: number,
+  purchases: Purchase[],
+  decisions: Decision[],
+): Promise<{ roundId: number; result: Awaited<ReturnType<typeof settleRound>> }> {
+  const operatorId = await getOperatorId(pool);
+  const roundId = await getRoundId(pool, number);
+  await openRound(pool, operatorId, roundId);
+  for (const purchase of purchases) {
+    const outcome = await invest(pool, purchase.userId, roundId, purchase.amount);
+    if (!outcome.ok) {
+      throw new Error(`Compra rechazada en la ronda ${number}: ${outcome.error}`);
+    }
+  }
+  await closeForVoting(pool, operatorId, roundId);
+  const result = await settleRound(pool, operatorId, roundId, decisions);
+  return { roundId, result };
+}
+
+async function getStartupScore(
+  pool: Pool,
+  roundId: number,
+): Promise<{ fraction: number | null; score: number | null }> {
+  const row = await getPriceRow(pool, roundId);
+  return { fraction: row.fraccionRespaldo, score: row.puntaje };
+}
+
+describe("settlement: balances", () => {
+  it("credits the amount times the multiplier when the startup earns three backing votes", async () => {
+    const user = await createUser(db.pool);
+    const { roundId, result } = await playRound(
+      db.pool,
+      1,
+      [{ userId: user, amount: 2000 }],
+      decisionsFor(3, 1),
+    );
+
+    expect(result).toMatchObject({ ok: true, multiplicador: 1.4 });
+    expect(await getBalance(db.pool, user)).toBe(10800);
+    const [investment] = await getInvestments(db.pool, roundId);
+    expect(investment).toMatchObject({ returnAmount: 2800, state: "LIQUIDADA" });
+  });
+
+  it("credits 1200 on a 2000 investment when the startup earns one backing vote", async () => {
+    const user = await createUser(db.pool);
+    const { roundId } = await playRound(
+      db.pool,
+      1,
+      [{ userId: user, amount: 2000 }],
+      decisionsFor(1, 3),
+    );
+
+    expect(await getBalance(db.pool, user)).toBe(9200);
+    expect((await getInvestments(db.pool, roundId))[0].returnAmount).toBe(1200);
+  });
+
+  it("returns the invested amount when the multiplier is 1.0x", async () => {
+    const user = await createUser(db.pool);
+    await playRound(
+      db.pool,
+      1,
+      [
+        { userId: user, amount: 250 },
+        { userId: user, amount: 750 },
+      ],
+      decisionsFor(2, 2),
+    );
+
+    expect(await getBalance(db.pool, user)).toBe(10000);
+  });
+
+  it("credits every investor independently at the same multiplier", async () => {
+    const first = await createUser(db.pool);
+    const second = await createUser(db.pool);
+    await playRound(
+      db.pool,
+      1,
+      [
+        { userId: first, amount: 1000 },
+        { userId: second, amount: 2000 },
+      ],
+      decisionsFor(4, 0),
+    );
+
+    // Multiplicador 1.8: 1,000 se convierte en 1,800 y 2,000 en 3,600.
+    expect(await getBalance(db.pool, first)).toBe(10800);
+    expect(await getBalance(db.pool, second)).toBe(11600);
+  });
+
+  it("credits the loss of 80 percent when no juror backs the startup", async () => {
+    const user = await createUser(db.pool);
+    await playRound(db.pool, 1, [{ userId: user, amount: 1000 }], decisionsFor(0, 4));
+
+    expect(await getBalance(db.pool, user)).toBe(9200);
+  });
+
+  it("makes the returned cash available before the next round opens", async () => {
+    const user = await createUser(db.pool);
+    await playRound(db.pool, 1, [{ userId: user, amount: 1000 }], decisionsFor(0, 4));
+
+    // Saldo acreditado: 9,200. El tope de la ronda 2 es 30 % de 9,200 = 2,760.
+    const nextRound = await getRoundId(db.pool, 2);
+    await openRound(db.pool, await getOperatorId(db.pool), nextRound);
+    expect(await invest(db.pool, user, nextRound, 2760)).toMatchObject({ ok: true, saldo: 6440 });
+  });
+
+  it("marks the round as settled with the multiplier stored", async () => {
+    const user = await createUser(db.pool);
+    const { roundId } = await playRound(db.pool, 1, [{ userId: user, amount: 250 }], decisionsFor(4, 0));
+
+    expect(await getRoundState(db.pool, roundId)).toBe("LIQUIDADA");
+    const { rows } = await db.pool.query<{ multiplicador: string; liquidada_en: Date | null }>(
+      "select multiplicador, liquidada_en from ronda where id_ronda = $1",
+      [roundId],
+    );
+    expect(Number(rows[0].multiplicador)).toBe(1.8);
+    expect(rows[0].liquidada_en).not.toBeNull();
+  });
+});
+
+describe("settlement: leaderboard", () => {
+  it("orders investors by final balance, assigns positions and computes the round gain", async () => {
+    const top = await createUser(db.pool);
+    const middle = await createUser(db.pool);
+    const bottom = await createUser(db.pool);
+    const { roundId } = await playRound(
+      db.pool,
+      1,
+      [
+        { userId: top, amount: 2000 },
+        { userId: middle, amount: 1000 },
+      ],
+      decisionsFor(3, 1),
+    );
+
+    const board = await getLeaderboard(db.pool, roundId);
+    expect(board.map((row) => [row.userId, row.position, row.balance])).toEqual([
+      [top, 1, 10800],
+      [middle, 2, 10400],
+      [bottom, 3, 10000],
+    ]);
+    expect(board.map((row) => row.roundGain)).toEqual([800, 400, 0]);
+  });
+
+  it("excludes inactive users from the leaderboard", async () => {
+    const active = await createUser(db.pool);
+    const inactive = await createUser(db.pool, { state: "INACTIVO" });
+    const { roundId } = await playRound(db.pool, 1, [{ userId: active, amount: 250 }], decisionsFor(2, 2));
+
+    const userIds = (await getLeaderboard(db.pool, roundId)).map((row) => row.userId);
+    expect(userIds).toContain(active);
+    expect(userIds).not.toContain(inactive);
+  });
+
+  it("counts a hit for an investor when the startup earns three or four backing votes", async () => {
+    const investor = await createUser(db.pool);
+    const bystander = await createUser(db.pool);
+    const { roundId } = await playRound(
+      db.pool,
+      1,
+      [{ userId: investor, amount: 250 }],
+      decisionsFor(3, 1),
+    );
+
+    const board = await getLeaderboard(db.pool, roundId);
+    expect(board.find((row) => row.userId === investor)?.hits).toBe(1);
+    expect(board.find((row) => row.userId === bystander)?.hits).toBe(0);
+  });
+
+  it("does not count a hit when the startup earns fewer than three backing votes", async () => {
+    const investor = await createUser(db.pool);
+    const { roundId } = await playRound(
+      db.pool,
+      1,
+      [{ userId: investor, amount: 250 }],
+      decisionsFor(2, 2),
+    );
+
+    const board = await getLeaderboard(db.pool, roundId);
+    expect(board.find((row) => row.userId === investor)?.hits).toBe(0);
+  });
+
+  it("accumulates hits across rounds and carries them for users who do not invest", async () => {
+    const investor = await createUser(db.pool);
+    const observer = await createUser(db.pool);
+
+    await playRound(db.pool, 1, [{ userId: investor, amount: 250 }], decisionsFor(3, 1));
+    const second = await playRound(db.pool, 2, [{ userId: investor, amount: 250 }], decisionsFor(1, 3));
+    const third = await playRound(db.pool, 3, [{ userId: investor, amount: 250 }], decisionsFor(4, 0));
+
+    const boardTwo = await getLeaderboard(db.pool, second.roundId);
+    expect(boardTwo.find((row) => row.userId === investor)?.hits).toBe(1);
+    expect(boardTwo.find((row) => row.userId === observer)?.hits).toBe(0);
+
+    const boardThree = await getLeaderboard(db.pool, third.roundId);
+    expect(boardThree.find((row) => row.userId === investor)?.hits).toBe(2);
+  });
+});
+
+describe("settlement: startup score", () => {
+  it("scores 0.6 x backing fraction plus 0.4 x share of investors", async () => {
+    const investor = await createUser(db.pool);
+    await createUser(db.pool);
+    await createUser(db.pool);
+    await createUser(db.pool);
+    const { roundId } = await playRound(
+      db.pool,
+      1,
+      [{ userId: investor, amount: 250 }],
+      decisionsFor(3, 1),
+    );
+
+    // 0.6 x 0.75 + 0.4 x (1 / 4) = 0.55
+    expect(await getStartupScore(db.pool, roundId)).toEqual({ fraction: 0.75, score: 0.55 });
+  });
+
+  it("rounds the score to four decimals", async () => {
+    const investor = await createUser(db.pool);
+    await createUser(db.pool);
+    await createUser(db.pool);
+    const { roundId } = await playRound(
+      db.pool,
+      1,
+      [{ userId: investor, amount: 250 }],
+      decisionsFor(4, 0),
+    );
+
+    // Tres usuarios activos y un inversionista: 0.6 + 0.4 x 1/3 = 0.73333...
+    expect((await getStartupScore(db.pool, roundId)).score).toBe(0.7333);
+  });
+
+  it("counts only active users in the investor share", async () => {
+    const investor = await createUser(db.pool);
+    await createUser(db.pool);
+    await createUser(db.pool);
+    await createUser(db.pool, { state: "INACTIVO" });
+    const { roundId } = await playRound(
+      db.pool,
+      1,
+      [{ userId: investor, amount: 250 }],
+      decisionsFor(4, 0),
+    );
+
+    // Tres usuarios activos: 0.6 x 1 + 0.4 x 1/3.
+    expect((await getStartupScore(db.pool, roundId)).score).toBe(0.7333);
+  });
+});
+
+describe("settlement: cancelled rounds", () => {
+  it("returns the invested amounts and marks the round as cancelled", async () => {
+    const operatorId = await getOperatorId(db.pool);
+    const { roundId } = await openRoundNumber(db.pool, 1);
+    const user = await createUser(db.pool);
+    await invest(db.pool, user, roundId, 1000);
+
+    expect(await operatorAction(db.pool, operatorId, roundId, "ANULAR_DEVOLVER")).toEqual({
+      ok: true,
+      estado: "ANULADA",
+    });
+
+    expect(await getBalance(db.pool, user)).toBe(10000);
+    expect(await getRoundState(db.pool, roundId)).toBe("ANULADA");
+    const [investment] = await getInvestments(db.pool, roundId);
+    expect(investment).toMatchObject({ returnAmount: 1000, state: "ANULADA" });
+    const { rows } = await db.pool.query<{ multiplicador: string }>(
+      "select multiplicador from ronda where id_ronda = $1",
+      [roundId],
+    );
+    expect(Number(rows[0].multiplicador)).toBe(1);
+  });
+
+  it("settles a cancelled round at 1.0x when the operator chooses liquidation", async () => {
+    const operatorId = await getOperatorId(db.pool);
+    const { roundId } = await openRoundNumber(db.pool, 1);
+    const user = await createUser(db.pool);
+    await invest(db.pool, user, roundId, 1500);
+
+    expect(
+      await operatorAction(db.pool, operatorId, roundId, "ANULAR_LIQUIDAR_1X"),
+    ).toEqual({ ok: true, estado: "LIQUIDADA" });
+
+    expect(await getBalance(db.pool, user)).toBe(10000);
+    expect(await getRoundState(db.pool, roundId)).toBe("LIQUIDADA");
+    const [investment] = await getInvestments(db.pool, roundId);
+    expect(investment).toMatchObject({ returnAmount: 1500, state: "LIQUIDADA" });
+  });
+
+  it("does not count hits when a round is cancelled, even if the votes would qualify", async () => {
+    const operatorId = await getOperatorId(db.pool);
+    const { roundId } = await openRoundNumber(db.pool, 1);
+    const user = await createUser(db.pool);
+    await invest(db.pool, user, roundId, 250);
+    await closeForVoting(db.pool, operatorId, roundId);
+    for (const juror of await getJurorIds(db.pool)) {
+      await castVote(db.pool, juror, roundId, "RESPALDA");
+    }
+
+    expect(
+      await operatorAction(db.pool, operatorId, roundId, "ANULAR_LIQUIDAR_1X"),
+    ).toMatchObject({ ok: true });
+
+    const board = await getLeaderboard(db.pool, roundId);
+    expect(board.find((row) => row.userId === user)?.hits).toBe(0);
+  });
+
+  it("does not allow cancelling a round that is not active", async () => {
+    const operatorId = await getOperatorId(db.pool);
+    const roundId = await getRoundId(db.pool, 1);
+
+    expect(await operatorAction(db.pool, operatorId, roundId, "ANULAR_DEVOLVER")).toEqual({
+      ok: false,
+      error: "TRANSICION_NO_PERMITIDA",
+    });
+    expect(await getRoundState(db.pool, roundId)).toBe("PROGRAMADA");
+  });
+
+  it("leaves the startup score empty for a cancelled round", async () => {
+    const operatorId = await getOperatorId(db.pool);
+    const { roundId } = await openRoundNumber(db.pool, 1);
+    const user = await createUser(db.pool);
+    await invest(db.pool, user, roundId, 2500);
+
+    await operatorAction(db.pool, operatorId, roundId, "ANULAR_DEVOLVER");
+
+    const price = await getPriceRow(db.pool, roundId);
+    expect(price.montoAcumulado).toBe(2500);
+    expect(price.puntaje).toBeNull();
+  });
+});

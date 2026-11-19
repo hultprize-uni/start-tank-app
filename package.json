@@ -9,7 +9,8 @@
     "lint": "eslint src",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:db": "vitest run --config vitest.integration.config.mts"
   },
   "dependencies": {
     "@neon/auth": "^0.8.2",
@@ -22,11 +23,13 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
+    "pg": "^8.23.1",
     "typescript": "^5",
     "vitest": "^5.1.0"
   },
