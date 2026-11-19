@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import type { FormEvent } from "react";
+
+import { AnimatedBackground, BrandLogo, Button, Eyebrow, Toast } from "@/shared/ui";
+
+import { useAccessCode } from "../hooks/useAccessCode";
 
 import styles from "./AccessGate.module.css";
 
@@ -9,64 +13,81 @@ interface AccessGateProps {
   onSubmit: (code: string) => Promise<string | null>;
   /** Aviso mostrado al llegar al acceso, por ejemplo cuando la sesión venció. */
   notice?: string | null;
+  /** Código de demostración visible solo con los datos de muestra. */
+  demoCode?: string;
 }
 
 /** Pantalla de acceso al portal del operador mediante código de acceso. */
-export function AccessGate({ onSubmit, notice = null }: AccessGateProps) {
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
+export function AccessGate({ onSubmit, notice = null, demoCode }: AccessGateProps) {
+  const access = useAccessCode(onSubmit);
+  const message = access.error ?? notice;
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (sending) return;
-    setSending(true);
-    const message = await onSubmit(code);
-    setSending(false);
-    setError(message);
+    void access.submit();
   }
-
-  const message = error ?? notice;
 
   return (
     <main className={styles.page}>
-      <section className={styles.card} aria-labelledby="acceso-operador">
-        <p className="st-eyebrow">Portal del operador</p>
-        <h1 id="acceso-operador" className={styles.title}>
-          Acceso a la consola
-        </h1>
-        <p className={styles.lead}>
-          Ingresa el código de acceso para operar la ronda en curso.
-        </p>
-        <form className={styles.form} onSubmit={handleSubmit} noValidate>
-          <label htmlFor="codigo-operador" className={styles.label}>
-            Código de acceso
-          </label>
-          <input
-            id="codigo-operador"
-            name="codigo"
-            type="password"
-            autoComplete="off"
-            className={styles.input}
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            aria-invalid={error !== null}
-            aria-describedby={message ? "codigo-error" : undefined}
-          />
-          {message ? (
-            <p id="codigo-error" className={styles.error} role="alert">
-              {message}
-            </p>
+      <AnimatedBackground />
+      <div className={styles.layout}>
+        <div className={styles.intro}>
+          <BrandLogo variant="horizontal" priority className={styles.logo} />
+          <Eyebrow>Portal del operador</Eyebrow>
+          <h1 className={styles.title}>Tú conduces el evento.</h1>
+          <p className={styles.lead}>
+            Ingresa con el código del equipo organizador. Cada acción queda registrada.
+          </p>
+        </div>
+
+        <section className={styles.card} aria-labelledby="acceso-operador">
+          <h2 id="acceso-operador" className={styles.cardTitle}>
+            Acceso a la consola
+          </h2>
+          {notice && access.error === null ? (
+            <Toast tone="warning" role="status">
+              {notice}
+            </Toast>
           ) : null}
-          <button
-            type="submit"
-            className={styles.submit}
-            disabled={code.trim().length === 0 || sending}
-          >
-            Entrar
-          </button>
-        </form>
-      </section>
+          <form className={styles.form} onSubmit={handleSubmit} noValidate>
+            <label htmlFor="codigo-operador" className={styles.label}>
+              Código de acceso
+            </label>
+            <input
+              id="codigo-operador"
+              name="codigo"
+              type="password"
+              autoComplete="off"
+              placeholder="Código de acceso"
+              className={styles.input}
+              value={access.code}
+              onChange={(event) => access.changeCode(event.target.value)}
+              aria-invalid={access.error !== null}
+              aria-describedby={message ? "codigo-error" : undefined}
+            />
+            {access.error !== null ? (
+              <div id="codigo-error">
+                <Toast tone="negative" role="alert">
+                  {access.error}
+                </Toast>
+              </div>
+            ) : null}
+            <Button
+              type="submit"
+              size="lg"
+              fullWidth
+              loading={access.sending}
+              loadingLabel="Verificando el código"
+              disabled={!access.canSubmit}
+            >
+              Entrar
+            </Button>
+          </form>
+          {demoCode !== undefined ? (
+            <p className={styles.demo}>Demo: {demoCode}</p>
+          ) : null}
+        </section>
+      </div>
     </main>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+
+import { USE_MOCKS } from "@/shared/lib/env";
 
 import { loginOperator, OPERATOR_SESSION_EXPIRED_MESSAGE } from "../api/client";
+import { MOCK_OPERATOR_CODE } from "../api/mock";
 import { useOperatorState } from "../hooks/useOperatorState";
-import { USE_MOCKS } from "@/shared/lib/env";
 
 import { AccessGate } from "./AccessGate";
 import { OperatorConsole } from "./OperatorConsole";
@@ -15,18 +17,21 @@ export function OperatorPortal() {
   const [authorized, setAuthorized] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const handleLogin = useCallback(async (code: string) => {
+    const error = await loginOperator(code);
+    if (error === null) {
+      setNotice(null);
+      setAuthorized(true);
+    }
+    return error;
+  }, []);
+
   if (!authorized) {
     return (
       <AccessGate
         notice={notice}
-        onSubmit={async (code) => {
-          const error = await loginOperator(code);
-          if (error === null) {
-            setNotice(null);
-            setAuthorized(true);
-          }
-          return error;
-        }}
+        onSubmit={handleLogin}
+        demoCode={USE_MOCKS ? MOCK_OPERATOR_CODE : undefined}
       />
     );
   }
@@ -37,6 +42,10 @@ export function OperatorPortal() {
         setNotice(OPERATOR_SESSION_EXPIRED_MESSAGE);
         setAuthorized(false);
       }}
+      onLogout={() => {
+        setNotice(null);
+        setAuthorized(false);
+      }}
     />
   );
 }
@@ -44,10 +53,12 @@ export function OperatorPortal() {
 interface OperatorWorkspaceProps {
   /** Devuelve al acceso con código cuando la sesión deja de ser válida. */
   onExpired: () => void;
+  /** Devuelve al acceso con código por decisión del operador. */
+  onLogout: () => void;
 }
 
 /** Conecta el estado de la ronda con la consola. Solo se monta tras el acceso. */
-function OperatorWorkspace({ onExpired }: OperatorWorkspaceProps) {
+function OperatorWorkspace({ onExpired, onLogout }: OperatorWorkspaceProps) {
   const operator = useOperatorState({ onSessionExpired: onExpired });
   const { viewModel, notice } = operator;
 
@@ -69,9 +80,11 @@ function OperatorWorkspace({ onExpired }: OperatorWorkspaceProps) {
       onRunAction={operator.runAction}
       onUndo={operator.undo}
       onCancelRound={operator.cancelRound}
-      onManualSettlement={operator.settleManually}
+      onToggleManual={operator.setManualMode}
+      onSetManualBacks={operator.setManualBacks}
       onSimulateJurorVote={operator.simulateJurorVote}
       onExport={operator.exportCsv}
+      onLogout={onLogout}
     />
   );
 }
