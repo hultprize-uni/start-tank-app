@@ -37,6 +37,8 @@ describe("readJuryView", () => {
   it("muestra el voto registrado del jurado en la ronda en votación", async () => {
     setupSql(sqlMock, {
       "where id_jurado": [{ id: "2", nombre: "Jurado de ejemplo 2" }],
+      "where r.id_ronda": [{ descripcion: "Monitoreo de cultivos." }],
+      "from veredicto v": [{ id_ronda: "1", decision: "RESPALDA" }],
       "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "EN_VOTACION" }],
       "from jurado j": [
         { id_jurado: "1", nombre: "Jurado de ejemplo 1", decision: "RESPALDA" },
@@ -50,9 +52,39 @@ describe("readJuryView", () => {
     expect(vm).toMatchObject({
       screen: "vote_registered",
       jurorLabel: "Jurado de ejemplo 2",
+      ownVote: "REJECT",
+      round: { description: "Monitoreo de cultivos." },
       votes: { emitted: 2, total: 2 },
     });
     expect(JSON.stringify(vm)).not.toContain("BACK");
+  });
+
+  it("publica el veredicto de la ronda liquidada con las decisiones de todos los jurados", async () => {
+    setupSql(sqlMock, {
+      "where id_jurado": [{ id: "2", nombre: "Jurado de ejemplo 2" }],
+      "where r.id_ronda": [{ descripcion: null }],
+      "from veredicto v": [{ id_ronda: "1", decision: "RESPALDA" }],
+      "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "LIQUIDADA", multiplicador: "1.20" }],
+      "from jurado j": [
+        { id_jurado: "1", nombre: "Jurado de ejemplo 1", decision: "RESPALDA" },
+        { id_jurado: "2", nombre: "Jurado de ejemplo 2", decision: "RECHAZA" },
+      ],
+      "select count(*)::int as total from jurado": [{ total: 2 }],
+    });
+
+    const vm = await readJuryView("2");
+
+    expect(vm).toMatchObject({
+      screen: "result",
+      phase: "result",
+      reveal: {
+        multiplier: 1.2,
+        votes: [
+          { label: "Jurado 1", isOwn: false, decision: "BACK" },
+          { label: "Jurado 2", isOwn: true, decision: "REJECT" },
+        ],
+      },
+    });
   });
 });
 
