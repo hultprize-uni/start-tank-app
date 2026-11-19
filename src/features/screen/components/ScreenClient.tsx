@@ -2,15 +2,16 @@
 
 import { useScreenState } from "../hooks/useScreenState";
 import type { ScreenPhase, ScreenViewModel } from "../types";
-import { phaseLabel } from "./phases";
-import { ClosingPhase } from "./ClosingPhase";
+import { phaseStatus, roundNumberOf, type PhaseStatus } from "./phases";
 import { BetweenRoundsPhase } from "./BetweenRoundsPhase";
-import { SettlementPhase } from "./SettlementPhase";
-import { MarketPhase } from "./MarketPhase";
+import { ClosingPhase } from "./ClosingPhase";
 import { LastCallPhase } from "./LastCallPhase";
-import { VotingPhase } from "./VotingPhase";
-import { ScreenStage } from "./ScreenStage";
+import { MarketPhase } from "./MarketPhase";
 import { PhaseSelector } from "./PhaseSelector";
+import { ScreenStage } from "./ScreenStage";
+import { SettlementPhase } from "./SettlementPhase";
+import { VotingPhase } from "./VotingPhase";
+import { WaitingPhase } from "./WaitingPhase";
 import styles from "./screen.module.css";
 
 interface ScreenClientProps {
@@ -19,8 +20,13 @@ interface ScreenClientProps {
   showSelector: boolean;
 }
 
+/** Estado mostrado mientras no existe ninguna lectura del servidor. */
+const CONNECTING_STATUS: PhaseStatus = { label: "Conectando", tone: "neutral", live: true };
+
 function renderPhase(vm: ScreenViewModel) {
   switch (vm.phase) {
+    case "WAITING":
+      return <WaitingPhase vm={vm} />;
     case "MARKET":
       return <MarketPhase vm={vm} />;
     case "LAST_CALL":
@@ -42,19 +48,20 @@ export function ScreenClient({ forcedPhase, showSelector }: ScreenClientProps) {
 
   if (vm === null) {
     return (
-      <ScreenStage phaseLabel="En espera">
-        <p className={styles.subtitle}>Esperando datos del evento.</p>
+      <ScreenStage status={CONNECTING_STATUS} offline={offline}>
+        <p className={styles.lead}>Esperando datos del evento.</p>
       </ScreenStage>
     );
   }
 
   return (
     <>
-      <ScreenStage phaseLabel={phaseLabel(vm.phase)}>
+      <ScreenStage
+        status={phaseStatus(vm.phase)}
+        roundNumber={roundNumberOf(vm)}
+        offline={offline}
+      >
         {renderPhase(vm)}
-        {offline ? (
-          <p className={styles.subtitle}>Sin conexión. Se muestra la última lectura.</p>
-        ) : null}
       </ScreenStage>
       {showSelector ? <PhaseSelector currentPhase={vm.phase} /> : null}
     </>

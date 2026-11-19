@@ -1,7 +1,11 @@
 import type { Decision } from "@/shared/domain/types";
 
-/** Fases de la pantalla del evento. Cada una corresponde a una fila del cuadro de la especificacion (seccion 2.6). */
+/**
+ * Fases de la pantalla del evento. Cada una corresponde a una fila del cuadro de la especificacion
+ * (seccion 2.6), más la espera previa a la primera ronda.
+ */
 export type ScreenPhase =
+  | "WAITING"
   | "MARKET"
   | "LAST_CALL"
   | "VOTING"
@@ -55,6 +59,12 @@ interface ScreenBase {
 
 interface CurrentRound extends ScreenBase {
   round: RoundRef;
+}
+
+/** Espera previa al evento: ninguna ronda ha iniciado. Presenta la primera startup del programa. */
+export interface Waiting extends ScreenBase {
+  phase: "WAITING";
+  nextRound: RoundRef;
 }
 
 export interface OpenMarket extends CurrentRound {
@@ -117,6 +127,7 @@ export interface Closing extends ScreenBase {
 
 /** Modelo completo que consume la pantalla. Discriminado por `fase`. */
 export type ScreenViewModel =
+  | Waiting
   | OpenMarket
   | LastCall
   | Voting

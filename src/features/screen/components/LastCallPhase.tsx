@@ -1,59 +1,40 @@
-"use client";
-
+import { Countdown } from "@/shared/ui";
 import type { LastCall } from "../types";
-import { RoundHeader } from "./RoundHeader";
-import { MarketMetrics } from "./MarketMetrics";
+import { MarketView } from "./MarketPhase";
 import styles from "./screen.module.css";
 
-/** Umbral en segundos a partir del cual la cuenta se muestra como cierre inminente. */
+/** Umbral en segundos a partir del cual la cuenta se presenta como cierre inminente. */
 const IMMINENT_THRESHOLD = 10;
-
-function formatCountdown(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const rest = String(seconds % 60).padStart(2, "0");
-  return `${String(minutes).padStart(2, "0")}:${rest}`;
-}
-
-interface CountdownProps {
-  /** Segundos restantes calculados por el hook con la hora del servidor. */
-  seconds: number;
-}
-
-/* Presenta la cuenta recibida. El hook `useScreenState` la recalcula cada segundo. */
-function Countdown({ seconds }: CountdownProps) {
-  const imminent = seconds <= IMMINENT_THRESHOLD;
-
-  return (
-    <section aria-label="Cuenta regresiva de la última llamada">
-      <p className={styles.eyebrow}>Última llamada: cierre automático</p>
-      <p
-        className={`${styles.figureLarge} ${styles.figureAccent} ${imminent ? styles.pulse : ""}`}
-        role="timer"
-      >
-        {formatCountdown(seconds)}
-      </p>
-      {imminent && seconds > 0 ? (
-        <p className={styles.subtitle}>El mercado cierra en segundos.</p>
-      ) : null}
-    </section>
-  );
-}
 
 interface LastCallPhaseProps {
   vm: LastCall;
 }
 
-/** Fase Última llamada: cuenta regresiva de 60 segundos sobre el precio vigente. */
+/*
+ * Fase Última llamada: el mercado sigue abierto y la cuenta regresiva se muestra sobre el precio.
+ * El hook `useScreenState` recalcula los segundos restantes cada segundo.
+ */
 export function LastCallPhase({ vm }: LastCallPhaseProps) {
+  const imminent = vm.secondsRemaining <= IMMINENT_THRESHOLD;
+
   return (
-    <>
-      <RoundHeader round={vm.round} />
-      <MarketMetrics
-        price={vm.price}
-        accumulated={vm.accumulated}
-        uniqueInvestors={vm.uniqueInvestors}
-      />
-      <Countdown seconds={vm.secondsRemaining} />
-    </>
+    <MarketView
+      round={vm.round}
+      price={vm.price}
+      accumulated={vm.accumulated}
+      uniqueInvestors={vm.uniqueInvestors}
+    >
+      <div className={`${styles.lastCallChip} ${imminent ? styles.pulse : ""}`}>
+        <span className={styles.lastCallLabel}>Última llamada</span>
+        <Countdown
+          seconds={vm.secondsRemaining}
+          label="Tiempo restante de la última llamada"
+          tone="warning"
+        />
+      </div>
+      {imminent && vm.secondsRemaining > 0 ? (
+        <p className={styles.footnote}>El mercado cierra en segundos.</p>
+      ) : null}
+    </MarketView>
   );
 }

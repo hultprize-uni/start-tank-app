@@ -222,6 +222,11 @@ export function buildScreen(data: ScreenData, now: Date): ScreenViewModel | null
     }
   }
 
-  const closedRound = last ?? c.pending ?? sortRounds(data.rounds)[0];
-  return buildBetweenRounds(data, closedRound, updatedAt);
+  // Sin rondas terminadas, el evento aún no ha iniciado su primer turno.
+  if (last === undefined) {
+    const first = c.pending ?? sortRounds(data.rounds)[0];
+    return { phase: "WAITING", updatedAt, nextRound: toRoundRef(first) };
+  }
+
+  return buildBetweenRounds(data, last, updatedAt);
 }
