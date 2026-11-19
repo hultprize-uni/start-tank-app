@@ -1,0 +1,12 @@
+.logo {
+  height: auto;
+  max-width: 100%;
+}
+
+.horizontal {
+  width: min(320px, 100%);
+}
+
+.vertical {
+  width: min(200px, 100%);
+}
