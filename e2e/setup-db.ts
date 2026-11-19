@@ -32,6 +32,17 @@ const BUSINESS_TABLES = [
   "usuario",
 ];
 
+/*
+ * Tabla que el proxy HTTP de Neon consulta al iniciar. La imagen la crea al arrancar, pero en CI el
+ * proxy puede arrancar antes que Postgres; por eso se crea aquí de forma idempotente.
+ */
+const CONTROL_PLANE_SQL = `
+  create schema if not exists neon_control_plane;
+  create table if not exists neon_control_plane.endpoints (
+    endpoint_id varchar(255) primary key,
+    allowed_ips varchar(255)
+  );`;
+
 const HOSTS_ALLOWED_FOR_RECREATE = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /** Verifica que la conexión apunte a un host local antes de eliminar el esquema. */
@@ -83,6 +94,7 @@ export async function setupDatabase(connectionString: string = DIRECT_DATABASE_U
       await client.query(readFileSync(file, "utf8"));
     }
     await client.query(seedSql());
+    await client.query(CONTROL_PLANE_SQL);
   });
 }
 
