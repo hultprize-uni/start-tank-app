@@ -6,7 +6,7 @@ import { EVENT_CONFIG } from "@/shared/domain/config";
 import { PAGE_ROUTES } from "@/shared/lib/api-routes";
 import { ActionButton } from "./ActionButton";
 import { BrandMark } from "./BrandMark";
-import { formatCoins } from "./format";
+import { formatCoins } from "../format";
 import styles from "./LoginScreen.module.css";
 
 const SIGN_IN_ERROR = "No fue posible iniciar sesión. Intenta de nuevo.";

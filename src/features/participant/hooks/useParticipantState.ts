@@ -28,6 +28,7 @@ const LOGIN_VIEW: ParticipantViewModel = {
   countdownSeconds: null,
   verdict: null,
   standing: null,
+  rounds: [],
 };
 
 /**

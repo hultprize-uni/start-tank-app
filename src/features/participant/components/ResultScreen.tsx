@@ -5,7 +5,7 @@ import type {
   StartupInfo,
   VerdictInfo,
 } from "../types";
-import { formatCoins, formatMultiplier, formatSignedCoins } from "./format";
+import { formatCoins, formatMultiplier, formatSignedCoins } from "../format";
 import { Leaderboard } from "./Leaderboard";
 import { StatusBadge } from "./StatusBadge";
 import styles from "./ResultScreen.module.css";

@@ -1,6 +1,6 @@
 import type { RoundInfo, StartupInfo, WalletInfo } from "../types";
 import { ActionButton } from "./ActionButton";
-import { formatCoins } from "./format";
+import { formatCoins } from "../format";
 import { StatusBadge } from "./StatusBadge";
 import styles from "./VotingScreen.module.css";
 

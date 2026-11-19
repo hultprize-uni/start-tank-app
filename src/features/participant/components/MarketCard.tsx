@@ -1,5 +1,5 @@
 import type { MarketInfo, StartupInfo } from "../types";
-import { formatCoins, formatPriceChange } from "./format";
+import { formatCoins, formatPriceChange } from "../format";
 import styles from "./MarketCard.module.css";
 
 interface MarketCardProps {

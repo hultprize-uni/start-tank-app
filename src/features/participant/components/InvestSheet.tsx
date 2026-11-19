@@ -9,7 +9,7 @@ import {
 } from "../rules";
 import type { WalletInfo } from "../types";
 import { ActionButton } from "./ActionButton";
-import { formatCoins, formatMultiplier } from "./format";
+import { formatCoins, formatMultiplier } from "../format";
 import styles from "./InvestSheet.module.css";
 
 interface InvestSheetProps {

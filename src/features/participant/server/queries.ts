@@ -69,6 +69,18 @@ async function queryUserInvestments(userId: number): Promise<UserInvestmentRow[]
 }
 
 
+/**
+ * Rondas que el operador liquidó a 1.0x. La acción queda registrada en accion_ronda con el valor
+ * de la base de datos; la anulación con devolución se identifica por el estado ANULADA.
+ */
+async function queryRoundsSettledAtOne(): Promise<string[]> {
+  const rows = await sql<{ id_ronda: string }>`
+    select distinct a.id_ronda::text as id_ronda
+      from accion_ronda a
+     where a.accion = 'ANULAR_LIQUIDAR_1X'`;
+  return rows.map((row) => row.id_ronda);
+}
+
 /** Decisiones emitidas por los jurados en una ronda. */
 async function queryDecisions(roundId: string): Promise<Decision[]> {
   const rows = await sql<{ decision: string }>`
@@ -126,10 +138,11 @@ async function queryParticipantCount(roundId: string): Promise<number> {
  * ejecutan solo cuando existe una ronda terminada.
  */
 export async function readParticipantState(userId: number): Promise<ParticipantViewModel> {
-  const [balance, rounds, investments] = await Promise.all([
+  const [balance, rounds, investments, settledAtOneRoundIds] = await Promise.all([
     queryBalance(userId),
     queryParticipantRounds(),
     queryUserInvestments(userId),
+    queryRoundsSettledAtOne(),
   ]);
 
   const finishedRounds = finishedRoundsOf(rounds);
@@ -165,6 +178,7 @@ export async function readParticipantState(userId: number): Promise<ParticipantV
     ownRow,
     participants,
     previousPosition,
+    settledAtOneRoundIds,
   });
 }
 

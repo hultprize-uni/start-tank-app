@@ -1,5 +1,5 @@
 import type { StandingInfo } from "../types";
-import { formatCoins } from "./format";
+import { formatCoins } from "../format";
 import { Leaderboard } from "./Leaderboard";
 import { StatusBadge } from "./StatusBadge";
 import styles from "./FinalScreen.module.css";

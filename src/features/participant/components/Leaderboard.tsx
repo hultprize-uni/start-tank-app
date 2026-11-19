@@ -1,5 +1,5 @@
 import type { StandingEntry, StandingInfo } from "../types";
-import { formatCoins } from "./format";
+import { formatCoins } from "../format";
 import styles from "./Leaderboard.module.css";
 
 interface LeaderboardProps {

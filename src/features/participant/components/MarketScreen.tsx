@@ -1,6 +1,6 @@
 import type { MarketInfo, RoundInfo, StartupInfo, WalletInfo } from "../types";
 import { ActionButton } from "./ActionButton";
-import { formatCoins } from "./format";
+import { formatCoins } from "../format";
 import { LastCallCountdown } from "./LastCallCountdown";
 import { MarketCard } from "./MarketCard";
 import { StatusBadge } from "./StatusBadge";

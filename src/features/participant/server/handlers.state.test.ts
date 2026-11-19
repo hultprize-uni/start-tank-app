@@ -18,6 +18,7 @@ const sampleView: ParticipantViewModel = {
   countdownSeconds: null,
   verdict: null,
   standing: null,
+  rounds: [],
 };
 
 beforeEach(() => {

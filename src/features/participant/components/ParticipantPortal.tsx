@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParticipantState } from "../hooks/useParticipantState";
 import type { ParticipantViewModel } from "../types";
 import { FinalScreen } from "./FinalScreen";
-import { formatCoins } from "./format";
+import { formatCoins } from "../format";
 import { InvestSheet } from "./InvestSheet";
 import { LoginScreen } from "./LoginScreen";
 import { MarketScreen } from "./MarketScreen";

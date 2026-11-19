@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_CONFIG } from "@/shared/domain/config";
 import type { Decision } from "@/shared/domain/types";
+import { MARKET_CLOSED_MESSAGE, describeInvestmentIssue } from "../messages";
+import { formatCoins } from "../format";
 import {
   getInvestmentIssue,
   getMarketPrice,
@@ -8,10 +10,12 @@ import {
   getRoundCap,
 } from "../rules";
 import type {
+  AnnulmentMode,
   ParticipantActions,
   ParticipantPhase,
   ParticipantViewModel,
   InvestmentResult,
+  RoundSummary,
   StandingEntry,
   StandingInfo,
   StartupInfo,
@@ -19,7 +23,7 @@ import type {
   VerdictInfo,
 } from "../types";
 
-/**
+/*
  * Simulación del estado del inversionista. Devuelve la forma que tendrá la API real
  * (ParticipantViewModel) con datos de ejemplo y transiciones de tiempo fijo. Se activa solo con
  * NEXT_PUBLIC_USE_MOCKS=true, mediante el despachador de hooks/useParticipantState.ts.
@@ -60,7 +64,20 @@ const ROUND_DECISIONS: Decision[][] = [
   ["BACK", "BACK", "BACK", "REJECT"],
 ];
 
+/**
+ * Anulaciones simuladas por índice de ronda. La ronda 4 se anula con devolución para mostrar el
+ * estado de anulación en la demostración.
+ */
+const ROUND_ANNULMENTS: Partial<Record<number, AnnulmentMode>> = { 3: "refund" };
+
 const TOP_NAMES = ["Sofía Mendoza", "Carlos Ruiz", "Lucía Paredes"];
+
+/** Resultado simulado de una ronda ya terminada. */
+interface SettledRound {
+  invested: number;
+  payout: number;
+  annulment: AnnulmentMode | null;
+}
 
 interface MockState {
   phase: ParticipantPhase;
@@ -76,6 +93,8 @@ interface MockState {
   position: number;
   previousPosition: number;
   hits: number;
+  /** Rondas terminadas, en orden. Su longitud es el número de rondas evaluadas. */
+  settled: SettledRound[];
 }
 
 const INITIAL_STATE: MockState = {
@@ -90,6 +109,7 @@ const INITIAL_STATE: MockState = {
   position: REFERENCE_POSITION,
   previousPosition: REFERENCE_POSITION,
   hits: 0,
+  settled: [],
 };
 
 function positionFor(balance: number): number {
@@ -101,13 +121,14 @@ function balanceForPosition(position: number): number {
   return EVENT_CONFIG.initialBalance + (REFERENCE_POSITION - position) * COINS_PER_POSITION;
 }
 
-function computeVerdict(roundIndex: number, invested: number): VerdictInfo {
+/** Veredicto simulado. Con anulación, el multiplicador es 1.0x y el retorno iguala lo invertido. */
+function computeVerdict(roundIndex: number, invested: number, annulment: AnnulmentMode | null): VerdictInfo {
   const decisions = ROUND_DECISIONS[roundIndex];
   const backs = decisions.filter((d) => d === "BACK").length;
   const voters = decisions.filter((d) => d !== "ABSTAIN").length;
-  const multiplier = getMultiplier(backs, voters);
+  const multiplier = annulment !== null ? 1 : getMultiplier(backs, voters);
   const payout = Math.round(invested * multiplier);
-  return { decisions, backs, voters, multiplier, invested, payout, gain: payout - invested };
+  return { decisions, backs, voters, multiplier, invested, payout, gain: payout - invested, annulment };
 }
 
 function buildStanding(s: MockState): StandingInfo {
@@ -128,10 +149,34 @@ function buildStanding(s: MockState): StandingInfo {
     previousPosition: s.previousPosition,
     participants: PARTICIPANTS,
     hits: s.hits,
-    hitsTotal: s.roundIndex + 1,
+    hitsTotal: s.settled.length,
     topThree,
     me,
   };
+}
+
+/** Resumen de las rondas del evento: estado, monto invertido y ganancia de cada una. */
+function buildRounds(s: MockState): RoundSummary[] {
+  return STARTUPS.map((startup, index) => {
+    const settled = s.settled[index];
+    if (settled !== undefined) {
+      return {
+        number: index + 1,
+        startupName: startup.name,
+        state: settled.annulment !== null ? "annulled" : "settled",
+        invested: settled.invested,
+        gain: settled.payout - settled.invested,
+      };
+    }
+    const isCurrent = index === s.roundIndex;
+    return {
+      number: index + 1,
+      startupName: startup.name,
+      state: isCurrent ? "current" : "pending",
+      invested: isCurrent ? s.invested : 0,
+      gain: null,
+    };
+  });
 }
 
 function deriveViewModel(s: MockState): ParticipantViewModel {
@@ -145,11 +190,13 @@ function deriveViewModel(s: MockState): ParticipantViewModel {
       countdownSeconds: null,
       verdict: null,
       standing: null,
+      rounds: [],
     };
   }
 
   const isMarketOpen = s.phase === "open" || s.phase === "lastCall";
   const isRevealed = s.phase === "result" || s.phase === "final";
+  const lastSettled = s.settled[s.settled.length - 1];
 
   return {
     phase: s.phase,
@@ -169,8 +216,11 @@ function deriveViewModel(s: MockState): ParticipantViewModel {
         }
       : null,
     countdownSeconds: s.phase === "lastCall" ? s.countdown : null,
-    verdict: isRevealed ? computeVerdict(s.roundIndex, s.invested) : null,
-    standing: isRevealed ? buildStanding(s) : null,
+    verdict: isRevealed && lastSettled
+      ? computeVerdict(s.roundIndex, lastSettled.invested, lastSettled.annulment)
+      : null,
+    standing: s.settled.length > 0 ? buildStanding(s) : null,
+    rounds: buildRounds(s),
   };
 }
 
@@ -187,8 +237,9 @@ function startRound(s: MockState): MockState {
 }
 
 function revealVerdict(s: MockState): MockState {
-  const verdict = computeVerdict(s.roundIndex, s.invested);
-  const isHit = verdict.invested > 0 && verdict.backs >= 3;
+  const annulment = ROUND_ANNULMENTS[s.roundIndex] ?? null;
+  const verdict = computeVerdict(s.roundIndex, s.invested, annulment);
+  const isHit = annulment === null && verdict.invested > 0 && verdict.backs >= 3;
   const position = positionFor(s.balance + verdict.payout);
   return {
     ...s,
@@ -197,6 +248,7 @@ function revealVerdict(s: MockState): MockState {
     previousPosition: s.position,
     position,
     hits: s.hits + (isHit ? 1 : 0),
+    settled: [...s.settled, { invested: s.invested, payout: verdict.payout, annulment }],
   };
 }
 
@@ -242,6 +294,12 @@ function simulateRoomInvestment(s: MockState): MockState {
 /** Hook de simulación con la misma forma que useParticipantState de la API real. */
 export function useParticipantMockState(): UseParticipantStateResult {
   const [state, setState] = useState<MockState>(INITIAL_STATE);
+  /** Última versión confirmada del estado, para validar inversiones sin esperar al render. */
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     const delay = PHASE_DURATION_MS[state.phase];
@@ -266,11 +324,17 @@ export function useParticipantMockState(): UseParticipantStateResult {
   }, [state.phase]);
 
   const invest = useCallback(async (amount: number): Promise<InvestmentResult> => {
+    const current = stateRef.current;
+    if (current.phase !== "open" && current.phase !== "lastCall") {
+      return { ok: false, message: MARKET_CLOSED_MESSAGE };
+    }
+    const remainingCap = Math.max(0, getRoundCap(current.roundStartBalance) - current.invested);
+    const issue = getInvestmentIssue({ amount, balance: current.balance, remainingCap });
+    if (issue !== null) {
+      return { ok: false, message: describeInvestmentIssue(issue, formatCoins(remainingCap)) };
+    }
     setState((s) => {
       if (s.phase !== "open" && s.phase !== "lastCall") return s;
-      const remainingCap = getRoundCap(s.roundStartBalance) - s.invested;
-      const issue = getInvestmentIssue({ amount, balance: s.balance, remainingCap });
-      if (issue !== null) return s;
       return {
         ...s,
         balance: s.balance - amount,

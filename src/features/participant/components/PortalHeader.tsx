@@ -1,5 +1,5 @@
 import { BrandMark } from "./BrandMark";
-import { formatCoins } from "./format";
+import { formatCoins } from "../format";
 import { SignOutButton } from "./SignOutButton";
 import styles from "./PortalHeader.module.css";
 
