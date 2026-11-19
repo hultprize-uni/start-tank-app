@@ -8,8 +8,8 @@ import type {
   JuryVoteView,
 } from "@/lib/api/jury.types";
 
-import { SERVER_ERROR_MESSAGE, OFFLINE_MESSAGE, requestJson } from "./http";
-import { USE_MOCKS } from "./entorno";
+import { SERVER_ERROR_MESSAGE, OFFLINE_MESSAGE, requestJson } from "../../shared/lib/http-client";
+import { USE_MOCKS } from "../../shared/lib/env";
 import { useJuryState as useJuryStateMock } from "./jury.mock";
 
 /** Periodo del sondeo del estado del jurado, en milisegundos. */

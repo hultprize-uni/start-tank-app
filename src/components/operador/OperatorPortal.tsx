@@ -7,7 +7,7 @@ import {
   OPERATOR_SESSION_EXPIRED_MESSAGE,
   useOperatorState,
 } from "@/lib/api/operator";
-import { USE_MOCKS } from "@/lib/api/entorno";
+import { USE_MOCKS } from "@/shared/lib/env";
 
 import { AccessGate } from "./AccessGate";
 import { OperatorConsole } from "./OperatorConsole";

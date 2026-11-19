@@ -9,8 +9,8 @@ import type {
 } from "@/lib/api/operator.types";
 
 import { buildSettlementCsv, downloadCsv } from "./operator.export";
-import { SERVER_ERROR_MESSAGE, OFFLINE_MESSAGE, requestJson } from "./http";
-import { USE_MOCKS } from "./entorno";
+import { SERVER_ERROR_MESSAGE, OFFLINE_MESSAGE, requestJson } from "../../shared/lib/http-client";
+import { USE_MOCKS } from "../../shared/lib/env";
 import {
   useOperatorState as useOperatorStateMock,
   verifyOperatorCode,
