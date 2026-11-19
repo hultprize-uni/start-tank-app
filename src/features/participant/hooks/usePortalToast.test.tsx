@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { act, renderHook, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePortalToast } from "./usePortalToast";
+
+afterEach(cleanup);
 
 afterEach(() => {
   vi.useRealTimers();

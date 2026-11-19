@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { act, renderHook, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useParticipantMockState } from "./mock";
+
+afterEach(cleanup);
 
 /** Milisegundos hasta que la simulación pasa de la fase programada a la ronda abierta. */
 const SCHEDULED_MS = 8_000;

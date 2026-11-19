@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import "@testing-library/jest-dom/vitest";
+import { act, renderHook, waitFor, cleanup } from "@testing-library/react";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import type { InvestmentResult, WalletInfo } from "../types";
 import { useInvestForm } from "./useInvestForm";
+
+afterEach(cleanup);
 
 /** Billetera con saldo de 9,000 y tope de la ronda de 30 %, sin inversión previa. */
 const wallet: WalletInfo = { balance: 9_000, investedInRound: 0, roundCap: 2_700 };

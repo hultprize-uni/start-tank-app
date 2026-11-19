@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import "@testing-library/jest-dom/vitest";
+import { act, renderHook, cleanup } from "@testing-library/react";
+import { describe, expect, it, afterEach } from "vitest";
 import { useInvestSheet } from "./useInvestSheet";
+
+afterEach(cleanup);
 
 describe("useInvestSheet", () => {
   it("abre la hoja para la ronda vigente y la cierra", () => {
