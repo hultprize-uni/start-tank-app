@@ -6,18 +6,18 @@
 
 /** Estados que una ronda recorre en orden. El estado ANULADA puede alcanzarse desde varios puntos. */
 export const ROUND_STATUS_SEQUENCE = [
-  "PROGRAMADA",
-  "ABIERTA",
-  "ULTIMA_LLAMADA",
-  "CERRADA",
-  "EN_VOTACION",
-  "LIQUIDADA",
+  "SCHEDULED",
+  "OPEN",
+  "LAST_CALL",
+  "CLOSED",
+  "VOTING",
+  "SETTLED",
 ] as const;
 
-export type RoundStatus = (typeof ROUND_STATUS_SEQUENCE)[number] | "ANULADA";
+export type RoundStatus = (typeof ROUND_STATUS_SEQUENCE)[number] | "CANCELLED";
 
 /** Sentido de un voto del jurado. La abstención se excluye del cálculo del multiplicador. */
-export type JurorSense = "respalda" | "rechaza" | "abstiene";
+export type JurorSense = "backs" | "rejects" | "abstains";
 
 export interface JurorVoteView {
   id: string;
@@ -28,11 +28,11 @@ export interface JurorVoteView {
 }
 
 export type OperatorActionId =
-  | "abrir"
-  | "ultima_llamada"
-  | "cerrar"
-  | "revelar"
-  | "siguiente";
+  | "open"
+  | "last_call"
+  | "close"
+  | "reveal"
+  | "next";
 
 export interface OperatorActionView {
   id: OperatorActionId;
@@ -44,9 +44,9 @@ export interface OperatorActionView {
 }
 
 /** Modo de anulación: devolver lo invertido al saldo, o liquidar a 1.0x. */
-export type CancelMode = "devolver" | "liquidar_1x";
+export type CancelMode = "refund" | "settle_1x";
 
-export type ManualResult = "aprobada" | "no_aprobada";
+export type ManualResult = "approved" | "not_approved";
 
 export interface ManualSettlementInput {
   multiplier: number;

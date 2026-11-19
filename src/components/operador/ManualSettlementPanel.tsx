@@ -26,7 +26,7 @@ export function ManualSettlementPanel({
   onClose,
 }: ManualSettlementPanelProps) {
   const [multiplierText, setMultiplierText] = useState("1.00");
-  const [result, setResult] = useState<ManualResult>("aprobada");
+  const [result, setResult] = useState<ManualResult>("approved");
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -86,8 +86,8 @@ export function ManualSettlementPanel({
             value={result}
             onChange={(event) => setResult(event.target.value as ManualResult)}
           >
-            <option value="aprobada">Aprobada</option>
-            <option value="no_aprobada">No aprobada</option>
+            <option value="approved">Aprobada</option>
+            <option value="not_approved">No aprobada</option>
           </select>
         </div>
         {error ? (

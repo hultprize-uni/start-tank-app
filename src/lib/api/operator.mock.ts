@@ -43,32 +43,32 @@ interface RoundScript {
 const ROUND_SCRIPTS: RoundScript[] = [
   {
     startupName: "Aqua Ruta",
-    senses: ["respalda", "respalda", "rechaza", "abstiene"],
-    status: "LIQUIDADA",
+    senses: ["backs", "backs", "rejects", "abstains"],
+    status: "SETTLED",
     price: 100,
   },
   {
     startupName: "Solar Nodo",
-    senses: ["respalda", "respalda", "rechaza", "respalda"],
-    status: "EN_VOTACION",
+    senses: ["backs", "backs", "rejects", "backs"],
+    status: "VOTING",
     price: 118,
   },
   {
     startupName: "Mercado Verde",
-    senses: ["respalda", "abstiene", "rechaza", "respalda"],
-    status: "PROGRAMADA",
+    senses: ["backs", "abstains", "rejects", "backs"],
+    status: "SCHEDULED",
     price: 100,
   },
   {
     startupName: "Cosecha Lab",
-    senses: ["rechaza", "rechaza", "respalda", "respalda"],
-    status: "PROGRAMADA",
+    senses: ["rejects", "rejects", "backs", "backs"],
+    status: "SCHEDULED",
     price: 100,
   },
   {
     startupName: "Red Mantis",
-    senses: ["respalda", "respalda", "respalda", "respalda"],
-    status: "PROGRAMADA",
+    senses: ["backs", "backs", "backs", "backs"],
+    status: "SCHEDULED",
     price: 100,
   },
 ];
@@ -147,8 +147,8 @@ export function verifyOperatorCode(code: string): boolean {
 
 /** Calcula el multiplicador: 0.2 + 1.6 x fracción de respaldo. Las abstenciones se excluyen. */
 function computeMultiplier(senses: JurorSense[]): number {
-  const supports = senses.filter((sense) => sense === "respalda").length;
-  const valid = senses.filter((sense) => sense !== "abstiene").length;
+  const supports = senses.filter((sense) => sense === "backs").length;
+  const valid = senses.filter((sense) => sense !== "abstains").length;
   if (valid === 0) {
     // Supuesto: sin votos válidos se liquida a 1.0x. Confirmar con el dominio.
     return 1;
@@ -179,16 +179,16 @@ function createInitialState(): MockState {
   return {
     roundIndex: 1,
     status: script.status,
-    completed: ["abrir", "ultima_llamada", "cerrar"],
+    completed: ["open", "last_call", "close"],
     jurors: buildJurors(script.senses, 3),
     multiplier: null,
     result: null,
     cancelMode: null,
     log: [
-      seedLog(1, "15:00", "ABRIR"),
-      seedLog(2, "15:08", "ULTIMA_LLAMADA"),
-      seedLog(3, "15:09", "CERRAR"),
-      seedLog(4, "15:10", "HABILITAR_VOTO"),
+      seedLog(1, "15:00", "OPEN"),
+      seedLog(2, "15:08", "LAST_CALL"),
+      seedLog(3, "15:09", "CLOSE"),
+      seedLog(4, "15:10", "ENABLE_VOTING"),
     ],
     history: [],
     balances,
@@ -254,7 +254,7 @@ function appendLog(
 /** Liquida las posiciones de la ronda actual con el factor indicado y actualiza los saldos. */
 function settleRound(
   state: MockState,
-  status: "LIQUIDADA" | "ANULADA",
+  status: "SETTLED" | "CANCELLED",
   multiplier: number | null,
 ): MockState {
   const roundNumber = state.roundIndex + 1;
@@ -288,17 +288,17 @@ function reduce(state: MockState, command: MockCommand): MockState {
 
 function runAction(state: MockState, id: OperatorActionId): MockState {
   switch (id) {
-    case "abrir":
-      return marketStep(state, id, "PROGRAMADA", "ABIERTA", ["ABRIR"]);
-    case "ultima_llamada":
-      return marketStep(state, id, "ABIERTA", "ULTIMA_LLAMADA", [
-        "ULTIMA_LLAMADA",
+    case "open":
+      return marketStep(state, id, "SCHEDULED", "OPEN", ["OPEN"]);
+    case "last_call":
+      return marketStep(state, id, "OPEN", "LAST_CALL", [
+        "LAST_CALL",
       ]);
-    case "cerrar":
+    case "close":
       return closeMarket(state);
-    case "revelar":
+    case "reveal":
       return reveal(state);
-    case "siguiente":
+    case "next":
       return nextRound(state);
   }
 }
@@ -322,12 +322,12 @@ function marketStep(
 
 /** Cierra el mercado y habilita la votación del jurado en un solo paso. */
 function closeMarket(state: MockState): MockState {
-  if (state.status !== "ABIERTA" && state.status !== "ULTIMA_LLAMADA") {
+  if (state.status !== "OPEN" && state.status !== "LAST_CALL") {
     return state;
   }
-  return withHistory(state, "CERRAR", ["CERRAR", "HABILITAR_VOTO"], {
-    status: "EN_VOTACION",
-    completed: [...state.completed, "cerrar"],
+  return withHistory(state, "CLOSE", ["CLOSE", "ENABLE_VOTING"], {
+    status: "VOTING",
+    completed: [...state.completed, "close"],
   });
 }
 
@@ -353,7 +353,7 @@ function withHistory(
 }
 
 function reveal(state: MockState): MockState {
-  if (state.status !== "EN_VOTACION") {
+  if (state.status !== "VOTING") {
     return state;
   }
   const missing = state.jurors.filter((juror) => !juror.emitted).length;
@@ -361,18 +361,18 @@ function reveal(state: MockState): MockState {
     return state;
   }
   const multiplier = computeMultiplier(state.jurors.map((juror) => juror.sense));
-  const logged = appendLog(state, "REVELAR", `x${multiplier.toFixed(2)}`);
-  const settled = settleRound(state, "LIQUIDADA", multiplier);
+  const logged = appendLog(state, "REVEAL", `x${multiplier.toFixed(2)}`);
+  const settled = settleRound(state, "SETTLED", multiplier);
   return {
     ...settled,
-    completed: [...state.completed, "revelar"],
+    completed: [...state.completed, "reveal"],
     log: logged.log,
     nextLogId: logged.nextLogId,
   };
 }
 
 function nextRound(state: MockState): MockState {
-  const closed = state.status === "LIQUIDADA" || state.status === "ANULADA";
+  const closed = state.status === "SETTLED" || state.status === "CANCELLED";
   if (!closed || state.roundIndex >= TOTAL_ROUNDS - 1) {
     return state;
   }
@@ -381,7 +381,7 @@ function nextRound(state: MockState): MockState {
   return {
     ...state,
     roundIndex,
-    status: "PROGRAMADA",
+    status: "SCHEDULED",
     completed: [],
     jurors: buildJurors(script.senses, 0),
     multiplier: null,
@@ -394,21 +394,21 @@ function nextRound(state: MockState): MockState {
 
 function cancelRound(state: MockState, mode: CancelMode): MockState {
   const cancellable =
-    state.status === "ABIERTA" ||
-    state.status === "ULTIMA_LLAMADA" ||
-    state.status === "EN_VOTACION";
+    state.status === "OPEN" ||
+    state.status === "LAST_CALL" ||
+    state.status === "VOTING";
   if (!cancellable) {
     return state;
   }
   const logged = appendLog(
     state,
     "ANULAR",
-    mode === "devolver" ? "devolver lo invertido" : "liquidar a 1.0x",
+    mode === "refund" ? "devolver lo invertido" : "liquidar a 1.0x",
   );
   const settled = settleRound(
     { ...state, log: logged.log, nextLogId: logged.nextLogId },
-    "ANULADA",
-    mode === "liquidar_1x" ? 1 : null,
+    "CANCELLED",
+    mode === "settle_1x" ? 1 : null,
   );
   return { ...settled, cancelMode: mode };
 }
@@ -421,25 +421,25 @@ function manualSettle(
     Number.isFinite(input.multiplier) &&
     input.multiplier >= MIN_MULTIPLIER &&
     input.multiplier <= MAX_MULTIPLIER;
-  if (state.status !== "EN_VOTACION" || !validMultiplier) {
+  if (state.status !== "VOTING" || !validMultiplier) {
     return state;
   }
   const multiplier = round2(input.multiplier);
   const logged = appendLog(
     state,
     "LIQUIDAR_MANUAL",
-    `x${multiplier.toFixed(2)} · ${input.result === "aprobada" ? "aprobada" : "no aprobada"}`,
+    `x${multiplier.toFixed(2)} · ${input.result === "approved" ? "approved" : "no aprobada"}`,
   );
   const settled = settleRound(
     { ...state, log: logged.log, nextLogId: logged.nextLogId },
-    "LIQUIDADA",
+    "SETTLED",
     multiplier,
   );
   return { ...settled, result: input.result };
 }
 
 function simulateVote(state: MockState, jurorId: string): MockState {
-  if (state.status !== "EN_VOTACION") {
+  if (state.status !== "VOTING") {
     return state;
   }
   return {
@@ -457,7 +457,7 @@ function undo(state: MockState): MockState {
   const previous = state.history[state.history.length - 1];
   const logged = appendLog(
     { ...state, log: previous.log },
-    "DESHACER",
+    "UNDO",
     previous.label,
   );
   return {
@@ -476,13 +476,13 @@ function canUndo(state: MockState): boolean {
   }
   // Deshacer el cierre no es posible una vez que el jurado ha votado.
   const anyEmitted = state.jurors.some((juror) => juror.emitted);
-  return !(state.status === "EN_VOTACION" && anyEmitted);
+  return !(state.status === "VOTING" && anyEmitted);
 }
 
 function toViewModel(state: MockState): OperatorViewModel {
   const roundNumber = state.roundIndex + 1;
   const script = ROUND_SCRIPTS[state.roundIndex];
-  const revealed = state.status === "LIQUIDADA" || state.status === "ANULADA";
+  const revealed = state.status === "SETTLED" || state.status === "CANCELLED";
   const missing = state.jurors.filter((juror) => !juror.emitted).length;
 
   const roundPositions = state.positions.filter(
@@ -502,39 +502,39 @@ function toViewModel(state: MockState): OperatorViewModel {
 
   const actions: OperatorActionView[] = [
     {
-      id: "abrir",
+      id: "open",
       label: "Abrir mercado",
-      done: state.completed.includes("abrir"),
-      enabled: state.status === "PROGRAMADA",
+      done: state.completed.includes("open"),
+      enabled: state.status === "SCHEDULED",
       blockedReason: null,
     },
     {
-      id: "ultima_llamada",
+      id: "last_call",
       label: "Última llamada",
-      done: state.completed.includes("ultima_llamada"),
-      enabled: state.status === "ABIERTA",
+      done: state.completed.includes("last_call"),
+      enabled: state.status === "OPEN",
       blockedReason: null,
     },
     {
-      id: "cerrar",
+      id: "close",
       label: "Cerrar mercado",
-      done: state.completed.includes("cerrar"),
+      done: state.completed.includes("close"),
       enabled:
-        state.status === "ABIERTA" || state.status === "ULTIMA_LLAMADA",
+        state.status === "OPEN" || state.status === "LAST_CALL",
       blockedReason: null,
     },
     {
-      id: "revelar",
+      id: "reveal",
       label: "Revelar veredicto",
-      done: state.status === "LIQUIDADA",
-      enabled: state.status === "EN_VOTACION" && missing === 0,
+      done: state.status === "SETTLED",
+      enabled: state.status === "VOTING" && missing === 0,
       blockedReason:
-        state.status === "EN_VOTACION" && missing > 0
+        state.status === "VOTING" && missing > 0
           ? `Bloqueado: falta ${missing} ${missing === 1 ? "voto" : "votos"}`
           : null,
     },
     {
-      id: "siguiente",
+      id: "next",
       label: "Siguiente startup",
       done: false,
       enabled: revealed && state.roundIndex < TOTAL_ROUNDS - 1,
@@ -586,10 +586,10 @@ function toViewModel(state: MockState): OperatorViewModel {
     log: state.log,
     canUndo: canUndo(state),
     canCancel:
-      state.status === "ABIERTA" ||
-      state.status === "ULTIMA_LLAMADA" ||
-      state.status === "EN_VOTACION",
-    canManualSettle: state.status === "EN_VOTACION",
+      state.status === "OPEN" ||
+      state.status === "LAST_CALL" ||
+      state.status === "VOTING",
+    canManualSettle: state.status === "VOTING",
     balances,
     positions,
   };

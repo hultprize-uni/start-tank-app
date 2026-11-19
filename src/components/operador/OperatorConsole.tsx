@@ -24,7 +24,7 @@ interface OperatorConsoleProps {
   /** Aviso de la última operación fallida o pendiente de API. */
   notice: string | null;
   /** Indica si la consola usa los datos de muestra. Solo en ese modo se simulan votos. */
-  modoMuestra: boolean;
+  sampleMode: boolean;
   onRunAction: (id: OperatorActionId) => void;
   onUndo: () => void;
   onCancelRound: (mode: CancelMode) => void;
@@ -37,7 +37,7 @@ interface OperatorConsoleProps {
 export function OperatorConsole({
   viewModel,
   notice,
-  modoMuestra,
+  sampleMode: sampleMode,
   onRunAction,
   onUndo,
   onCancelRound,
@@ -49,7 +49,7 @@ export function OperatorConsole({
   const [cancelOpen, setCancelOpen] = useState(false);
 
   const { round } = viewModel;
-  const votingOpen = round.status === "EN_VOTACION";
+  const votingOpen = round.status === "VOTING";
   const showManual = manualOpen && viewModel.canManualSettle;
   const showCancel = cancelOpen && viewModel.canCancel;
 
@@ -88,7 +88,7 @@ export function OperatorConsole({
           <ActionsPanel actions={viewModel.actions} onRunAction={onRunAction} />
           <JurorVotesPanel
             jurors={viewModel.jurors}
-            canSimulateVote={votingOpen && modoMuestra}
+            canSimulateVote={votingOpen && sampleMode}
             onSimulateVote={onSimulateJurorVote}
           />
         </div>
@@ -136,7 +136,7 @@ export function OperatorConsole({
         </button>
       </div>
 
-      {modoMuestra ? null : (
+      {sampleMode ? null : (
         <p className={styles.muted}>
           Pendiente de API: deshacer la última acción y el modo manual.
         </p>

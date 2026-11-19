@@ -1,23 +1,23 @@
-import { errorInversionista } from "@/lib/api/investor.errors";
+import { participantError } from "@/lib/api/investor.errors";
 import { getInvestorSession } from "@/lib/auth/investor";
-import { registrarInversion } from "@/lib/db/investor-queries";
-import { leerCuerpoJson, respuestaJson } from "@/lib/http/respuestas";
+import { registerInvestment } from "@/lib/db/investor-queries";
+import { readJsonBody, jsonResponse } from "@/lib/http/respuestas";
 
 export const dynamic = "force-dynamic";
 
 /** Respuesta de error con código, mensaje en español y estado HTTP derivados del código. */
-function respuestaErrorInversionista(codigo: string) {
-  const error = errorInversionista(codigo);
-  return respuestaJson({ error: error.codigo, mensaje: error.mensaje }, error.estado);
+function participantErrorResponse(code: string) {
+  const error = participantError(code);
+  return jsonResponse({ error: error.code, message: error.message }, error.status);
 }
 
 /** Lee el monto del cuerpo. Solo se aceptan enteros mayores que cero; en otro caso devuelve nulo. */
-function leerMonto(cuerpo: Record<string, unknown> | null): number | null {
-  const monto = cuerpo?.monto;
-  if (typeof monto !== "number" || !Number.isInteger(monto) || monto <= 0) {
+function readAmount(body: Record<string, unknown> | null): number | null {
+  const amount = body?.amount;
+  if (typeof amount !== "number" || !Number.isInteger(amount) || amount <= 0) {
     return null;
   }
-  return monto;
+  return amount;
 }
 
 /*
@@ -26,19 +26,19 @@ function leerMonto(cuerpo: Record<string, unknown> | null): number | null {
  * monto, tope, saldo y estado de la ronda se validan en fn_registrar_inversion.
  */
 export async function POST(request: Request) {
-  const sesion = await getInvestorSession();
-  if (sesion === null) {
-    return respuestaErrorInversionista("SIN_SESION");
+  const session = await getInvestorSession();
+  if (session === null) {
+    return participantErrorResponse("NO_SESSION");
   }
 
-  const monto = leerMonto(await leerCuerpoJson(request));
-  if (monto === null) {
-    return respuestaErrorInversionista("MONTO_INVALIDO");
+  const amount = readAmount(await readJsonBody(request));
+  if (amount === null) {
+    return participantErrorResponse("INVALID_AMOUNT");
   }
 
-  const resultado = await registrarInversion(sesion.idUsuario, monto);
-  if (!resultado.ok) {
-    return respuestaErrorInversionista(resultado.error ?? "ERROR_INTERNO");
+  const result = await registerInvestment(session.userId, amount);
+  if (!result.ok) {
+    return participantErrorResponse(result.error ?? "INTERNAL_ERROR");
   }
-  return respuestaJson({ ok: true, saldo: resultado.saldo ?? null });
+  return jsonResponse({ ok: true, balance: result.balance ?? null });
 }

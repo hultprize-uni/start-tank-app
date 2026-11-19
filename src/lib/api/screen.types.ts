@@ -2,124 +2,124 @@ import type { Decision } from "@/lib/domain/types";
 
 /** Fases de la pantalla del evento. Cada una corresponde a una fila del cuadro de la especificacion (seccion 2.6). */
 export type ScreenPhase =
-  | "MERCADO"
-  | "ULTIMA_LLAMADA"
-  | "VOTACION"
-  | "LIQUIDACION"
-  | "ENTRE_RONDAS"
-  | "CIERRE";
+  | "MARKET"
+  | "LAST_CALL"
+  | "VOTING"
+  | "SETTLEMENT"
+  | "BETWEEN_ROUNDS"
+  | "CLOSING";
 
-export interface OdsRef {
-  numero: number;
-  nombre: string;
+export interface SdgRef {
+  number: number;
+  name: string;
 }
 
 /** Startup en turno o recien liquidada. */
 export interface StartupRef {
-  nombre: string;
-  ods: OdsRef;
+  name: string;
+  sdg: SdgRef;
 }
 
 /** Datos de la ronda que la pantalla proyecta. */
-export interface RondaRef {
-  numero: number;
+export interface RoundRef {
+  number: number;
   startup: StartupRef;
 }
 
 /** Voto revelado de un jurado. Se muestra solo en la fase de liquidacion. */
-export interface VotoRevelado {
-  jurado: string;
+export interface RevealedVote {
+  juror: string;
   decision: Decision;
 }
 
 /** Fila del leaderboard de inversionistas. */
-export interface FilaInversionista {
-  posicion: number;
-  nombre: string;
-  saldo: number;
+export interface ScreenInvestorRow {
+  position: number;
+  name: string;
+  balance: number;
 }
 
 /** Fila del acumulado por startup. */
-export interface FilaStartup {
-  posicion: number;
-  nombre: string;
-  acumulado: number;
-  precio: number;
+export interface ScreenStartupRow {
+  position: number;
+  name: string;
+  accumulated: number;
+  price: number;
 }
 
 interface ScreenBase {
-  fase: ScreenPhase;
+  phase: ScreenPhase;
   /** Marca de tiempo ISO de la ultima lectura. */
-  actualizadoEn: string;
+  updatedAt: string;
 }
 
-interface RondaEnCurso extends ScreenBase {
-  ronda: RondaRef;
+interface CurrentRound extends ScreenBase {
+  round: RoundRef;
 }
 
-export interface MercadoAbierto extends RondaEnCurso {
-  fase: "MERCADO";
-  precio: number;
-  acumulado: number;
-  inversoresUnicos: number;
+export interface OpenMarket extends CurrentRound {
+  phase: "MARKET";
+  price: number;
+  accumulated: number;
+  uniqueInvestors: number;
 }
 
-export interface UltimaLlamada extends RondaEnCurso {
-  fase: "ULTIMA_LLAMADA";
-  precio: number;
-  acumulado: number;
-  inversoresUnicos: number;
+export interface LastCall extends CurrentRound {
+  phase: "LAST_CALL";
+  price: number;
+  accumulated: number;
+  uniqueInvestors: number;
   /** Segundos restantes de la cuenta regresiva al momento de la lectura. */
-  segundosRestantes: number;
+  secondsRemaining: number;
 }
 
-export interface Votacion extends RondaEnCurso {
-  fase: "VOTACION";
-  votosEmitidos: number;
-  juradosTotal: number;
+export interface Voting extends CurrentRound {
+  phase: "VOTING";
+  votesCast: number;
+  jurorsTotal: number;
 }
 
-export interface Liquidacion extends RondaEnCurso {
-  fase: "LIQUIDACION";
-  votos: VotoRevelado[];
-  fraccionRespaldo: number;
-  multiplicador: number;
-  montoInvertido: number;
-  retornoRonda: number;
+export interface Settlement extends CurrentRound {
+  phase: "SETTLEMENT";
+  votes: RevealedVote[];
+  backingFraction: number;
+  multiplier: number;
+  amountInvested: number;
+  roundReturn: number;
 }
 
-export interface EntreRondas extends ScreenBase {
-  fase: "ENTRE_RONDAS";
-  rondaCerrada: RondaRef;
-  inversionistas: FilaInversionista[];
-  startups: FilaStartup[];
+export interface BetweenRounds extends ScreenBase {
+  phase: "BETWEEN_ROUNDS";
+  closedRound: RoundRef;
+  investors: ScreenInvestorRow[];
+  startups: ScreenStartupRow[];
 }
 
-export interface StartupGanadora {
-  nombre: string;
-  ods: OdsRef;
-  puntaje: number;
-  fraccionRespaldo: number;
-  porcentajeInversores: number;
+export interface WinningStartup {
+  name: string;
+  sdg: SdgRef;
+  score: number;
+  backingFraction: number;
+  investorPercentage: number;
 }
 
-export interface MejorOjo {
-  nombre: string;
-  aciertos: number;
+export interface BestEyeInfo {
+  name: string;
+  hits: number;
 }
 
-export interface Cierre extends ScreenBase {
-  fase: "CIERRE";
-  ganadora: StartupGanadora;
-  top3: FilaInversionista[];
-  mejorOjo: MejorOjo;
+export interface Closing extends ScreenBase {
+  phase: "CLOSING";
+  winner: WinningStartup;
+  top3: ScreenInvestorRow[];
+  bestEye: BestEyeInfo;
 }
 
 /** Modelo completo que consume la pantalla. Discriminado por `fase`. */
 export type ScreenViewModel =
-  | MercadoAbierto
-  | UltimaLlamada
-  | Votacion
-  | Liquidacion
-  | EntreRondas
-  | Cierre;
+  | OpenMarket
+  | LastCall
+  | Voting
+  | Settlement
+  | BetweenRounds
+  | Closing;

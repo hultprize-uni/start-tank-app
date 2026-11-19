@@ -1,29 +1,29 @@
-import { iniciarSesion } from "@/lib/auth/code-session";
-import { buscarOperadorPorCodigo } from "@/lib/db/queries";
-import { leerCuerpoJson, respuestaError, respuestaJson } from "@/lib/http/respuestas";
+import { startSession } from "@/lib/auth/code-session";
+import { findOperatorByCode } from "@/lib/db/queries";
+import { readJsonBody, errorResponse, jsonResponse } from "@/lib/http/respuestas";
 
 /** Longitud máxima admitida para un código de acceso. */
-const LONGITUD_MAXIMA_CODIGO = 64;
+const MAX_CODE_LENGTH = 64;
 
 /**
  * Valida el código de acceso del operador contra la tabla operador y, si coincide, establece la
  * cookie de sesión del rol operador. La cookie de jurado no se acepta en las rutas del operador.
  */
 export async function POST(request: Request) {
-  const cuerpo = await leerCuerpoJson(request);
-  const valor = cuerpo?.codigo;
-  const codigo = typeof valor === "string" ? valor.trim() : "";
+  const body = await readJsonBody(request);
+  const value = body?.code;
+  const code = typeof value === "string" ? value.trim() : "";
 
-  if (codigo.length === 0 || codigo.length > LONGITUD_MAXIMA_CODIGO) {
-    return respuestaError(400, "CODIGO_REQUERIDO");
+  if (code.length === 0 || code.length > MAX_CODE_LENGTH) {
+    return errorResponse(400, "CODE_REQUIRED");
   }
 
-  const operador = await buscarOperadorPorCodigo(codigo);
-  if (operador === null) {
-    return respuestaError(401, "CODIGO_INVALIDO");
+  const operator = await findOperatorByCode(code);
+  if (operator === null) {
+    return errorResponse(401, "INVALID_CODE");
   }
 
-  const respuesta = respuestaJson({ ok: true, nombre: operador.nombre });
-  await iniciarSesion(respuesta, "operador", operador.id);
-  return respuesta;
+  const response = jsonResponse({ ok: true, name: operator.nombre });
+  await startSession(response, "operator", operator.id);
+  return response;
 }

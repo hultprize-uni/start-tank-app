@@ -49,7 +49,7 @@ export function VotePanel({
           const selected = vote.draft === decision;
           const className = [
             styles.option,
-            decision === "SE_ABSTIENE" ? styles.optionAbstain : "",
+            decision === "ABSTAIN" ? styles.optionAbstain : "",
             selected ? styles.optionSelected : "",
           ]
             .filter(Boolean)

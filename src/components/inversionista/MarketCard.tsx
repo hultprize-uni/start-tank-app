@@ -15,7 +15,7 @@ export function MarketCard({ startup, market }: MarketCardProps) {
   return (
     <article className={styles.card}>
       <header className={styles.header}>
-        <p className={styles.ods}>{startup.ods}</p>
+        <p className={styles.sdg}>{startup.sdg}</p>
         <h2 className={styles.name}>{startup.name}</h2>
       </header>
 

@@ -59,8 +59,8 @@ export function InvestorPortal() {
   const [toast, setToast] = useState<string | null>(null);
 
   const canInvest = vm !== null && (vm.phase === "open" || vm.phase === "lastCall");
-  const ronda = vm?.round ?? null;
-  const isSheetVisible = canInvest && ronda !== null && sheetRound === ronda.number;
+  const round = vm?.round ?? null;
+  const isSheetVisible = canInvest && round !== null && sheetRound === round.number;
 
   useEffect(() => {
     if (toast === null) return;
@@ -73,18 +73,18 @@ export function InvestorPortal() {
   }, [errorMessage]);
 
   const openSheet = () => {
-    if (ronda) setSheetRound(ronda.number);
+    if (round) setSheetRound(round.number);
   };
 
   const closeSheet = () => setSheetRound(null);
 
   const confirmInvestment = async (amount: number) => {
     setSheetRound(null);
-    const resultado = await actions.invest(amount);
-    setToast(resultado.ok ? `Inversión confirmada · −${formatCoins(amount)}` : resultado.mensaje);
+    const result = await actions.invest(amount);
+    setToast(result.ok ? `Inversión confirmada · −${formatCoins(amount)}` : result.message);
   };
 
-  const mensajeEstado = status === "error" && errorMessage !== null ? errorMessage : "Cargando...";
+  const statusMessage = status === "error" && errorMessage !== null ? errorMessage : "Cargando...";
 
   return (
     <main className={styles.portal}>
@@ -95,7 +95,7 @@ export function InvestorPortal() {
           renderScreen(vm, openSheet)
         ) : (
           <p className={styles.loading} role="status">
-            {mensajeEstado}
+            {statusMessage}
           </p>
         )}
       </div>

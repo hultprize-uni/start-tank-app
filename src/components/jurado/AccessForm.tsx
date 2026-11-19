@@ -19,7 +19,7 @@ export function AccessForm({ access, onSubmit }: AccessFormProps) {
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
   const code = digits.join("");
-  const isValidating = access.status === "validando";
+  const isValidating = access.status === "validating";
   const isComplete = code.length === CODE_LENGTH;
 
   function updateDigit(index: number, value: string) {

@@ -9,9 +9,9 @@ interface JurorVotesPanelProps {
 }
 
 const SENSE_LABELS: Record<JurorSense, string> = {
-  respalda: "Respalda",
-  rechaza: "Rechaza",
-  abstiene: "Se abstiene",
+  backs: "Respalda",
+  rejects: "Rechaza",
+  abstains: "Se abstiene",
 };
 
 /**

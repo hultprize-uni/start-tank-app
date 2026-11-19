@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { roundCap, validateInvestment } from "./investment";
 
-const solicitudBase = {
+const baseRequest = {
   amount: 250,
   balance: 10_000,
   investedInRound: 0,
@@ -18,52 +18,52 @@ describe("roundCap", () => {
 
 describe("validateInvestment", () => {
   it("acepta una compra válida", () => {
-    expect(validateInvestment(solicitudBase)).toEqual({ ok: true });
+    expect(validateInvestment(baseRequest)).toEqual({ ok: true });
   });
 
   it("acepta una compra que iguala el mínimo y el tope exacto", () => {
-    expect(validateInvestment({ ...solicitudBase, amount: 250 })).toEqual({ ok: true });
+    expect(validateInvestment({ ...baseRequest, amount: 250 })).toEqual({ ok: true });
     expect(
-      validateInvestment({ ...solicitudBase, investedInRound: 2_750, amount: 250 }),
+      validateInvestment({ ...baseRequest, investedInRound: 2_750, amount: 250 }),
     ).toEqual({ ok: true });
   });
 
   it("rechaza compras cuando la ronda no está abierta", () => {
-    expect(validateInvestment({ ...solicitudBase, roundOpen: false })).toEqual({
+    expect(validateInvestment({ ...baseRequest, roundOpen: false })).toEqual({
       ok: false,
       reason: "RONDA_CERRADA",
     });
   });
 
   it("rechaza montos menores a 250 coins", () => {
-    expect(validateInvestment({ ...solicitudBase, amount: 249 })).toEqual({
+    expect(validateInvestment({ ...baseRequest, amount: 249 })).toEqual({
       ok: false,
       reason: "MINIMO_NO_ALCANZADO",
     });
   });
 
   it("rechaza compras mayores al saldo disponible", () => {
-    expect(validateInvestment({ ...solicitudBase, amount: 1_000, balance: 900 })).toEqual({
+    expect(validateInvestment({ ...baseRequest, amount: 1_000, balance: 900 })).toEqual({
       ok: false,
-      reason: "SALDO_INSUFICIENTE",
+      reason: "INSUFFICIENT_BALANCE",
     });
   });
 
   it("rechaza compras que superan el tope de la ronda", () => {
     expect(
-      validateInvestment({ ...solicitudBase, investedInRound: 2_750, amount: 251 }),
+      validateInvestment({ ...baseRequest, investedInRound: 2_750, amount: 251 }),
     ).toEqual({ ok: false, reason: "TOPE_DE_RONDA_EXCEDIDO" });
   });
 
   it("calcula el tope con el saldo al abrir y no con el saldo actual", () => {
-    const resultado = validateInvestment({
-      ...solicitudBase,
+    const result = validateInvestment({
+      ...baseRequest,
       balance: 5_000,
       balanceAtOpen: 10_000,
       investedInRound: 2_900,
       amount: 250,
     });
 
-    expect(resultado).toEqual({ ok: false, reason: "TOPE_DE_RONDA_EXCEDIDO" });
+    expect(result).toEqual({ ok: false, reason: "TOPE_DE_RONDA_EXCEDIDO" });
   });
 });

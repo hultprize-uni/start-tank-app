@@ -1,56 +1,56 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  ESTADO_INICIAL,
-  RUTA_PANTALLA,
-  consultarPantalla,
-  iniciarSondeo,
-  reducirEstado,
-  segundosRestantesEnVivo,
+  INITIAL_STATE,
+  SCREEN_ROUTE,
+  fetchScreen,
+  startPolling,
+  reduceState,
+  liveSecondsRemaining,
 } from "./screen.client";
 import type { ScreenViewModel } from "./screen.types";
 
 const RONDA = {
-  numero: 4,
-  startup: { nombre: "Aqua Viva", ods: { numero: 6, nombre: "Agua limpia y saneamiento" } },
+  number: 4,
+  startup: { name: "Aqua Viva", sdg: { number: 6, name: "Agua limpia y saneamiento" } },
 };
 
-const MERCADO: ScreenViewModel = {
-  fase: "MERCADO",
-  actualizadoEn: "2026-11-08T15:00:00.000Z",
-  ronda: RONDA,
-  precio: 120,
-  acumulado: 4_000,
-  inversoresUnicos: 18,
+const MARKET: ScreenViewModel = {
+  phase: "MARKET",
+  updatedAt: "2026-11-08T15:00:00.000Z",
+  round: RONDA,
+  price: 120,
+  accumulated: 4_000,
+  uniqueInvestors: 18,
 };
 
-const ULTIMA_LLAMADA: ScreenViewModel = {
-  fase: "ULTIMA_LLAMADA",
-  actualizadoEn: "2026-11-08T15:00:00.000Z",
-  ronda: RONDA,
-  precio: 150,
-  acumulado: 9_500,
-  inversoresUnicos: 31,
-  segundosRestantes: 60,
+const LAST_CALL: ScreenViewModel = {
+  phase: "LAST_CALL",
+  updatedAt: "2026-11-08T15:00:00.000Z",
+  round: RONDA,
+  price: 150,
+  accumulated: 9_500,
+  uniqueInvestors: 31,
+  secondsRemaining: 60,
 };
 
 /** Respuesta JSON simulada con el estado HTTP indicado. */
-function respuestaJson(cuerpo: unknown, estado = 200): Response {
-  return new Response(JSON.stringify(cuerpo), {
-    status: estado,
+function jsonResponse(body: unknown, state = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status: state,
     headers: { "Content-Type": "application/json" },
   });
 }
 
 describe("consultarPantalla", () => {
   it("consulta la ruta con GET, sin caché, y devuelve la lectura", async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(respuestaJson(MERCADO));
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(MARKET));
 
-    const resultado = await consultarPantalla(fetchImpl);
+    const result = await fetchScreen(fetchImpl);
 
-    expect(resultado).toEqual({ tipo: "lectura", vm: MERCADO });
+    expect(result).toEqual({ kind: "reading", vm: MARKET });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const [url, init] = fetchImpl.mock.calls[0];
-    expect(url).toBe(RUTA_PANTALLA);
+    expect(url).toBe(SCREEN_ROUTE);
     expect(init?.method).toBe("GET");
     expect(init?.cache).toBe("no-store");
   });
@@ -58,29 +58,29 @@ describe("consultarPantalla", () => {
   it("reporta sin_rondas cuando el servidor responde 404", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(respuestaJson({ error: "SIN_RONDAS" }, 404));
+      .mockResolvedValue(jsonResponse({ error: "NO_ROUNDS" }, 404));
 
-    await expect(consultarPantalla(fetchImpl)).resolves.toEqual({ tipo: "sin_rondas" });
+    await expect(fetchScreen(fetchImpl)).resolves.toEqual({ kind: "no_rounds" });
   });
 
   it("reporta error ante un fallo de red", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new TypeError("Failed to fetch"));
 
-    await expect(consultarPantalla(fetchImpl)).resolves.toEqual({ tipo: "error" });
+    await expect(fetchScreen(fetchImpl)).resolves.toEqual({ kind: "error" });
   });
 
   it("reporta error ante un estado HTTP de servidor", async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(respuestaJson({}, 500));
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({}, 500));
 
-    await expect(consultarPantalla(fetchImpl)).resolves.toEqual({ tipo: "error" });
+    await expect(fetchScreen(fetchImpl)).resolves.toEqual({ kind: "error" });
   });
 
   it("reporta error ante una respuesta que no tiene la forma de un view model", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(respuestaJson({ fase: "DESCONOCIDA", actualizadoEn: "x" }));
+      .mockResolvedValue(jsonResponse({ phase: "DESCONOCIDA", updatedAt: "x" }));
 
-    await expect(consultarPantalla(fetchImpl)).resolves.toEqual({ tipo: "error" });
+    await expect(fetchScreen(fetchImpl)).resolves.toEqual({ kind: "error" });
   });
 });
 
@@ -88,62 +88,62 @@ describe("reducirEstado", () => {
   it("conserva la última lectura cuando la red falla", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(respuestaJson(MERCADO))
+      .mockResolvedValueOnce(jsonResponse(MARKET))
       .mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
-    let estado = reducirEstado(ESTADO_INICIAL, await consultarPantalla(fetchImpl), 1_000);
-    expect(estado.vm).toEqual(MERCADO);
-    expect(estado.sinConexion).toBe(false);
+    let state = reduceState(INITIAL_STATE, await fetchScreen(fetchImpl), 1_000);
+    expect(state.vm).toEqual(MARKET);
+    expect(state.offline).toBe(false);
 
-    estado = reducirEstado(estado, await consultarPantalla(fetchImpl), 3_000);
-    expect(estado.vm).toEqual(MERCADO);
-    expect(estado.recibidoEn).toBe(1_000);
-    expect(estado.sinConexion).toBe(true);
+    state = reduceState(state, await fetchScreen(fetchImpl), 3_000);
+    expect(state.vm).toEqual(MARKET);
+    expect(state.receivedAt).toBe(1_000);
+    expect(state.offline).toBe(true);
   });
 
   it("limpia la marca de conexión cuando una consulta vuelve a responder", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValueOnce(respuestaJson(MERCADO));
+      .mockResolvedValueOnce(jsonResponse(MARKET));
 
-    let estado = reducirEstado(ESTADO_INICIAL, await consultarPantalla(fetchImpl), 1_000);
-    expect(estado.sinConexion).toBe(true);
-    expect(estado.vm).toBeNull();
+    let state = reduceState(INITIAL_STATE, await fetchScreen(fetchImpl), 1_000);
+    expect(state.offline).toBe(true);
+    expect(state.vm).toBeNull();
 
-    estado = reducirEstado(estado, await consultarPantalla(fetchImpl), 3_000);
-    expect(estado).toEqual({ vm: MERCADO, recibidoEn: 3_000, sinConexion: false });
+    state = reduceState(state, await fetchScreen(fetchImpl), 3_000);
+    expect(state).toEqual({ vm: MARKET, receivedAt: 3_000, offline: false });
   });
 
   it("limpia el view model cuando el evento no tiene rondas", () => {
-    const previo = { vm: MERCADO, recibidoEn: 1_000, sinConexion: false };
+    const prior = { vm: MARKET, receivedAt: 1_000, offline: false };
 
-    expect(reducirEstado(previo, { tipo: "sin_rondas" }, 2_000)).toEqual({
+    expect(reduceState(prior, { kind: "no_rounds" }, 2_000)).toEqual({
       vm: null,
-      recibidoEn: 2_000,
-      sinConexion: false,
+      receivedAt: 2_000,
+      offline: false,
     });
   });
 });
 
 describe("segundosRestantesEnVivo", () => {
-  const vm = ULTIMA_LLAMADA as Extract<ScreenViewModel, { fase: "ULTIMA_LLAMADA" }>;
-  const recibidoEn = Date.parse(vm.actualizadoEn);
+  const vm = LAST_CALL as Extract<ScreenViewModel, { phase: "LAST_CALL" }>;
+  const receivedAt = Date.parse(vm.updatedAt);
 
   it("parte de los segundos recibidos y disminuye con el tiempo transcurrido", () => {
-    expect(segundosRestantesEnVivo(vm, recibidoEn, recibidoEn)).toBe(60);
-    expect(segundosRestantesEnVivo(vm, recibidoEn, recibidoEn + 15_000)).toBe(45);
+    expect(liveSecondsRemaining(vm, receivedAt, receivedAt)).toBe(60);
+    expect(liveSecondsRemaining(vm, receivedAt, receivedAt + 15_000)).toBe(45);
   });
 
   it("no depende de la hora local del cliente", () => {
-    const unaHoraAdelantada = recibidoEn + 3_600_000;
+    const oneHourAhead = receivedAt + 3_600_000;
 
-    expect(segundosRestantesEnVivo(vm, unaHoraAdelantada, unaHoraAdelantada + 15_000)).toBe(45);
+    expect(liveSecondsRemaining(vm, oneHourAhead, oneHourAhead + 15_000)).toBe(45);
   });
 
   it("limita el resultado entre 0 y la duración de la última llamada", () => {
-    expect(segundosRestantesEnVivo(vm, recibidoEn, recibidoEn + 90_000)).toBe(0);
-    expect(segundosRestantesEnVivo(vm, recibidoEn, recibidoEn - 5_000)).toBe(60);
+    expect(liveSecondsRemaining(vm, receivedAt, receivedAt + 90_000)).toBe(0);
+    expect(liveSecondsRemaining(vm, receivedAt, receivedAt - 5_000)).toBe(60);
   });
 });
 
@@ -157,34 +157,34 @@ describe("iniciarSondeo", () => {
   });
 
   it("consulta de inmediato y luego cada intervalo hasta detenerse", async () => {
-    const consultar = vi.fn(async () => {});
-    const detener = iniciarSondeo({ intervaloMs: 2_000, consultar });
+    const poll = vi.fn(async () => {});
+    const stop = startPolling({ intervalMs: 2_000, poll: poll });
 
-    expect(consultar).toHaveBeenCalledTimes(1);
+    expect(poll).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(4_000);
-    expect(consultar).toHaveBeenCalledTimes(3);
+    expect(poll).toHaveBeenCalledTimes(3);
 
-    detener();
+    stop();
     await vi.advanceTimersByTimeAsync(10_000);
-    expect(consultar).toHaveBeenCalledTimes(3);
+    expect(poll).toHaveBeenCalledTimes(3);
   });
 
   it("no inicia una consulta mientras la anterior sigue en curso", async () => {
-    let liberar: () => void = () => {};
-    const consultar = vi.fn(
+    let release: () => void = () => {};
+    const poll = vi.fn(
       () =>
         new Promise<void>((resolver) => {
-          liberar = resolver;
+          release = resolver;
         }),
     );
-    const detener = iniciarSondeo({ intervaloMs: 2_000, consultar });
+    const stop = startPolling({ intervalMs: 2_000, poll: poll });
 
     await vi.advanceTimersByTimeAsync(6_000);
-    expect(consultar).toHaveBeenCalledTimes(1);
+    expect(poll).toHaveBeenCalledTimes(1);
 
-    liberar();
+    release();
     await vi.advanceTimersByTimeAsync(2_000);
-    expect(consultar).toHaveBeenCalledTimes(2);
-    detener();
+    expect(poll).toHaveBeenCalledTimes(2);
+    stop();
   });
 });

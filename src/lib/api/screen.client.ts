@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { EVENT_CONFIG } from "@/lib/domain/config";
-import { FASE_MOCK, simularLectura } from "./screen.mock";
+import { MOCK_PHASE, simulateReading } from "./screen.mock";
 import type { ScreenPhase, ScreenViewModel } from "./screen.types";
 
 /*
@@ -10,46 +10,46 @@ import type { ScreenPhase, ScreenViewModel } from "./screen.types";
  */
 
 /** Ruta pública de lectura de la pantalla. */
-export const RUTA_PANTALLA = "/api/pantalla";
+export const SCREEN_ROUTE = "/api/pantalla";
 
 /** Fases válidas del view model. Se usan para validar la respuesta del servidor. */
-const FASES_VALIDAS: readonly ScreenPhase[] = [
-  "MERCADO",
-  "ULTIMA_LLAMADA",
-  "VOTACION",
-  "LIQUIDACION",
-  "ENTRE_RONDAS",
-  "CIERRE",
+const VALID_PHASES: readonly ScreenPhase[] = [
+  "MARKET",
+  "LAST_CALL",
+  "VOTING",
+  "SETTLEMENT",
+  "BETWEEN_ROUNDS",
+  "CLOSING",
 ];
 
 /** Resultado de una consulta a la ruta de pantalla. */
-export type ResultadoConsulta =
-  | { tipo: "lectura"; vm: ScreenViewModel }
-  | { tipo: "sin_rondas" }
-  | { tipo: "error" };
+export type QueryResult =
+  | { kind: "reading"; vm: ScreenViewModel }
+  | { kind: "no_rounds" }
+  | { kind: "error" };
 
 /** Estado que el cliente conserva entre sondeos. */
-export interface EstadoPantalla {
+export interface ScreenReadState {
   /** Última lectura válida. Nulo mientras no haya lectura o cuando el evento no tiene rondas. */
   vm: ScreenViewModel | null;
   /** Instante local, en milisegundos, en que se recibió `vm`. */
-  recibidoEn: number | null;
+  receivedAt: number | null;
   /** Verdadero cuando la última consulta falló. `vm` conserva la lectura anterior. */
-  sinConexion: boolean;
+  offline: boolean;
 }
 
 /** Valor con que inicia el cliente antes de la primera consulta. */
-export const ESTADO_INICIAL: EstadoPantalla = { vm: null, recibidoEn: null, sinConexion: false };
+export const INITIAL_STATE: ScreenReadState = { vm: null, receivedAt: null, offline: false };
 
 /** Indica si el cuerpo de la respuesta tiene la forma mínima de un view model. */
-function esViewModel(cuerpo: unknown): cuerpo is ScreenViewModel {
-  if (typeof cuerpo !== "object" || cuerpo === null) return false;
-  const { fase, actualizadoEn } = cuerpo as { fase?: unknown; actualizadoEn?: unknown };
+function isViewModel(body: unknown): body is ScreenViewModel {
+  if (typeof body !== "object" || body === null) return false;
+  const { phase: phase, updatedAt: updatedAt } = body as { phase?: unknown; updatedAt?: unknown };
   return (
-    typeof fase === "string" &&
-    FASES_VALIDAS.includes(fase as ScreenPhase) &&
-    typeof actualizadoEn === "string" &&
-    !Number.isNaN(Date.parse(actualizadoEn))
+    typeof phase === "string" &&
+    VALID_PHASES.includes(phase as ScreenPhase) &&
+    typeof updatedAt === "string" &&
+    !Number.isNaN(Date.parse(updatedAt))
   );
 }
 
@@ -58,21 +58,21 @@ function esViewModel(cuerpo: unknown): cuerpo is ScreenViewModel {
  * 200 y 404, o una respuesta mal formada se reporta como `error`. El 404 indica que el evento aún
  * no tiene rondas y se reporta como `sin_rondas`.
  */
-export async function consultarPantalla(
+export async function fetchScreen(
   fetchImpl: typeof fetch = fetch,
-): Promise<ResultadoConsulta> {
+): Promise<QueryResult> {
   try {
-    const respuesta = await fetchImpl(RUTA_PANTALLA, {
+    const response = await fetchImpl(SCREEN_ROUTE, {
       method: "GET",
       cache: "no-store",
       headers: { Accept: "application/json" },
     });
-    if (respuesta.status === 404) return { tipo: "sin_rondas" };
-    if (!respuesta.ok) return { tipo: "error" };
-    const cuerpo: unknown = await respuesta.json();
-    return esViewModel(cuerpo) ? { tipo: "lectura", vm: cuerpo } : { tipo: "error" };
+    if (response.status === 404) return { kind: "no_rounds" };
+    if (!response.ok) return { kind: "error" };
+    const body: unknown = await response.json();
+    return isViewModel(body) ? { kind: "reading", vm: body } : { kind: "error" };
   } catch {
-    return { tipo: "error" };
+    return { kind: "error" };
   }
 }
 
@@ -80,18 +80,18 @@ export async function consultarPantalla(
  * Aplica el resultado de una consulta al estado anterior. Un error conserva la última lectura
  * válida y solo marca la conexión como interrumpida.
  */
-export function reducirEstado(
-  anterior: EstadoPantalla,
-  resultado: ResultadoConsulta,
-  recibidoEn: number,
-): EstadoPantalla {
-  switch (resultado.tipo) {
-    case "lectura":
-      return { vm: resultado.vm, recibidoEn, sinConexion: false };
-    case "sin_rondas":
-      return { vm: null, recibidoEn, sinConexion: false };
+export function reduceState(
+  previous: ScreenReadState,
+  result: QueryResult,
+  receivedAt: number,
+): ScreenReadState {
+  switch (result.kind) {
+    case "reading":
+      return { vm: result.vm, receivedAt: receivedAt, offline: false };
+    case "no_rounds":
+      return { vm: null, receivedAt: receivedAt, offline: false };
     case "error":
-      return { ...anterior, sinConexion: true };
+      return { ...previous, offline: true };
   }
 }
 
@@ -102,46 +102,46 @@ export function reducirEstado(
  * sumando al reloj local el desfase medido en la recepción. Como el desfase se cancela, el
  * resultado no depende de la hora local del proyector.
  */
-export function segundosRestantesEnVivo(
-  vm: Extract<ScreenViewModel, { fase: "ULTIMA_LLAMADA" }>,
-  recibidoEn: number,
-  ahora: number,
+export function liveSecondsRemaining(
+  vm: Extract<ScreenViewModel, { phase: "LAST_CALL" }>,
+  receivedAt: number,
+  now: number,
 ): number {
-  const instanteServidor = Date.parse(vm.actualizadoEn);
-  const desfaseMs = instanteServidor - recibidoEn;
-  const finServidor = instanteServidor + vm.segundosRestantes * 1000;
-  const horaServidorAhora = ahora + desfaseMs;
-  const restante = Math.ceil((finServidor - horaServidorAhora) / 1000);
-  return Math.min(EVENT_CONFIG.lastCallSeconds, Math.max(0, restante));
+  const serverInstant = Date.parse(vm.updatedAt);
+  const offsetMs = serverInstant - receivedAt;
+  const serverEnd = serverInstant + vm.secondsRemaining * 1000;
+  const serverNow = now + offsetMs;
+  const remaining = Math.ceil((serverEnd - serverNow) / 1000);
+  return Math.min(EVENT_CONFIG.lastCallSeconds, Math.max(0, remaining));
 }
 
 /**
  * Ejecuta `consultar` de inmediato y luego cada `intervaloMs`. Una consulta nueva no se inicia
  * mientras la anterior sigue en curso. Devuelve la función que detiene el sondeo.
  */
-export function iniciarSondeo(opciones: {
-  intervaloMs: number;
-  consultar: () => Promise<void>;
+export function startPolling(options: {
+  intervalMs: number;
+  poll: () => Promise<void>;
 }): () => void {
-  let enCurso = false;
-  const disparar = () => {
-    if (enCurso) return;
-    enCurso = true;
-    void opciones.consultar().finally(() => {
-      enCurso = false;
+  let running = false;
+  const trigger = () => {
+    if (running) return;
+    running = true;
+    void options.poll().finally(() => {
+      running = false;
     });
   };
-  disparar();
-  const id = setInterval(disparar, opciones.intervaloMs);
+  trigger();
+  const id = setInterval(trigger, options.intervalMs);
   return () => clearInterval(id);
 }
 
 /** Estado de la pantalla que consumen los componentes de fase. */
-export interface LecturaPantalla {
+export interface ScreenReading {
   /** View model listo para presentar. Nulo cuando aún no hay datos o el evento no tiene rondas. */
   vm: ScreenViewModel | null;
   /** Verdadero cuando la última consulta falló y se muestra la lectura anterior. */
-  sinConexion: boolean;
+  offline: boolean;
 }
 
 /*
@@ -149,51 +149,51 @@ export interface LecturaPantalla {
  * `NEXT_PUBLIC_USE_MOCKS=true`, o cuando la página recibe `faseForzada` en desarrollo, usa la
  * fuente simulada de `screen.mock.ts` y no realiza consultas de red.
  */
-export function useScreenState(faseForzada?: ScreenPhase): LecturaPantalla {
-  const simulada = process.env.NEXT_PUBLIC_USE_MOCKS === "true" || faseForzada !== undefined;
+export function useScreenState(forcedPhase?: ScreenPhase): ScreenReading {
+  const simulated = process.env.NEXT_PUBLIC_USE_MOCKS === "true" || forcedPhase !== undefined;
   const [tick, setTick] = useState(0);
-  const [estado, setEstado] = useState<EstadoPantalla>(ESTADO_INICIAL);
-  const [, repintar] = useReducer((n: number) => n + 1, 0);
+  const [state, setState] = useState<ScreenReadState>(INITIAL_STATE);
+  const [, repaint] = useReducer((n: number) => n + 1, 0);
 
   useEffect(() => {
-    if (simulada) return;
-    return iniciarSondeo({
-      intervaloMs: EVENT_CONFIG.screenPollMs,
-      consultar: async () => {
-        const resultado = await consultarPantalla();
-        const recibidoEn = Date.now();
-        setEstado((anterior) => reducirEstado(anterior, resultado, recibidoEn));
+    if (simulated) return;
+    return startPolling({
+      intervalMs: EVENT_CONFIG.screenPollMs,
+      poll: async () => {
+        const result = await fetchScreen();
+        const receivedAt = Date.now();
+        setState((previous) => reduceState(previous, result, receivedAt));
       },
     });
-  }, [simulada]);
+  }, [simulated]);
 
   useEffect(() => {
-    if (!simulada) return;
+    if (!simulated) return;
     const id = setInterval(() => setTick((t) => t + 1), EVENT_CONFIG.screenPollMs);
     return () => clearInterval(id);
-  }, [simulada]);
+  }, [simulated]);
 
-  const base = useMemo<EstadoPantalla>(() => {
-    if (!simulada) return estado;
-    const vm = simularLectura(faseForzada ?? FASE_MOCK, tick);
-    return { vm, recibidoEn: Date.parse(vm.actualizadoEn), sinConexion: false };
-  }, [simulada, faseForzada, tick, estado]);
+  const base = useMemo<ScreenReadState>(() => {
+    if (!simulated) return state;
+    const vm = simulateReading(forcedPhase ?? MOCK_PHASE, tick);
+    return { vm, receivedAt: Date.parse(vm.updatedAt), offline: false };
+  }, [simulated, forcedPhase, tick, state]);
 
-  const enUltimaLlamada = base.vm?.fase === "ULTIMA_LLAMADA";
+  const inLastCall = base.vm?.phase === "LAST_CALL";
 
   // La cuenta regresiva se recalcula cada segundo mientras la fase es ULTIMA_LLAMADA.
   useEffect(() => {
-    if (!enUltimaLlamada) return;
-    const id = setInterval(repintar, 1000);
+    if (!inLastCall) return;
+    const id = setInterval(repaint, 1000);
     return () => clearInterval(id);
-  }, [enUltimaLlamada]);
+  }, [inLastCall]);
 
-  if (base.vm !== null && base.vm.fase === "ULTIMA_LLAMADA" && base.recibidoEn !== null) {
-    const segundosRestantes = segundosRestantesEnVivo(base.vm, base.recibidoEn, Date.now());
+  if (base.vm !== null && base.vm.phase === "LAST_CALL" && base.receivedAt !== null) {
+    const secondsRemaining = liveSecondsRemaining(base.vm, base.receivedAt, Date.now());
     return {
-      vm: { ...base.vm, segundosRestantes },
-      sinConexion: base.sinConexion,
+      vm: { ...base.vm, secondsRemaining: secondsRemaining },
+      offline: base.offline,
     };
   }
-  return { vm: base.vm, sinConexion: base.sinConexion };
+  return { vm: base.vm, offline: base.offline };
 }

@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InvestorViewModel } from "@/lib/api/investor.types";
 
-const sesionMock = vi.hoisted(() => vi.fn());
-const estadoMock = vi.hoisted(() => vi.fn());
+const mockSession = vi.hoisted(() => vi.fn());
+const mockState = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/auth/investor", () => ({ getInvestorSession: sesionMock }));
-vi.mock("@/lib/db/investor-queries", () => ({ leerEstadoInversionista: estadoMock }));
+vi.mock("@/lib/auth/investor", () => ({ getInvestorSession: mockSession }));
+vi.mock("@/lib/db/investor-queries", () => ({ readParticipantState: mockState }));
 
 import { GET } from "./route";
 
-const vistaEjemplo: InvestorViewModel = {
+const sampleView: InvestorViewModel = {
   phase: "scheduled",
   round: { number: 1, total: 5 },
-  startup: { name: "AgroSense", ods: "ODS 2 · Hambre cero", description: "Descripción" },
+  startup: { name: "AgroSense", sdg: "ODS 2 · Hambre cero", description: "Descripción" },
   wallet: { balance: 10_000, investedInRound: 0, roundCap: 3_000 },
   market: null,
   countdownSeconds: null,
@@ -21,30 +21,30 @@ const vistaEjemplo: InvestorViewModel = {
 };
 
 beforeEach(() => {
-  sesionMock.mockReset();
-  estadoMock.mockReset();
+  mockSession.mockReset();
+  mockState.mockReset();
 });
 
 describe("GET /api/inversionista/estado", () => {
   it("responde 401 sin sesión y no consulta la base", async () => {
-    sesionMock.mockResolvedValue(null);
+    mockSession.mockResolvedValue(null);
 
-    const respuesta = await GET();
+    const response = await GET();
 
-    expect(respuesta.status).toBe(401);
-    await expect(respuesta.json()).resolves.toMatchObject({ error: "SIN_SESION" });
-    expect(estadoMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({ error: "NO_SESSION" });
+    expect(mockState).not.toHaveBeenCalled();
   });
 
   it("devuelve el view model del asistente de la sesión sin caché", async () => {
-    sesionMock.mockResolvedValue({ idUsuario: 7, saldo: 10_000, nombre: "Ana" });
-    estadoMock.mockResolvedValue(vistaEjemplo);
+    mockSession.mockResolvedValue({ userId: 7, balance: 10_000, name: "Ana" });
+    mockState.mockResolvedValue(sampleView);
 
-    const respuesta = await GET();
+    const response = await GET();
 
-    expect(estadoMock).toHaveBeenCalledWith(7);
-    expect(respuesta.status).toBe(200);
-    expect(respuesta.headers.get("Cache-Control")).toBe("no-store");
-    await expect(respuesta.json()).resolves.toEqual(vistaEjemplo);
+    expect(mockState).toHaveBeenCalledWith(7);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual(sampleView);
   });
 });

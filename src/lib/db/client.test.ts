@@ -2,17 +2,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { sql } from "./client";
 
 describe("sql", () => {
-  const urlOriginal = process.env.DATABASE_URL;
+  const originalUrl = process.env.DATABASE_URL;
 
   beforeEach(() => {
     delete process.env.DATABASE_URL;
   });
 
   afterEach(() => {
-    if (urlOriginal === undefined) {
+    if (originalUrl === undefined) {
       delete process.env.DATABASE_URL;
     } else {
-      process.env.DATABASE_URL = urlOriginal;
+      process.env.DATABASE_URL = originalUrl;
     }
   });
 

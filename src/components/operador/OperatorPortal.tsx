@@ -3,11 +3,11 @@
 import { useState } from "react";
 
 import {
-  loginOperador,
-  MENSAJE_SESION_VENCIDA_OPERADOR,
+  loginOperator,
+  OPERATOR_SESSION_EXPIRED_MESSAGE,
   useOperatorState,
 } from "@/lib/api/operator";
-import { USA_MOCKS } from "@/lib/api/entorno";
+import { USE_MOCKS } from "@/lib/api/entorno";
 
 import { AccessGate } from "./AccessGate";
 import { OperatorConsole } from "./OperatorConsole";
@@ -16,16 +16,16 @@ import gateStyles from "./AccessGate.module.css";
 /** Punto de entrada del portal del operador: controla el acceso con código y monta la consola. */
 export function OperatorPortal() {
   const [authorized, setAuthorized] = useState(false);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (!authorized) {
     return (
       <AccessGate
-        aviso={aviso}
+        notice={notice}
         onSubmit={async (code) => {
-          const error = await loginOperador(code);
+          const error = await loginOperator(code);
           if (error === null) {
-            setAviso(null);
+            setNotice(null);
             setAuthorized(true);
           }
           return error;
@@ -37,7 +37,7 @@ export function OperatorPortal() {
   return (
     <OperatorWorkspace
       onExpired={() => {
-        setAviso(MENSAJE_SESION_VENCIDA_OPERADOR);
+        setNotice(OPERATOR_SESSION_EXPIRED_MESSAGE);
         setAuthorized(false);
       }}
     />
@@ -51,7 +51,7 @@ interface OperatorWorkspaceProps {
 
 /** Conecta el estado de la ronda con la consola. Solo se monta tras el acceso. */
 function OperatorWorkspace({ onExpired }: OperatorWorkspaceProps) {
-  const operator = useOperatorState({ alExpirarSesion: onExpired });
+  const operator = useOperatorState({ onSessionExpired: onExpired });
   const { viewModel, notice } = operator;
 
   if (viewModel === null) {
@@ -68,7 +68,7 @@ function OperatorWorkspace({ onExpired }: OperatorWorkspaceProps) {
     <OperatorConsole
       viewModel={viewModel}
       notice={notice}
-      modoMuestra={USA_MOCKS}
+      sampleMode={USE_MOCKS}
       onRunAction={operator.runAction}
       onUndo={operator.undo}
       onCancelRound={operator.cancelRound}

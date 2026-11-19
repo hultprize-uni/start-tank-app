@@ -1,25 +1,25 @@
 export type RoundState =
-  | "PROGRAMADA"
-  | "ABIERTA"
-  | "ULTIMA_LLAMADA"
-  | "CERRADA"
-  | "EN_VOTACION"
-  | "LIQUIDADA"
-  | "ANULADA";
+  | "SCHEDULED"
+  | "OPEN"
+  | "LAST_CALL"
+  | "CLOSED"
+  | "VOTING"
+  | "SETTLED"
+  | "CANCELLED";
 
-export type Decision = "RESPALDA" | "RECHAZA" | "SE_ABSTIENE";
+export type Decision = "BACK" | "REJECT" | "ABSTAIN";
 
 export type OperatorAction =
-  | "ABRIR"
-  | "ULTIMA_LLAMADA"
-  | "CERRAR"
-  | "HABILITAR_VOTO"
-  | "REVELAR"
-  | "SIGUIENTE"
-  | "ANULAR_DEVOLVER"
-  | "ANULAR_LIQUIDAR_1X"
-  | "DESHACER"
-  | "MODO_MANUAL";
+  | "OPEN"
+  | "LAST_CALL"
+  | "CLOSE"
+  | "ENABLE_VOTING"
+  | "REVEAL"
+  | "NEXT"
+  | "CANCEL_REFUND"
+  | "CANCEL_SETTLE_1X"
+  | "UNDO"
+  | "MANUAL_MODE";
 
 export interface VerdictResult {
   backs: number;

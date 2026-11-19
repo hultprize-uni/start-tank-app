@@ -17,12 +17,12 @@ type Step = "elegir" | "confirmar";
 
 const MODE_OPTIONS: { mode: CancelMode; title: string; hint: string }[] = [
   {
-    mode: "devolver",
+    mode: "refund",
     title: "Devolver lo invertido",
     hint: "Cada asistente recupera el monto invertido en la ronda.",
   },
   {
-    mode: "liquidar_1x",
+    mode: "settle_1x",
     title: "Liquidar a 1.0x",
     hint: "La ronda se liquida con multiplicador 1.0x, lo que equivale a devolver lo invertido.",
   },
@@ -39,7 +39,7 @@ export function CancelRoundDialog({
   onConfirm,
 }: CancelRoundDialogProps) {
   const [step, setStep] = useState<Step>("elegir");
-  const [mode, setMode] = useState<CancelMode>("devolver");
+  const [mode, setMode] = useState<CancelMode>("refund");
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {

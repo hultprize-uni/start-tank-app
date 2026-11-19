@@ -1,9 +1,9 @@
 import type { OperatorAction, RoundState } from "./types";
 
 /** Resultado de aplicar una acción a una ronda. */
-export type ResultadoTransicion =
+export type TransitionResult =
   | { ok: true; state: RoundState }
-  | { ok: false; reason: "TRANSICION_INVALIDA" };
+  | { ok: false; reason: "INVALID_TRANSITION" };
 
 /**
  * Transiciones válidas de la ronda, indexadas por estado y acción del operador.
@@ -13,17 +13,17 @@ export type ResultadoTransicion =
 export const ROUND_TRANSITIONS: Readonly<
   Record<RoundState, Readonly<Partial<Record<OperatorAction, RoundState>>>>
 > = {
-  PROGRAMADA: { ABRIR: "ABIERTA" },
-  ABIERTA: { ULTIMA_LLAMADA: "ULTIMA_LLAMADA" },
-  ULTIMA_LLAMADA: { CERRAR: "CERRADA" },
-  CERRADA: {
-    HABILITAR_VOTO: "EN_VOTACION",
-    ANULAR_DEVOLVER: "ANULADA",
-    ANULAR_LIQUIDAR_1X: "ANULADA",
+  SCHEDULED: { OPEN: "OPEN" },
+  OPEN: { LAST_CALL: "LAST_CALL" },
+  LAST_CALL: { CLOSE: "CLOSED" },
+  CLOSED: {
+    ENABLE_VOTING: "VOTING",
+    CANCEL_REFUND: "CANCELLED",
+    CANCEL_SETTLE_1X: "CANCELLED",
   },
-  EN_VOTACION: { REVELAR: "LIQUIDADA" },
-  LIQUIDADA: {},
-  ANULADA: {},
+  VOTING: { REVEAL: "SETTLED" },
+  SETTLED: {},
+  CANCELLED: {},
 };
 
 /**
@@ -31,11 +31,11 @@ export const ROUND_TRANSITIONS: Readonly<
  * acciones que no corresponden al estado. Las acciones SIGUIENTE, DESHACER y
  * MODO_MANUAL no modifican el estado de la ronda y se rechazan en esta función.
  */
-export function nextState(state: RoundState, action: OperatorAction): ResultadoTransicion {
+export function nextState(state: RoundState, action: OperatorAction): TransitionResult {
   const target = ROUND_TRANSITIONS[state][action];
 
   if (target === undefined) {
-    return { ok: false, reason: "TRANSICION_INVALIDA" };
+    return { ok: false, reason: "INVALID_TRANSITION" };
   }
 
   return { ok: true, state: target };

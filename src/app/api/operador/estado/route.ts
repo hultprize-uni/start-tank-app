@@ -1,19 +1,19 @@
-import { requireOperator, respuestaSinSesion } from "@/lib/auth/code-session";
-import { leerVistaOperador } from "@/lib/db/queries";
-import { respuestaError, respuestaJson } from "@/lib/http/respuestas";
+import { requireOperator, noSessionResponse } from "@/lib/auth/code-session";
+import { readOperatorView } from "@/lib/db/queries";
+import { errorResponse, jsonResponse } from "@/lib/http/respuestas";
 
 /** Devuelve el view model de la consola del operador para la sesión vigente. */
 export async function GET() {
   try {
     await requireOperator();
-    const vista = await leerVistaOperador();
-    if (vista === null) {
-      return respuestaError(404, "SIN_RONDAS");
+    const view = await readOperatorView();
+    if (view === null) {
+      return errorResponse(404, "NO_ROUNDS");
     }
-    return respuestaJson(vista);
+    return jsonResponse(view);
   } catch (error) {
-    const sinSesion = respuestaSinSesion(error);
-    if (sinSesion !== null) return sinSesion;
+    const noSession = noSessionResponse(error);
+    if (noSession !== null) return noSession;
     throw error;
   }
 }

@@ -12,7 +12,7 @@ interface StatusLineProps {
 
 /** Línea de estados de la ronda: marca los estados recorridos y el estado actual. */
 export function StatusLine({ status }: StatusLineProps) {
-  const cancelled = status === "ANULADA";
+  const cancelled = status === "CANCELLED";
   const currentIndex = ROUND_STATUS_SEQUENCE.findIndex(
     (item) => item === status,
   );
@@ -49,7 +49,7 @@ export function StatusLine({ status }: StatusLineProps) {
             className={`${styles.statusStep} ${styles.statusStepCurrent}`}
             aria-current="step"
           >
-            {ROUND_STATUS_LABELS.ANULADA}
+            {ROUND_STATUS_LABELS.CANCELLED}
           </li>
         ) : null}
       </ol>

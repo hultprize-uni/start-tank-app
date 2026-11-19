@@ -1,4 +1,4 @@
-import type { InvestorViewModel, ResultadoInversion } from "./investor.types";
+import type { InvestorViewModel, InvestmentResult } from "./investor.types";
 
 /*
  * Llamadas HTTP del portal del inversionista. Reciben la función fetch como parámetro para que las
@@ -7,66 +7,66 @@ import type { InvestorViewModel, ResultadoInversion } from "./investor.types";
  */
 
 /** Ruta del view model del inversionista. */
-export const RUTA_ESTADO_INVERSIONISTA = "/api/inversionista/estado";
+export const PARTICIPANT_STATE_ROUTE = "/api/inversionista/estado";
 
 /** Ruta de registro de inversiones. */
-export const RUTA_INVERTIR_INVERSIONISTA = "/api/inversionista/invertir";
+export const PARTICIPANT_INVEST_ROUTE = "/api/inversionista/invertir";
 
 /** Señal de sesión ausente: la API responde 401 cuando el asistente no ha ingresado. */
-export const SIN_SESION = "SIN_SESION" as const;
+export const NO_SESSION = "NO_SESSION" as const;
 
 /** Respuesta del estado: el view model o la señal de sesión ausente. */
-export type RespuestaEstado = InvestorViewModel | typeof SIN_SESION;
+export type StateResponse = InvestorViewModel | typeof NO_SESSION;
 
 /** Función de solicitud HTTP compatible con fetch. */
-export type FuncionFetch = (entrada: string, init?: RequestInit) => Promise<Response>;
+export type FetchFunction = (input: string, init?: RequestInit) => Promise<Response>;
 
-const MENSAJE_RED = "No fue posible conectar con el servidor. Intenta de nuevo.";
-const MENSAJE_INVERSION = "No fue posible registrar la inversión. Intenta de nuevo.";
+const NETWORK_MESSAGE = "No fue posible conectar con el servidor. Intenta de nuevo.";
+const INVESTMENT_FAILED_MESSAGE = "No fue posible registrar la inversión. Intenta de nuevo.";
 
 /**
  * Obtiene el estado del inversionista. Devuelve SIN_SESION ante un 401 y lanza error ante cualquier
  * otro estado de fallo, para que el llamador conserve el último view model válido.
  */
-export async function obtenerEstadoInversionista(
-  fetchFn: FuncionFetch = fetch,
-): Promise<RespuestaEstado> {
-  const respuesta = await fetchFn(RUTA_ESTADO_INVERSIONISTA, { cache: "no-store" });
-  if (respuesta.status === 401) {
-    return SIN_SESION;
+export async function fetchParticipantState(
+  fetchFn: FetchFunction = fetch,
+): Promise<StateResponse> {
+  const response = await fetchFn(PARTICIPANT_STATE_ROUTE, { cache: "no-store" });
+  if (response.status === 401) {
+    return NO_SESSION;
   }
-  if (!respuesta.ok) {
-    throw new Error(`El estado del inversionista respondió ${respuesta.status}`);
+  if (!response.ok) {
+    throw new Error(`El estado del inversionista respondió ${response.status}`);
   }
-  return (await respuesta.json()) as InvestorViewModel;
+  return (await response.json()) as InvestorViewModel;
 }
 
 /**
  * Envía el monto de la inversión. Solo se transmite el monto: el servidor identifica al asistente
  * por su sesión. Los errores de la API se devuelven con el mensaje que indica el servidor.
  */
-export async function invertirMonto(
-  monto: number,
-  fetchFn: FuncionFetch = fetch,
-): Promise<ResultadoInversion> {
+export async function investAmount(
+  amount: number,
+  fetchFn: FetchFunction = fetch,
+): Promise<InvestmentResult> {
   try {
-    const respuesta = await fetchFn(RUTA_INVERTIR_INVERSIONISTA, {
+    const response = await fetchFn(PARTICIPANT_INVEST_ROUTE, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monto }),
+      body: JSON.stringify({ amount }),
       cache: "no-store",
     });
-    const cuerpo = (await respuesta.json().catch(() => null)) as
-      | { mensaje?: unknown }
+    const body = (await response.json().catch(() => null)) as
+      | { message?: unknown }
       | null;
-    if (respuesta.ok) {
+    if (response.ok) {
       return { ok: true };
     }
     return {
       ok: false,
-      mensaje: typeof cuerpo?.mensaje === "string" ? cuerpo.mensaje : MENSAJE_INVERSION,
+      message: typeof body?.message === "string" ? body.message : INVESTMENT_FAILED_MESSAGE,
     };
   } catch {
-    return { ok: false, mensaje: MENSAJE_RED };
+    return { ok: false, message: NETWORK_MESSAGE };
   }
 }

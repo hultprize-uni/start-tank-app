@@ -16,16 +16,16 @@ export type InvestorSql = (
 /** Datos del asistente proporcionados por Neon Auth. */
 export interface InvestorIdentity {
   /** Identificador del usuario en Neon Auth. */
-  idExterno: string;
-  correo: string | null;
-  nombre: string | null;
+  externalId: string;
+  email: string | null;
+  name: string | null;
 }
 
 /** Billetera del inversionista tal como se expone a la aplicación. */
 export interface InvestorAccount {
-  idUsuario: number;
-  saldo: number;
-  nombre: string | null;
+  userId: number;
+  balance: number;
+  name: string | null;
 }
 
 let client: InvestorSql | undefined;
@@ -51,21 +51,21 @@ export function getInvestorSql(): InvestorSql {
  */
 export async function provisionInvestor(
   sql: InvestorSql,
-  identidad: InvestorIdentity,
+  identity: InvestorIdentity,
 ): Promise<InvestorAccount> {
-  const filas = await sql`
+  const rows = await sql`
     insert into usuario (proveedor_oauth, id_externo, correo, nombre)
-    values ('google', ${identidad.idExterno}, ${identidad.correo}, ${identidad.nombre})
+    values ('google', ${identity.externalId}, ${identity.email}, ${identity.name})
     on conflict (proveedor_oauth, id_externo) do update set estado = 'ACTIVO'
     returning id_usuario, saldo_actual, nombre
   `;
-  const fila = filas[0];
-  if (fila === undefined) {
+  const row = rows[0];
+  if (row === undefined) {
     throw new Error("El aprovisionamiento del inversionista no devolvió filas");
   }
   return {
-    idUsuario: Number(fila.id_usuario),
-    saldo: Number(fila.saldo_actual),
-    nombre: fila.nombre ?? null,
+    userId: Number(row.id_usuario),
+    balance: Number(row.saldo_actual),
+    name: row.nombre ?? null,
   };
 }

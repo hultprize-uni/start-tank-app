@@ -2,13 +2,13 @@ import type { RoundStatus } from "@/lib/api/operator.types";
 
 /** Etiquetas visibles de cada estado de ronda. */
 export const ROUND_STATUS_LABELS: Record<RoundStatus, string> = {
-  PROGRAMADA: "Programada",
-  ABIERTA: "Abierta",
-  ULTIMA_LLAMADA: "Última llamada",
-  CERRADA: "Cerrada",
-  EN_VOTACION: "En votación",
-  LIQUIDADA: "Liquidada",
-  ANULADA: "Anulada",
+  SCHEDULED: "Programada",
+  OPEN: "Abierta",
+  LAST_CALL: "Última llamada",
+  CLOSED: "Cerrada",
+  VOTING: "En votación",
+  SETTLED: "Liquidada",
+  CANCELLED: "Anulada",
 };
 
 /** Formatea montos en Impact Coins con separador de miles en español. */

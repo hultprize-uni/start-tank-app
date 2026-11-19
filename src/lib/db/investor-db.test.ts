@@ -5,76 +5,76 @@ import { type InvestorRow, type InvestorSql, provisionInvestor } from "./investo
  * Crea una consulta simulada que reproduce el comportamiento de la tabla usuario:
  * una fila por par (proveedor_oauth, id_externo) y un saldo inicial de 10,000.
  */
-function crearTablaUsuarioFalsa() {
-  const filas = new Map<string, InvestorRow & { estado: string }>();
-  const consultas: string[] = [];
-  let siguienteId = 1;
+function createFakeUserTable() {
+  const rows = new Map<string, InvestorRow & { state: string }>();
+  const queries: string[] = [];
+  let nextId = 1;
 
   const sql: InvestorSql = async (strings, ...params) => {
-    consultas.push(strings.join("?"));
-    const [idExterno, , nombre] = params as [string, string | null, string | null];
-    let fila = filas.get(idExterno);
-    if (fila === undefined) {
-      fila = { id_usuario: siguienteId++, saldo_actual: "10000.00", nombre: nombre, estado: "ACTIVO" };
-      filas.set(idExterno, fila);
+    queries.push(strings.join("?"));
+    const [externalId, , name] = params as [string, string | null, string | null];
+    let row = rows.get(externalId);
+    if (row === undefined) {
+      row = { id_usuario: nextId++, saldo_actual: "10000.00", nombre: name, state: "ACTIVO" };
+      rows.set(externalId, row);
     } else {
-      fila.estado = "ACTIVO";
+      row.state = "ACTIVO";
     }
-    return [{ id_usuario: fila.id_usuario, saldo_actual: fila.saldo_actual, nombre: fila.nombre }];
+    return [{ id_usuario: row.id_usuario, saldo_actual: row.saldo_actual, nombre: row.nombre }];
   };
 
-  return { sql, filas, consultas };
+  return { sql, rows, queries };
 }
 
-const identidad = { idExterno: "usr_neon_001", correo: "asistente@example.com", nombre: "Ana Pérez" };
+const identity = { externalId: "usr_neon_001", email: "asistente@example.com", name: "Ana Pérez" };
 
 describe("provisionInvestor", () => {
   it("crea la billetera de 10,000 en el primer ingreso", async () => {
-    const tabla = crearTablaUsuarioFalsa();
+    const table = createFakeUserTable();
 
-    const cuenta = await provisionInvestor(tabla.sql, identidad);
+    const account = await provisionInvestor(table.sql, identity);
 
-    expect(cuenta).toEqual({ idUsuario: 1, saldo: 10_000, nombre: "Ana Pérez" });
-    expect(tabla.filas.size).toBe(1);
+    expect(account).toEqual({ userId: 1, balance: 10_000, name: "Ana Pérez" });
+    expect(table.rows.size).toBe(1);
   });
 
   it("reanuda la misma billetera en el segundo ingreso sin duplicarla", async () => {
-    const tabla = crearTablaUsuarioFalsa();
+    const table = createFakeUserTable();
 
-    const primera = await provisionInvestor(tabla.sql, identidad);
-    const segunda = await provisionInvestor(tabla.sql, identidad);
+    const first = await provisionInvestor(table.sql, identity);
+    const second = await provisionInvestor(table.sql, identity);
 
-    expect(segunda).toEqual(primera);
-    expect(tabla.filas.size).toBe(1);
+    expect(second).toEqual(first);
+    expect(table.rows.size).toBe(1);
   });
 
   it("separa las billeteras de cuentas externas distintas", async () => {
-    const tabla = crearTablaUsuarioFalsa();
+    const table = createFakeUserTable();
 
-    const ana = await provisionInvestor(tabla.sql, identidad);
-    const luis = await provisionInvestor(tabla.sql, {
-      idExterno: "usr_neon_002",
-      correo: "luis@example.com",
-      nombre: null,
+    const ana = await provisionInvestor(table.sql, identity);
+    const luis = await provisionInvestor(table.sql, {
+      externalId: "usr_neon_002",
+      email: "luis@example.com",
+      name: null,
     });
 
-    expect(ana.idUsuario).not.toBe(luis.idUsuario);
-    expect(luis.nombre).toBeNull();
-    expect(tabla.filas.size).toBe(2);
+    expect(ana.userId).not.toBe(luis.userId);
+    expect(luis.name).toBeNull();
+    expect(table.rows.size).toBe(2);
   });
 
   it("usa la clave de conflicto por proveedor y id externo con proveedor google", async () => {
-    const tabla = crearTablaUsuarioFalsa();
+    const table = createFakeUserTable();
 
-    await provisionInvestor(tabla.sql, identidad);
+    await provisionInvestor(table.sql, identity);
 
-    expect(tabla.consultas[0]).toContain("on conflict (proveedor_oauth, id_externo)");
-    expect(tabla.consultas[0]).toContain("'google'");
+    expect(table.queries[0]).toContain("on conflict (proveedor_oauth, id_externo)");
+    expect(table.queries[0]).toContain("'google'");
   });
 
   it("falla si la consulta no devuelve filas", async () => {
-    const sqlVacio: InvestorSql = async () => [];
+    const emptySql: InvestorSql = async () => [];
 
-    await expect(provisionInvestor(sqlVacio, identidad)).rejects.toThrow();
+    await expect(provisionInvestor(emptySql, identity)).rejects.toThrow();
   });
 });

@@ -1,59 +1,59 @@
 "use client";
 
-import type { UltimaLlamada } from "@/lib/api/screen.types";
-import { CabeceraRonda } from "./CabeceraRonda";
-import { MetricasMercado } from "./MetricasMercado";
+import type { LastCall } from "@/lib/api/screen.types";
+import { RoundHeader } from "./CabeceraRonda";
+import { MarketMetrics } from "./MetricasMercado";
 import styles from "./pantalla.module.css";
 
 /** Umbral en segundos a partir del cual la cuenta se muestra como cierre inminente. */
-const UMBRAL_INMINENTE = 10;
+const IMMINENT_THRESHOLD = 10;
 
-function formatearCuenta(segundos: number): string {
-  const minutos = Math.floor(segundos / 60);
-  const resto = String(segundos % 60).padStart(2, "0");
-  return `${String(minutos).padStart(2, "0")}:${resto}`;
+function formatCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const rest = String(seconds % 60).padStart(2, "0");
+  return `${String(minutes).padStart(2, "0")}:${rest}`;
 }
 
-interface CuentaRegresivaProps {
+interface CountdownProps {
   /** Segundos restantes calculados por el hook con la hora del servidor. */
-  segundos: number;
+  seconds: number;
 }
 
 /* Presenta la cuenta recibida. El hook `useScreenState` la recalcula cada segundo. */
-function CuentaRegresiva({ segundos }: CuentaRegresivaProps) {
-  const inminente = segundos <= UMBRAL_INMINENTE;
+function Countdown({ seconds: seconds }: CountdownProps) {
+  const imminent = seconds <= IMMINENT_THRESHOLD;
 
   return (
     <section aria-label="Cuenta regresiva de la última llamada">
       <p className={styles.eyebrow}>Última llamada: cierre automático</p>
       <p
-        className={`${styles.cifraGrande} ${styles.cifraAcento} ${inminente ? styles.pulso : ""}`}
+        className={`${styles.figureLarge} ${styles.figureAccent} ${imminent ? styles.pulse : ""}`}
         role="timer"
       >
-        {formatearCuenta(segundos)}
+        {formatCountdown(seconds)}
       </p>
-      {inminente && segundos > 0 ? (
-        <p className={styles.subtitulo}>El mercado cierra en segundos.</p>
+      {imminent && seconds > 0 ? (
+        <p className={styles.subtitle}>El mercado cierra en segundos.</p>
       ) : null}
     </section>
   );
 }
 
-interface FaseUltimaLlamadaProps {
-  vm: UltimaLlamada;
+interface LastCallPhaseProps {
+  vm: LastCall;
 }
 
 /** Fase Última llamada: cuenta regresiva de 60 segundos sobre el precio vigente. */
-export function FaseUltimaLlamada({ vm }: FaseUltimaLlamadaProps) {
+export function LastCallPhase({ vm }: LastCallPhaseProps) {
   return (
     <>
-      <CabeceraRonda ronda={vm.ronda} />
-      <MetricasMercado
-        precio={vm.precio}
-        acumulado={vm.acumulado}
-        inversoresUnicos={vm.inversoresUnicos}
+      <RoundHeader round={vm.round} />
+      <MarketMetrics
+        price={vm.price}
+        accumulated={vm.accumulated}
+        uniqueInvestors={vm.uniqueInvestors}
       />
-      <CuentaRegresiva segundos={vm.segundosRestantes} />
+      <Countdown seconds={vm.secondsRemaining} />
     </>
   );
 }

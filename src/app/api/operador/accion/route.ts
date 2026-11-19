@@ -1,9 +1,9 @@
-import { requireOperator, respuestaSinSesion } from "@/lib/auth/code-session";
-import { ACCIONES_OPERADOR, ejecutarAccionOperador, type AccionOperador } from "@/lib/db/queries";
-import { leerCuerpoJson, respuestaError, respuestaJson } from "@/lib/http/respuestas";
+import { requireOperator, noSessionResponse } from "@/lib/auth/code-session";
+import { API_OPERATOR_ACTIONS, executeOperatorAction, type ApiOperatorAction } from "@/lib/db/queries";
+import { readJsonBody, errorResponse, jsonResponse } from "@/lib/http/respuestas";
 
-function esAccion(valor: unknown): valor is AccionOperador {
-  return typeof valor === "string" && (ACCIONES_OPERADOR as readonly string[]).includes(valor);
+function isAction(value: unknown): value is ApiOperatorAction {
+  return typeof value === "string" && (API_OPERATOR_ACTIONS as readonly string[]).includes(value);
 }
 
 /**
@@ -13,22 +13,22 @@ function esAccion(valor: unknown): valor is AccionOperador {
  */
 export async function POST(request: Request) {
   try {
-    const sesion = await requireOperator();
+    const session = await requireOperator();
 
-    const cuerpo = await leerCuerpoJson(request);
-    const accion = cuerpo?.accion;
-    if (!esAccion(accion)) {
-      return respuestaError(400, "ACCION_INVALIDA");
+    const body = await readJsonBody(request);
+    const action = body?.action;
+    if (!isAction(action)) {
+      return errorResponse(400, "INVALID_ACTION");
     }
 
-    const resultado = await ejecutarAccionOperador(sesion.id, accion);
-    if (!resultado.ok) {
-      return respuestaError(409, resultado.error ?? "ACCION_RECHAZADA");
+    const result = await executeOperatorAction(session.id, action);
+    if (!result.ok) {
+      return errorResponse(409, result.error ?? "ACTION_REJECTED");
     }
-    return respuestaJson({ ok: true, estado: resultado.estado ?? null });
+    return jsonResponse({ ok: true, state: result.state ?? null });
   } catch (error) {
-    const sinSesion = respuestaSinSesion(error);
-    if (sinSesion !== null) return sinSesion;
+    const noSession = noSessionResponse(error);
+    if (noSession !== null) return noSession;
     throw error;
   }
 }

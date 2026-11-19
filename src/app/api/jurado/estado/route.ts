@@ -1,19 +1,19 @@
-import { requireJury, respuestaSinSesion } from "@/lib/auth/code-session";
-import { leerVistaJurado } from "@/lib/db/queries";
-import { respuestaError, respuestaJson } from "@/lib/http/respuestas";
+import { requireJury, noSessionResponse } from "@/lib/auth/code-session";
+import { readJuryView } from "@/lib/db/queries";
+import { errorResponse, jsonResponse } from "@/lib/http/respuestas";
 
 /** Devuelve el view model del portal del jurado para la sesión vigente. */
 export async function GET() {
   try {
-    const sesion = await requireJury();
-    const vista = await leerVistaJurado(sesion.id);
-    if (vista === null) {
-      return respuestaError(401, "SESION_NO_VALIDA");
+    const session = await requireJury();
+    const view = await readJuryView(session.id);
+    if (view === null) {
+      return errorResponse(401, "INVALID_SESSION");
     }
-    return respuestaJson(vista);
+    return jsonResponse(view);
   } catch (error) {
-    const sinSesion = respuestaSinSesion(error);
-    if (sinSesion !== null) return sinSesion;
+    const noSession = noSessionResponse(error);
+    if (noSession !== null) return noSession;
     throw error;
   }
 }

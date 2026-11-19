@@ -4,17 +4,17 @@ import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
  * Cliente HTTP de Neon. Se crea en la primera consulta y no al importar el módulo, de modo que
  * la compilación de Next.js no falle cuando DATABASE_URL no está definida.
  */
-let clienteNeon: NeonQueryFunction<false, false> | undefined;
+let neonClient: NeonQueryFunction<false, false> | undefined;
 
-function obtenerClienteNeon(): NeonQueryFunction<false, false> {
-  if (clienteNeon === undefined) {
+function getNeonClient(): NeonQueryFunction<false, false> {
+  if (neonClient === undefined) {
     const url = process.env.DATABASE_URL;
     if (!url) {
       throw new Error("La variable de entorno DATABASE_URL no está definida.");
     }
-    clienteNeon = neon(url);
+    neonClient = neon(url);
   }
-  return clienteNeon;
+  return neonClient;
 }
 
 /**
@@ -27,6 +27,6 @@ export async function sql<T extends object>(
   strings: TemplateStringsArray,
   ...params: unknown[]
 ): Promise<T[]> {
-  const filas = await obtenerClienteNeon()(strings, ...params);
-  return filas as T[];
+  const rows = await getNeonClient()(strings, ...params);
+  return rows as T[];
 }

@@ -18,14 +18,14 @@ interface ResultScreenProps {
 }
 
 const DECISION_CLASS: Record<Decision, string> = {
-  RESPALDA: "backs",
-  RECHAZA: "rejects",
-  SE_ABSTIENE: "abstains",
+  BACK: "backs",
+  REJECT: "rejects",
+  ABSTAIN: "abstains",
 };
 
 /** Texto de los respaldos. Las abstenciones se mencionan aparte y no cuentan en el multiplicador. */
 function describeBacks(verdict: VerdictInfo): string {
-  const abstentions = verdict.decisions.filter((d) => d === "SE_ABSTIENE").length;
+  const abstentions = verdict.decisions.filter((d) => d === "ABSTAIN").length;
   const base = `${verdict.backs} de ${verdict.voters} jurados respaldan`;
   if (abstentions === 0) return base;
   const plural = abstentions === 1 ? "se abstuvo" : "se abstuvieron";

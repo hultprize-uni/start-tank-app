@@ -1,7 +1,7 @@
-import { errorInversionista } from "@/lib/api/investor.errors";
+import { participantError } from "@/lib/api/investor.errors";
 import { getInvestorSession } from "@/lib/auth/investor";
-import { leerEstadoInversionista } from "@/lib/db/investor-queries";
-import { respuestaJson } from "@/lib/http/respuestas";
+import { readParticipantState } from "@/lib/db/investor-queries";
+import { jsonResponse } from "@/lib/http/respuestas";
 
 /*
  * Estado del portal del inversionista. La identidad proviene solo de la sesión de Neon Auth; la
@@ -11,12 +11,12 @@ export const dynamic = "force-dynamic";
 
 /** Devuelve el InvestorViewModel del asistente de la sesión vigente, o 401 sin sesión. */
 export async function GET() {
-  const sesion = await getInvestorSession();
-  if (sesion === null) {
-    const error = errorInversionista("SIN_SESION");
-    return respuestaJson({ error: error.codigo, mensaje: error.mensaje }, error.estado);
+  const session = await getInvestorSession();
+  if (session === null) {
+    const error = participantError("NO_SESSION");
+    return jsonResponse({ error: error.code, message: error.message }, error.status);
   }
 
-  const vista = await leerEstadoInversionista(sesion.idUsuario);
-  return respuestaJson(vista);
+  const view = await readParticipantState(session.userId);
+  return jsonResponse(view);
 }

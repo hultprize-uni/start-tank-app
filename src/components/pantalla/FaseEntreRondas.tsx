@@ -1,59 +1,59 @@
-import type { EntreRondas } from "@/lib/api/screen.types";
-import { formatearEntero } from "./formato";
+import type { BetweenRounds } from "@/lib/api/screen.types";
+import { formatInteger } from "./formato";
 import styles from "./pantalla.module.css";
 
 /** Filas visibles por leaderboard. La pantalla muestra el total en el pie. */
-const FILAS_VISIBLES = 10;
+const VISIBLE_ROWS = 10;
 
-interface FaseEntreRondasProps {
-  vm: EntreRondas;
+interface BetweenRoundsPhaseProps {
+  vm: BetweenRounds;
 }
 
 /*
  * Fase Entre rondas: clasificacion de los inversionistas y acumulado de cada
  * startup hasta la ronda cerrada.
  */
-export function FaseEntreRondas({ vm }: FaseEntreRondasProps) {
-  const inversionistas = vm.inversionistas.slice(0, FILAS_VISIBLES);
-  const startups = vm.startups.slice(0, FILAS_VISIBLES);
+export function BetweenRoundsPhase({ vm }: BetweenRoundsPhaseProps) {
+  const investors = vm.investors.slice(0, VISIBLE_ROWS);
+  const startups = vm.startups.slice(0, VISIBLE_ROWS);
 
   return (
     <>
       <section>
-        <p className={styles.eyebrow}>Ronda {vm.rondaCerrada.numero} cerrada</p>
-        <h1 className={styles.titulo}>Clasificación</h1>
+        <p className={styles.eyebrow}>Ronda {vm.closedRound.number} cerrada</p>
+        <h1 className={styles.title}>Clasificación</h1>
       </section>
-      <div className={styles.rejillaDos}>
-        <section className={styles.tablaLista} aria-labelledby="titulo-inversionistas">
-          <h2 id="titulo-inversionistas" className={styles.subtitulo}>
+      <div className={styles.gridTwo}>
+        <section className={styles.listTable} aria-labelledby="titulo-inversionistas">
+          <h2 id="titulo-inversionistas" className={styles.subtitle}>
             Inversionistas
           </h2>
-          <ol className={styles.lista}>
-            {inversionistas.map((fila) => (
-              <li key={fila.posicion} className={styles.fila}>
+          <ol className={styles.list}>
+            {investors.map((row) => (
+              <li key={row.position} className={styles.row}>
                 <span>
-                  {fila.posicion}. {fila.nombre}
+                  {row.position}. {row.name}
                 </span>
-                <span className={styles.valorFila}>{formatearEntero(fila.saldo)} IC</span>
+                <span className={styles.rowValue}>{formatInteger(row.balance)} IC</span>
               </li>
             ))}
           </ol>
-          <p className={styles.pie}>
-            Mostrando {inversionistas.length} de {vm.inversionistas.length} inversionistas
+          <p className={styles.footer}>
+            Mostrando {investors.length} de {vm.investors.length} inversionistas
           </p>
         </section>
-        <section className={styles.tablaLista} aria-labelledby="titulo-startups">
-          <h2 id="titulo-startups" className={styles.subtitulo}>
+        <section className={styles.listTable} aria-labelledby="titulo-startups">
+          <h2 id="titulo-startups" className={styles.subtitle}>
             Startups
           </h2>
-          <ol className={styles.lista}>
-            {startups.map((fila) => (
-              <li key={fila.posicion} className={styles.fila}>
+          <ol className={styles.list}>
+            {startups.map((row) => (
+              <li key={row.position} className={styles.row}>
                 <span>
-                  {fila.posicion}. {fila.nombre}
+                  {row.position}. {row.name}
                 </span>
-                <span className={styles.valorFila}>
-                  {formatearEntero(fila.acumulado)} IC · precio {formatearEntero(fila.precio)}
+                <span className={styles.rowValue}>
+                  {formatInteger(row.accumulated)} IC · precio {formatInteger(row.price)}
                 </span>
               </li>
             ))}

@@ -1,13 +1,13 @@
 import type { Decision } from "@/lib/domain/types";
-import { requireJury, respuestaSinSesion } from "@/lib/auth/code-session";
-import { registrarVoto } from "@/lib/db/queries";
-import { leerCuerpoJson, respuestaError, respuestaJson } from "@/lib/http/respuestas";
+import { requireJury, noSessionResponse } from "@/lib/auth/code-session";
+import { registerVote } from "@/lib/db/queries";
+import { readJsonBody, errorResponse, jsonResponse } from "@/lib/http/respuestas";
 
 /** Decisiones admitidas para el voto del jurado. */
-const DECISIONES: readonly Decision[] = ["RESPALDA", "RECHAZA", "SE_ABSTIENE"];
+const DECISIONS: readonly Decision[] = ["BACK", "REJECT", "ABSTAIN"];
 
-function esDecision(valor: unknown): valor is Decision {
-  return typeof valor === "string" && (DECISIONES as readonly string[]).includes(valor);
+function isDecision(value: unknown): value is Decision {
+  return typeof value === "string" && (DECISIONS as readonly string[]).includes(value);
 }
 
 /**
@@ -16,22 +16,22 @@ function esDecision(valor: unknown): valor is Decision {
  */
 export async function POST(request: Request) {
   try {
-    const sesion = await requireJury();
+    const session = await requireJury();
 
-    const cuerpo = await leerCuerpoJson(request);
-    const decision = cuerpo?.decision;
-    if (!esDecision(decision)) {
-      return respuestaError(400, "DECISION_INVALIDA");
+    const body = await readJsonBody(request);
+    const decision = body?.decision;
+    if (!isDecision(decision)) {
+      return errorResponse(400, "INVALID_DECISION");
     }
 
-    const resultado = await registrarVoto(sesion.id, decision);
-    if (!resultado.ok) {
-      return respuestaError(409, resultado.error ?? "VOTO_RECHAZADO");
+    const result = await registerVote(session.id, decision);
+    if (!result.ok) {
+      return errorResponse(409, result.error ?? "VOTE_REJECTED");
     }
-    return respuestaJson({ ok: true });
+    return jsonResponse({ ok: true });
   } catch (error) {
-    const sinSesion = respuestaSinSesion(error);
-    if (sinSesion !== null) return sinSesion;
+    const noSession = noSessionResponse(error);
+    if (noSession !== null) return noSession;
     throw error;
   }
 }

@@ -16,15 +16,15 @@ import type {
   RoundStatus,
 } from "@/lib/api/operator.types";
 import type {
-  EntreRondas,
-  FilaInversionista,
-  FilaStartup,
-  Cierre,
-  Liquidacion,
-  OdsRef,
-  RondaRef,
+  BetweenRounds,
+  ScreenInvestorRow,
+  ScreenStartupRow,
+  Closing,
+  Settlement,
+  SdgRef,
+  RoundRef,
   ScreenViewModel,
-  VotoRevelado,
+  RevealedVote,
 } from "@/lib/api/screen.types";
 
 /*
@@ -36,7 +36,7 @@ import type {
 /** Filas crudas. Los valores numeric y bigint de Postgres llegan como cadenas y se convierten aquí. */
 
 /** Ronda con los datos de su startup y de su fila de startup_leaderboard. */
-export interface FilaRonda {
+export interface RoundRow {
   id_ronda: string;
   numero: number;
   estado: RoundState;
@@ -55,14 +55,14 @@ export interface FilaRonda {
 }
 
 /** Voto de un jurado en una ronda. Decision es nula cuando el jurado aún no ha votado. */
-export interface VotoRonda {
+export interface RoundVoteRow {
   id_jurado: string;
   nombre: string;
   decision: Decision | null;
 }
 
 /** Fila del leaderboard de asistentes de una ronda. */
-export interface FilaRanking {
+export interface RankingRow {
   id_usuario: string;
   nombre: string;
   posicion: number;
@@ -71,14 +71,14 @@ export interface FilaRanking {
 }
 
 /** Saldo actual de un asistente. */
-export interface FilaSaldo {
+export interface BalanceSnapshotRow {
   id_usuario: string;
   nombre: string;
   saldo_actual: string;
 }
 
 /** Posición de un asistente en una ronda: suma de sus inversiones y su retorno, si ya está liquidado. */
-export interface FilaPosicion {
+export interface AttendeePositionRow {
   id_usuario: string;
   nombre: string;
   numero: number;
@@ -88,7 +88,7 @@ export interface FilaPosicion {
 }
 
 /** Acción registrada por un operador sobre una ronda. */
-export interface FilaAccion {
+export interface ActionRow {
   id_accion: string;
   accion: string;
   ejecutada_en: Date;
@@ -97,40 +97,40 @@ export interface FilaAccion {
   startup_nombre: string;
 }
 
-export interface DatosPantalla {
-  rondas: readonly FilaRonda[];
+export interface ScreenData {
+  rounds: readonly RoundRow[];
   /** Votos de la ronda de referencia de la pantalla (activa, o la última terminada). */
-  votos: readonly VotoRonda[];
+  votes: readonly RoundVoteRow[];
   /** Leaderboard de la última ronda terminada. */
-  ranking: readonly FilaRanking[];
-  usuariosActivos: number;
+  ranking: readonly RankingRow[];
+  activeUsers: number;
 }
 
-export interface DatosJurado {
-  juradoId: string;
-  nombre: string;
-  rondas: readonly FilaRonda[];
+export interface JuryData {
+  jurorId: string;
+  name: string;
+  rounds: readonly RoundRow[];
   /** Votos de la ronda activa. Vacío cuando no hay ronda activa. */
-  votos: readonly VotoRonda[];
-  totalJurados: number;
+  votes: readonly RoundVoteRow[];
+  totalJurors: number;
 }
 
-export interface DatosOperador {
-  rondas: readonly FilaRonda[];
+export interface OperatorData {
+  rounds: readonly RoundRow[];
   /** Votos de la ronda que controla el operador. */
-  votos: readonly VotoRonda[];
+  votes: readonly RoundVoteRow[];
   /** Acción de anulación registrada para la ronda que controla el operador, si existe. */
-  accionAnulacion: string | null;
-  usuariosActivos: number;
-  saldos: readonly FilaSaldo[];
-  posiciones: readonly FilaPosicion[];
-  acciones: readonly FilaAccion[];
+  cancelAction: string | null;
+  activeUsers: number;
+  balances: readonly BalanceSnapshotRow[];
+  positions: readonly AttendeePositionRow[];
+  actions: readonly ActionRow[];
   /** Fecha de referencia para el registro de acciones y la cuenta regresiva. */
-  ahora: Date;
+  now: Date;
 }
 
 /** Nombres oficiales de los Objetivos de Desarrollo Sostenible, indexados por número. */
-const NOMBRES_ODS: Readonly<Record<number, string>> = {
+const SDG_NAMES: Readonly<Record<number, string>> = {
   1: "Fin de la pobreza",
   2: "Hambre cero",
   3: "Salud y bienestar",
@@ -151,169 +151,169 @@ const NOMBRES_ODS: Readonly<Record<number, string>> = {
 };
 
 /** Criterios de evaluación que el portal del jurado recuerda en cada ronda. */
-export const CRITERIOS_JURADO: readonly JuryCriterion[] = [
-  { id: "viabilidad", label: "Viabilidad" },
-  { id: "impacto_ods", label: "Impacto ODS" },
+export const JURY_CRITERIA: readonly JuryCriterion[] = [
+  { id: "viability", label: "Viabilidad" },
+  { id: "sdg_impact", label: "Impacto ODS" },
 ];
 
 /** Estados en los que una ronda ocupa el turno de la sala. Solo puede existir una a la vez. */
-const ESTADOS_ACTIVOS: ReadonlySet<RoundState> = new Set<RoundState>([
-  "ABIERTA",
-  "ULTIMA_LLAMADA",
-  "CERRADA",
-  "EN_VOTACION",
+const ACTIVE_STATES: ReadonlySet<RoundState> = new Set<RoundState>([
+  "OPEN",
+  "LAST_CALL",
+  "CLOSED",
+  "VOTING",
 ]);
 
 /** Zona horaria del evento para el registro de acciones del operador. */
-const ZONA_EVENTO = "America/Lima";
+const EVENT_TIME_ZONE = "America/Lima";
 
-const FORMATO_HORA = new Intl.DateTimeFormat("es-PE", {
+const TIME_FORMAT = new Intl.DateTimeFormat("es-PE", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
-  timeZone: ZONA_EVENTO,
+  timeZone: EVENT_TIME_ZONE,
 });
 
 /** Etiquetas visibles de las acciones registradas en accion_ronda. */
-const ETIQUETAS_ACCION: Readonly<Record<string, string>> = {
-  ABRIR: "Abrir mercado",
-  ULTIMA_LLAMADA: "Declarar última llamada",
-  CERRAR: "Cerrar mercado",
-  HABILITAR_VOTO: "Habilitar votación",
-  REVELAR: "Revelar veredicto",
-  ANULAR_DEVOLVER: "Anular y devolver",
-  ANULAR_LIQUIDAR_1X: "Anular y liquidar a 1.0x",
+const ACTION_LABELS: Readonly<Record<string, string>> = {
+  OPEN: "Abrir mercado",
+  LAST_CALL: "Declarar última llamada",
+  CLOSE: "Cerrar mercado",
+  ENABLE_VOTING: "Habilitar votación",
+  REVEAL: "Revelar veredicto",
+  CANCEL_REFUND: "Anular y devolver",
+  CANCEL_SETTLE_1X: "Anular y liquidar a 1.0x",
 };
 
 /** Convierte un valor numérico de la base de datos. Los nulos equivalen a cero. */
-export function aNumero(valor: string | number | null | undefined): number {
-  if (valor === null || valor === undefined) return 0;
-  return Number(valor);
+export function toNumber(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  return Number(value);
 }
 
 /** Obtiene el número y el nombre del ODS a partir de su texto de base de datos, por ejemplo "ODS 6". */
-export function parsearOds(texto: string | null): OdsRef {
-  const coincidencia = texto?.match(/\d+/);
-  const numero = coincidencia ? Number(coincidencia[0]) : 0;
-  return { numero, nombre: NOMBRES_ODS[numero] ?? "" };
+export function parseSdg(text: string | null): SdgRef {
+  const matched = text?.match(/\d+/);
+  const number = matched ? Number(matched[0]) : 0;
+  return { number: number, name: SDG_NAMES[number] ?? "" };
 }
 
 /** Ordena las rondas por número ascendente sin modificar la lista original. */
-function ordenarRondas(rondas: readonly FilaRonda[]): FilaRonda[] {
-  return [...rondas].sort((a, b) => a.numero - b.numero);
+function sortRounds(rounds: readonly RoundRow[]): RoundRow[] {
+  return [...rounds].sort((a, b) => a.numero - b.numero);
 }
 
-export interface ClasificacionRondas {
+export interface RoundClassification {
   /** Ronda en curso: ABIERTA, ULTIMA_LLAMADA, CERRADA o EN_VOTACION. */
-  activa: FilaRonda | undefined;
+  active: RoundRow | undefined;
   /** Primera ronda aún no abierta. */
-  pendiente: FilaRonda | undefined;
+  pending: RoundRow | undefined;
   /** Última ronda liquidada o anulada. */
-  ultimaTerminada: FilaRonda | undefined;
+  lastFinished: RoundRow | undefined;
 }
 
 /** Clasifica las rondas según su estado para determinar la ronda en curso y las de referencia. */
-export function clasificarRondas(rondas: readonly FilaRonda[]): ClasificacionRondas {
-  const ordenadas = ordenarRondas(rondas);
-  const terminadas = ordenadas.filter((r) => r.estado === "LIQUIDADA" || r.estado === "ANULADA");
+export function classifyRounds(rounds: readonly RoundRow[]): RoundClassification {
+  const sorted = sortRounds(rounds);
+  const finished = sorted.filter((r) => r.estado === "SETTLED" || r.estado === "CANCELLED");
   return {
-    activa: ordenadas.find((r) => ESTADOS_ACTIVOS.has(r.estado)),
-    pendiente: ordenadas.find((r) => r.estado === "PROGRAMADA"),
-    ultimaTerminada: terminadas[terminadas.length - 1],
+    active: sorted.find((r) => ACTIVE_STATES.has(r.estado)),
+    pending: sorted.find((r) => r.estado === "SCHEDULED"),
+    lastFinished: finished[finished.length - 1],
   };
 }
 
 /** Ronda que la pantalla proyecta: la activa, o la última terminada, o la siguiente programada. */
-export function rondaReferenciaPantalla(rondas: readonly FilaRonda[]): FilaRonda | undefined {
-  const c = clasificarRondas(rondas);
-  return c.activa ?? c.ultimaTerminada ?? c.pendiente ?? ordenarRondas(rondas)[0];
+export function screenReferenceRound(rounds: readonly RoundRow[]): RoundRow | undefined {
+  const c = classifyRounds(rounds);
+  return c.active ?? c.lastFinished ?? c.pending ?? sortRounds(rounds)[0];
 }
 
 /** Ronda que controla el operador: la activa, o la siguiente programada, o la última terminada. */
-export function rondaReferenciaOperador(rondas: readonly FilaRonda[]): FilaRonda | undefined {
-  const c = clasificarRondas(rondas);
-  return c.activa ?? c.pendiente ?? c.ultimaTerminada ?? ordenarRondas(rondas)[0];
+export function operatorReferenceRound(rounds: readonly RoundRow[]): RoundRow | undefined {
+  const c = classifyRounds(rounds);
+  return c.active ?? c.pending ?? c.lastFinished ?? sortRounds(rounds)[0];
 }
 
-function rondaRef(fila: FilaRonda): RondaRef {
+function toRoundRef(row: RoundRow): RoundRef {
   return {
-    numero: fila.numero,
-    startup: { nombre: fila.startup_nombre, ods: parsearOds(fila.ods) },
+    number: row.numero,
+    startup: { name: row.startup_nombre, sdg: parseSdg(row.ods) },
   };
 }
 
-function precioDe(fila: FilaRonda): number {
-  return fila.precio_vivo === null ? EVENT_CONFIG.priceBase : aNumero(fila.precio_vivo);
+function priceOf(row: RoundRow): number {
+  return row.precio_vivo === null ? EVENT_CONFIG.priceBase : toNumber(row.precio_vivo);
 }
 
-function acumuladoDe(fila: FilaRonda): number {
-  return aNumero(fila.monto_acumulado);
+function accumulatedOf(row: RoundRow): number {
+  return toNumber(row.monto_acumulado);
 }
 
-function segundosRestantes(fila: FilaRonda): number {
-  if (fila.segundos_ultima_llamada === null) return EVENT_CONFIG.lastCallSeconds;
-  const transcurridos = Math.floor(aNumero(fila.segundos_ultima_llamada));
-  return Math.max(0, EVENT_CONFIG.lastCallSeconds - transcurridos);
+function secondsRemaining(row: RoundRow): number {
+  if (row.segundos_ultima_llamada === null) return EVENT_CONFIG.lastCallSeconds;
+  const elapsed = Math.floor(toNumber(row.segundos_ultima_llamada));
+  return Math.max(0, EVENT_CONFIG.lastCallSeconds - elapsed);
 }
 
 /** Fila de inversionista a partir del leaderboard de la última ronda terminada. */
-function filaInversionista(fila: FilaRanking): FilaInversionista {
-  return { posicion: fila.posicion, nombre: fila.nombre, saldo: aNumero(fila.saldo) };
+function toScreenInvestorRow(row: RankingRow): ScreenInvestorRow {
+  return { position: row.posicion, name: row.nombre, balance: toNumber(row.saldo) };
 }
 
-/** Lista de startups ordenada por monto acumulado, con su precio vivo. */
-function filasStartup(rondas: readonly FilaRonda[]): FilaStartup[] {
-  return ordenarRondas(rondas)
-    .map((r) => ({ fila: r, acumulado: acumuladoDe(r) }))
-    .sort((a, b) => b.acumulado - a.acumulado || a.fila.numero - b.fila.numero)
-    .map((item, indice) => ({
-      posicion: indice + 1,
-      nombre: item.fila.startup_nombre,
-      acumulado: item.acumulado,
-      precio: precioDe(item.fila),
+/** Lista de startups ordenada por monto accumulated, con su precio vivo. */
+function startupRows(rounds: readonly RoundRow[]): ScreenStartupRow[] {
+  return sortRounds(rounds)
+    .map((r) => ({ row: r, accumulated: accumulatedOf(r) }))
+    .sort((a, b) => b.accumulated - a.accumulated || a.row.numero - b.row.numero)
+    .map((item, index) => ({
+      position: index + 1,
+      name: item.row.startup_nombre,
+      accumulated: item.accumulated,
+      price: priceOf(item.row),
     }));
 }
 
-function votosRevelados(votos: readonly VotoRonda[]): VotoRevelado[] {
-  return votos
-    .filter((v): v is VotoRonda & { decision: Decision } => v.decision !== null)
-    .map((v) => ({ jurado: v.nombre, decision: v.decision }));
+function toRevealedVotes(votes: readonly RoundVoteRow[]): RevealedVote[] {
+  return votes
+    .filter((v): v is RoundVoteRow & { decision: Decision } => v.decision !== null)
+    .map((v) => ({ juror: v.nombre, decision: v.decision }));
 }
 
-function construirLiquidacion(
-  ultima: FilaRonda,
-  votos: readonly VotoRonda[],
-  actualizadoEn: string,
-): Liquidacion {
-  const revelados = votosRevelados(votos);
-  const fraccionRespaldo =
-    ultima.fraccion_respaldo === null
-      ? calcVerdict(revelados.map((v) => v.decision)).fraction
-      : aNumero(ultima.fraccion_respaldo);
+function buildSettlement(
+  last: RoundRow,
+  votes: readonly RoundVoteRow[],
+  updatedAt: string,
+): Settlement {
+  const revealedList = toRevealedVotes(votes);
+  const backingFraction =
+    last.fraccion_respaldo === null
+      ? calcVerdict(revealedList.map((v) => v.decision)).fraction
+      : toNumber(last.fraccion_respaldo);
 
   return {
-    fase: "LIQUIDACION",
-    actualizadoEn,
-    ronda: rondaRef(ultima),
-    votos: revelados,
-    fraccionRespaldo,
-    multiplicador: aNumero(ultima.multiplicador ?? 1),
-    montoInvertido: aNumero(ultima.monto_invertido),
-    retornoRonda: aNumero(ultima.retorno_ronda),
+    phase: "SETTLEMENT",
+    updatedAt: updatedAt,
+    round: toRoundRef(last),
+    votes: revealedList,
+    backingFraction: backingFraction,
+    multiplier: toNumber(last.multiplicador ?? 1),
+    amountInvested: toNumber(last.monto_invertido),
+    roundReturn: toNumber(last.retorno_ronda),
   };
 }
 
-function construirEntreRondas(
-  datos: DatosPantalla,
-  rondaCerrada: FilaRonda,
-  actualizadoEn: string,
-): EntreRondas {
+function buildBetweenRounds(
+  data: ScreenData,
+  closedRound: RoundRow,
+  updatedAt: string,
+): BetweenRounds {
   return {
-    fase: "ENTRE_RONDAS",
-    actualizadoEn,
-    rondaCerrada: rondaRef(rondaCerrada),
-    inversionistas: datos.ranking.map(filaInversionista),
-    startups: filasStartup(datos.rondas),
+    phase: "BETWEEN_ROUNDS",
+    updatedAt: updatedAt,
+    closedRound: toRoundRef(closedRound),
+    investors: data.ranking.map(toScreenInvestorRow),
+    startups: startupRows(data.rounds),
   };
 }
 
@@ -321,41 +321,41 @@ function construirEntreRondas(
  * Construye el cierre con la startup ganadora, el top 3 y el asistente con mejor ojo.
  * Devuelve nulo cuando ninguna startup tiene puntaje calculado.
  */
-function construirCierre(datos: DatosPantalla, actualizadoEn: string): Cierre | null {
-  const candidatas = datos.rondas
+function buildClosing(data: ScreenData, updatedAt: string): Closing | null {
+  const candidatas = data.rounds
     .filter((r) => r.fraccion_respaldo !== null && r.puntaje !== null)
-    .map((fila) => {
-      const standing: StartupStanding & { fila: FilaRonda } = {
-        id: fila.id_ronda,
-        fraction: aNumero(fila.fraccion_respaldo),
+    .map((row) => {
+      const standing: StartupStanding & { row: RoundRow } = {
+        id: row.id_ronda,
+        fraction: toNumber(row.fraccion_respaldo),
         investorPct:
-          datos.usuariosActivos > 0 ? (fila.inversores_unicos ?? 0) / datos.usuariosActivos : 0,
-        fila,
+          data.activeUsers > 0 ? (row.inversores_unicos ?? 0) / data.activeUsers : 0,
+        row: row,
       };
       return standing;
     });
 
-  const ganador = pickWinner(candidatas);
-  if (ganador === undefined) return null;
+  const winner = pickWinner(candidatas);
+  if (winner === undefined) return null;
 
-  const mejor = [...datos.ranking].sort(
+  const best = [...data.ranking].sort(
     (a, b) => b.aciertos - a.aciertos || a.posicion - b.posicion,
   )[0];
 
   return {
-    fase: "CIERRE",
-    actualizadoEn,
-    ganadora: {
-      nombre: ganador.fila.startup_nombre,
-      ods: parsearOds(ganador.fila.ods),
-      puntaje: startupScore(ganador.fraction, ganador.investorPct),
-      fraccionRespaldo: ganador.fraction,
-      porcentajeInversores: ganador.investorPct,
+    phase: "CLOSING",
+    updatedAt: updatedAt,
+    winner: {
+      name: winner.row.startup_nombre,
+      sdg: parseSdg(winner.row.ods),
+      score: startupScore(winner.fraction, winner.investorPct),
+      backingFraction: winner.fraction,
+      investorPercentage: winner.investorPct,
     },
-    top3: datos.ranking.slice(0, 3).map(filaInversionista),
-    mejorOjo: mejor
-      ? { nombre: mejor.nombre, aciertos: mejor.aciertos }
-      : { nombre: "", aciertos: 0 },
+    top3: data.ranking.slice(0, 3).map(toScreenInvestorRow),
+    bestEye: best
+      ? { name: best.nombre, hits: best.aciertos }
+      : { name: "", hits: 0 },
   };
 }
 
@@ -363,103 +363,103 @@ function construirCierre(datos: DatosPantalla, actualizadoEn: string): Cierre | 
  * Construye el view model de la pantalla pública. Devuelve nulo cuando no existen rondas.
  * La fase se deduce del estado de la ronda activa o de la última ronda terminada.
  */
-export function construirPantalla(datos: DatosPantalla, ahora: Date): ScreenViewModel | null {
-  if (datos.rondas.length === 0) return null;
+export function buildScreen(data: ScreenData, now: Date): ScreenViewModel | null {
+  if (data.rounds.length === 0) return null;
 
-  const actualizadoEn = ahora.toISOString();
-  const c = clasificarRondas(datos.rondas);
-  const activa = c.activa;
+  const updatedAt = now.toISOString();
+  const c = classifyRounds(data.rounds);
+  const active = c.active;
 
-  if (activa !== undefined) {
-    const ronda = rondaRef(activa);
-    if (activa.estado === "ABIERTA") {
+  if (active !== undefined) {
+    const round = toRoundRef(active);
+    if (active.estado === "OPEN") {
       return {
-        fase: "MERCADO",
-        actualizadoEn,
-        ronda,
-        precio: precioDe(activa),
-        acumulado: acumuladoDe(activa),
-        inversoresUnicos: activa.inversores_unicos ?? 0,
+        phase: "MARKET",
+        updatedAt: updatedAt,
+        round: round,
+        price: priceOf(active),
+        accumulated: accumulatedOf(active),
+        uniqueInvestors: active.inversores_unicos ?? 0,
       };
     }
-    if (activa.estado === "ULTIMA_LLAMADA") {
+    if (active.estado === "LAST_CALL") {
       return {
-        fase: "ULTIMA_LLAMADA",
-        actualizadoEn,
-        ronda,
-        precio: precioDe(activa),
-        acumulado: acumuladoDe(activa),
-        inversoresUnicos: activa.inversores_unicos ?? 0,
-        segundosRestantes: segundosRestantes(activa),
+        phase: "LAST_CALL",
+        updatedAt: updatedAt,
+        round: round,
+        price: priceOf(active),
+        accumulated: accumulatedOf(active),
+        uniqueInvestors: active.inversores_unicos ?? 0,
+        secondsRemaining: secondsRemaining(active),
       };
     }
     return {
-      fase: "VOTACION",
-      actualizadoEn,
-      ronda,
-      votosEmitidos: datos.votos.filter((v) => v.decision !== null).length,
-      juradosTotal: datos.votos.length,
+      phase: "VOTING",
+      updatedAt: updatedAt,
+      round: round,
+      votesCast: data.votes.filter((v) => v.decision !== null).length,
+      jurorsTotal: data.votes.length,
     };
   }
 
-  const ultima = c.ultimaTerminada;
-  if (ultima !== undefined) {
-    if (c.pendiente === undefined) {
-      const cierre = construirCierre(datos, actualizadoEn);
-      if (cierre !== null) return cierre;
+  const last = c.lastFinished;
+  if (last !== undefined) {
+    if (c.pending === undefined) {
+      const closing = buildClosing(data, updatedAt);
+      if (closing !== null) return closing;
     }
-    if (ultima.estado === "LIQUIDADA") {
-      return construirLiquidacion(ultima, datos.votos, actualizadoEn);
+    if (last.estado === "SETTLED") {
+      return buildSettlement(last, data.votes, updatedAt);
     }
   }
 
-  const rondaCerrada = ultima ?? c.pendiente ?? ordenarRondas(datos.rondas)[0];
-  return construirEntreRondas(datos, rondaCerrada, actualizadoEn);
+  const closedRound = last ?? c.pending ?? sortRounds(data.rounds)[0];
+  return buildBetweenRounds(data, closedRound, updatedAt);
 }
 
 /**
  * Construye el view model del portal del jurado. La pantalla "votacion" se muestra solo cuando la
  * ronda está en EN_VOTACION y el jurado aún no ha votado en ella.
  */
-export function construirVistaJurado(datos: DatosJurado): JuryViewModel {
-  const activa = clasificarRondas(datos.rondas).activa;
-  const emitidos = datos.votos.filter((v) => v.decision !== null).length;
-  const propio = datos.votos.find((v) => v.id_jurado === datos.juradoId);
-  const votoRegistrado = propio !== undefined && propio.decision !== null;
+export function buildJuryView(data: JuryData): JuryViewModel {
+  const active = classifyRounds(data.rounds).active;
+  const cast = data.votes.filter((v) => v.decision !== null).length;
+  const own = data.votes.find((v) => v.id_jurado === data.jurorId);
+  const voteRegistered = own !== undefined && own.decision !== null;
 
-  let pantalla: JuryScreen = "espera";
-  if (activa?.estado === "EN_VOTACION") {
-    pantalla = votoRegistrado ? "voto_registrado" : "votacion";
+  let screen: JuryScreen = "waiting";
+  if (active?.estado === "VOTING") {
+    screen = voteRegistered ? "vote_registered" : "voting";
   }
 
   return {
-    screen: pantalla,
-    access: { status: "inactivo", errorMessage: null },
-    jurorLabel: datos.nombre,
-    round: activa ? { number: activa.numero, startupName: activa.startup_nombre } : null,
-    criteria: CRITERIOS_JURADO,
+    screen: screen,
+    access: { status: "idle", errorMessage: null },
+    jurorLabel: data.name,
+    round: active ? { number: active.numero, startupName: active.startup_nombre } : null,
+    criteria: JURY_CRITERIA,
     vote: { draft: null, confirming: false, submitting: false, errorMessage: null },
-    votes: { emitted: emitidos, total: datos.totalJurados },
+    votes: { emitted: cast, total: data.totalJurors },
   };
 }
 
 /** Acciones que el operador puede disparar en cada estado de la ronda que controla. */
-function construirAcciones(
-  estado: RoundStatus,
-  votosEmitidos: number,
-  totalVotos: number,
-  hayUltimaTerminada: boolean,
+function buildActions(
+  state: RoundStatus,
+  votesCast: number,
+  totalVotes: number,
+  hasFinishedRound: boolean,
 ): OperatorActionView[] {
-  const pendientes = Math.max(0, totalVotos - votosEmitidos);
-  const revelarHabilitado = estado === "EN_VOTACION" && pendientes === 0 && totalVotos > 0;
+  const pendingCount = Math.max(0, totalVotes - votesCast);
+  const revealEnabled = state === "VOTING" && pendingCount === 0 && totalVotes > 0;
 
-  const revelarMotivo = revelarHabilitado
+  const revealReason = revealEnabled
     ? null
-    : estado === "EN_VOTACION"
-      ? `Faltan ${pendientes} voto(s)`
+    : state === "VOTING"
+      ? `Faltan ${pendingCount} voto(s)`
       : "Requiere votación habilitada.";
 
-  const fila = (
+  const row = (
     id: OperatorActionId,
     label: string,
     done: boolean,
@@ -468,52 +468,52 @@ function construirAcciones(
   ): OperatorActionView => ({ id, label, done, enabled, blockedReason });
 
   return [
-    fila("abrir", "Abrir mercado", estado !== "PROGRAMADA", estado === "PROGRAMADA", null),
-    fila(
-      "ultima_llamada",
+    row("open", "Abrir mercado", state !== "SCHEDULED", state === "SCHEDULED", null),
+    row(
+      "last_call",
       "Última llamada",
-      ["ULTIMA_LLAMADA", "CERRADA", "EN_VOTACION", "LIQUIDADA"].includes(estado),
-      estado === "ABIERTA",
-      estado === "ABIERTA" ? null : "Requiere la ronda abierta.",
+      ["LAST_CALL", "CLOSED", "VOTING", "SETTLED"].includes(state),
+      state === "OPEN",
+      state === "OPEN" ? null : "Requiere la ronda abierta.",
     ),
-    fila(
-      "cerrar",
+    row(
+      "close",
       "Cerrar mercado",
-      ["CERRADA", "EN_VOTACION", "LIQUIDADA"].includes(estado),
-      estado === "ABIERTA" || estado === "ULTIMA_LLAMADA",
-      estado === "ABIERTA" || estado === "ULTIMA_LLAMADA" ? null : "Requiere el mercado abierto.",
+      ["CLOSED", "VOTING", "SETTLED"].includes(state),
+      state === "OPEN" || state === "LAST_CALL",
+      state === "OPEN" || state === "LAST_CALL" ? null : "Requiere el mercado abierto.",
     ),
-    fila("revelar", "Revelar veredicto", estado === "LIQUIDADA", revelarHabilitado, revelarMotivo),
+    row("reveal", "Revelar veredicto", state === "SETTLED", revealEnabled, revealReason),
     // La acción siguiente no tiene operación propia en la base de datos: avanzar de ronda
     // ocurre al abrir la siguiente ronda. Se muestra deshabilitada para conservar el contrato.
-    fila(
-      "siguiente",
+    row(
+      "next",
       "Siguiente startup",
       false,
       false,
-      hayUltimaTerminada ? "Avanza al abrir la siguiente ronda." : null,
+      hasFinishedRound ? "Avanza al abrir la siguiente ronda." : null,
     ),
   ];
 }
 
-function sentidoDe(decision: Decision | null, estado: RoundStatus): JurorSense | null {
-  if (estado !== "LIQUIDADA" || decision === null) return null;
-  const sentidos: Readonly<Record<Decision, JurorSense>> = {
-    RESPALDA: "respalda",
-    RECHAZA: "rechaza",
-    SE_ABSTIENE: "abstiene",
+function senseOf(decision: Decision | null, state: RoundStatus): JurorSense | null {
+  if (state !== "SETTLED" || decision === null) return null;
+  const senseMap: Readonly<Record<Decision, JurorSense>> = {
+    BACK: "backs",
+    REJECT: "rejects",
+    ABSTAIN: "abstains",
   };
-  return sentidos[decision];
+  return senseMap[decision];
 }
 
-function horaDe(fecha: Date): string {
-  return FORMATO_HORA.format(fecha);
+function timeOf(date: Date): string {
+  return TIME_FORMAT.format(date);
 }
 
 /** Modo de anulación derivado de la acción registrada para la ronda. */
-function modoAnulacion(accion: string | null): CancelMode | null {
-  if (accion === "ANULAR_DEVOLVER") return "devolver";
-  if (accion === "ANULAR_LIQUIDAR_1X") return "liquidar_1x";
+function cancelModeOf(action: string | null): CancelMode | null {
+  if (action === "CANCEL_REFUND") return "refund";
+  if (action === "CANCEL_SETTLE_1X") return "settle_1x";
   return null;
 }
 
@@ -521,69 +521,69 @@ function modoAnulacion(accion: string | null): CancelMode | null {
  * Construye el view model de la consola del operador. Devuelve nulo cuando no existen rondas.
  * El sentido de los votos se revela solo cuando la ronda está LIQUIDADA.
  */
-export function construirVistaOperador(datos: DatosOperador): OperatorViewModel | null {
-  const actual = rondaReferenciaOperador(datos.rondas);
-  if (actual === undefined) return null;
+export function buildOperatorView(data: OperatorData): OperatorViewModel | null {
+  const current = operatorReferenceRound(data.rounds);
+  if (current === undefined) return null;
 
-  const estado = actual.estado as RoundStatus;
-  const c = clasificarRondas(datos.rondas);
-  const emitidos = datos.votos.filter((v) => v.decision !== null).length;
-  const totalVotos = datos.votos.length;
+  const state = current.estado as RoundStatus;
+  const c = classifyRounds(data.rounds);
+  const cast = data.votes.filter((v) => v.decision !== null).length;
+  const totalVotes = data.votes.length;
 
-  const jurados: JurorVoteView[] = datos.votos.map((voto) => ({
-    id: `jurado-${voto.id_jurado}`,
-    label: voto.nombre,
-    emitted: voto.decision !== null,
-    sense: sentidoDe(voto.decision, estado),
+  const jurors: JurorVoteView[] = data.votes.map((vote) => ({
+    id: `jurado-${vote.id_jurado}`,
+    label: vote.nombre,
+    emitted: vote.decision !== null,
+    sense: senseOf(vote.decision, state),
   }));
 
-  const log: LogEntryView[] = datos.acciones.map((accion) => ({
-    id: accion.id_accion,
-    time: horaDe(accion.ejecutada_en),
-    label: ETIQUETAS_ACCION[accion.accion] ?? accion.accion,
-    operator: accion.operador,
-    detail: `Ronda ${accion.numero}: ${accion.startup_nombre}`,
+  const log: LogEntryView[] = data.actions.map((action) => ({
+    id: action.id_accion,
+    time: timeOf(action.ejecutada_en),
+    label: ACTION_LABELS[action.accion] ?? action.accion,
+    operator: action.operador,
+    detail: `Ronda ${action.numero}: ${action.startup_nombre}`,
   }));
 
   return {
     round: {
-      number: actual.numero,
-      total: datos.rondas.length,
-      startupName: actual.startup_nombre,
-      status: estado,
-      multiplier: actual.multiplicador === null ? null : aNumero(actual.multiplicador),
+      number: current.numero,
+      total: data.rounds.length,
+      startupName: current.startup_nombre,
+      status: state,
+      multiplier: current.multiplicador === null ? null : toNumber(current.multiplicador),
       result: null,
-      cancelMode: modoAnulacion(datos.accionAnulacion),
+      cancelMode: cancelModeOf(data.cancelAction),
     },
     screenSynced: true,
-    actions: construirAcciones(estado, emitidos, totalVotos, c.ultimaTerminada !== undefined),
-    jurors: jurados,
+    actions: buildActions(state, cast, totalVotes, c.lastFinished !== undefined),
+    jurors: jurors,
     market: {
-      accumulated: acumuladoDe(actual),
-      uniqueInvestors: actual.inversores_unicos ?? 0,
+      accumulated: accumulatedOf(current),
+      uniqueInvestors: current.inversores_unicos ?? 0,
       // La base de datos no registra sesiones activas; se usa el número de asistentes activos.
-      connectedAttendees: datos.usuariosActivos,
-      price: precioDe(actual),
+      connectedAttendees: data.activeUsers,
+      price: priceOf(current),
     },
     log,
     canUndo: false,
-    canCancel: ["ABIERTA", "ULTIMA_LLAMADA", "CERRADA", "EN_VOTACION"].includes(estado),
+    canCancel: ["OPEN", "LAST_CALL", "CLOSED", "VOTING"].includes(state),
     canManualSettle: false,
-    balances: datos.saldos.map(
-      (fila): BalanceRow => ({
-        attendeeId: fila.id_usuario,
-        attendeeName: fila.nombre,
-        balance: aNumero(fila.saldo_actual),
+    balances: data.balances.map(
+      (row): BalanceRow => ({
+        attendeeId: row.id_usuario,
+        attendeeName: row.nombre,
+        balance: toNumber(row.saldo_actual),
       }),
     ),
-    positions: datos.posiciones.map(
-      (fila): PositionRow => ({
-        attendeeId: fila.id_usuario,
-        attendeeName: fila.nombre,
-        round: fila.numero,
-        startupName: fila.startup_nombre,
-        amount: aNumero(fila.monto),
-        returnAmount: fila.retorno === null ? null : aNumero(fila.retorno),
+    positions: data.positions.map(
+      (row): PositionRow => ({
+        attendeeId: row.id_usuario,
+        attendeeName: row.nombre,
+        round: row.numero,
+        startupName: row.startup_nombre,
+        amount: toNumber(row.monto),
+        returnAmount: row.retorno === null ? null : toNumber(row.retorno),
       }),
     ),
   };

@@ -8,115 +8,115 @@ import type {
   JuryVoteView,
 } from "@/lib/api/jury.types";
 
-import { MENSAJE_SERVIDOR, MENSAJE_SIN_CONEXION, pedirJson } from "./http";
-import { USA_MOCKS } from "./entorno";
+import { SERVER_ERROR_MESSAGE, OFFLINE_MESSAGE, requestJson } from "./http";
+import { USE_MOCKS } from "./entorno";
 import { useJuryState as useJuryStateMock } from "./jury.mock";
 
 /** Periodo del sondeo del estado del jurado, en milisegundos. */
-export const INTERVALO_SONDEO_JURADO_MS = 3_000;
+export const JURY_POLL_INTERVAL_MS = 3_000;
 
 /** Mensaje cuando la sesión del jurado ha dejado de ser válida. */
-export const MENSAJE_SESION_VENCIDA_JURADO = "Tu sesión venció. Ingresa tu código de nuevo.";
+export const JURY_SESSION_EXPIRED_MESSAGE = "Tu sesión venció. Ingresa tu código de nuevo.";
 
-const MENSAJES_LOGIN: Readonly<Record<string, string>> = {
-  CODIGO_REQUERIDO: "Ingresa tu código de acceso.",
-  CODIGO_INVALIDO: "El código no es válido. Revísalo e inténtalo de nuevo.",
+const LOGIN_MESSAGES: Readonly<Record<string, string>> = {
+  CODE_REQUIRED: "Ingresa tu código de acceso.",
+  INVALID_CODE: "El código no es válido. Revísalo e inténtalo de nuevo.",
 };
 
-const MENSAJES_VOTO: Readonly<Record<string, string>> = {
-  DECISION_INVALIDA: "Elige una decisión antes de confirmar.",
-  RONDA_NO_EXISTE: "No hay una ronda activa para votar.",
-  RONDA_NO_EN_VOTACION: "La votación de esta ronda ya no está abierta.",
-  VOTO_DUPLICADO: "Ya registraste tu voto en esta ronda.",
-  JURADO_NO_EXISTE: "Tu acceso ya no es válido. Ingresa tu código de nuevo.",
+const VOTE_MESSAGES: Readonly<Record<string, string>> = {
+  INVALID_DECISION: "Elige una decisión antes de confirmar.",
+  ROUND_NOT_FOUND: "No hay una ronda activa para votar.",
+  ROUND_NOT_VOTING: "La votación de esta ronda ya no está abierta.",
+  DUPLICATE_VOTE: "Ya registraste tu voto en esta ronda.",
+  JUROR_NOT_FOUND: "Tu acceso ya no es válido. Ingresa tu código de nuevo.",
 };
 
-const ACCESO_INICIAL: JuryAccessView = { status: "inactivo", errorMessage: null };
+const INITIAL_ACCESS: JuryAccessView = { status: "idle", errorMessage: null };
 
-const VOTO_INICIAL: JuryVoteView = {
+const INITIAL_VOTE: JuryVoteView = {
   draft: null,
   confirming: false,
   submitting: false,
   errorMessage: null,
 };
 
-const ESTADO_INICIAL: JuryViewModel = {
-  screen: "acceso",
-  access: ACCESO_INICIAL,
+const INITIAL_STATE: JuryViewModel = {
+  screen: "access",
+  access: INITIAL_ACCESS,
   jurorLabel: null,
   round: null,
   criteria: [],
-  vote: VOTO_INICIAL,
+  vote: INITIAL_VOTE,
   votes: { emitted: 0, total: 0 },
 };
 
 /** Resultado de una operación del portal del jurado. Cuando sesionVencida es true, la sesión debe reiniciarse. */
-export type ResultadoJurado<T = null> =
-  | { ok: true; valor: T }
-  | { ok: false; sesionVencida: boolean; mensaje: string };
+export type JuryResult<T = null> =
+  | { ok: true; value: T }
+  | { ok: false; sessionExpired: boolean; message: string };
 
 /** Valida el código de acceso y establece la cookie de sesión del jurado. */
-export async function loginJurado(codigo: string): Promise<ResultadoJurado> {
-  const respuesta = await pedirJson<{ ok: boolean; nombre: string }>("/api/jurado/login", {
-    metodo: "POST",
-    cuerpo: { codigo },
+export async function loginJury(code: string): Promise<JuryResult> {
+  const response = await requestJson<{ ok: boolean; name: string }>("/api/jurado/login", {
+    method: "POST",
+    body: { code },
   });
-  if (respuesta.ok) {
-    return { ok: true, valor: null };
+  if (response.ok) {
+    return { ok: true, value: null };
   }
-  if (respuesta.sinConexion) {
-    return { ok: false, sesionVencida: false, mensaje: MENSAJE_SIN_CONEXION };
+  if (response.offline) {
+    return { ok: false, sessionExpired: false, message: OFFLINE_MESSAGE };
   }
-  const mensaje =
-    (respuesta.codigo !== null ? MENSAJES_LOGIN[respuesta.codigo] : undefined) ?? MENSAJE_SERVIDOR;
-  return { ok: false, sesionVencida: false, mensaje };
+  const message =
+    (response.code !== null ? LOGIN_MESSAGES[response.code] : undefined) ?? SERVER_ERROR_MESSAGE;
+  return { ok: false, sessionExpired: false, message: message };
 }
 
 /** Lee el view model del portal del jurado para la sesión vigente. */
-export async function leerEstadoJurado(): Promise<ResultadoJurado<JuryViewModel>> {
-  const respuesta = await pedirJson<JuryViewModel>("/api/jurado/estado");
-  if (respuesta.ok) {
-    return { ok: true, valor: respuesta.datos };
+export async function readJuryState(): Promise<JuryResult<JuryViewModel>> {
+  const response = await requestJson<JuryViewModel>("/api/jurado/estado");
+  if (response.ok) {
+    return { ok: true, value: response.data };
   }
-  if (respuesta.sinConexion) {
-    return { ok: false, sesionVencida: false, mensaje: MENSAJE_SIN_CONEXION };
+  if (response.offline) {
+    return { ok: false, sessionExpired: false, message: OFFLINE_MESSAGE };
   }
-  if (respuesta.estado === 401) {
-    return { ok: false, sesionVencida: true, mensaje: MENSAJE_SESION_VENCIDA_JURADO };
+  if (response.status === 401) {
+    return { ok: false, sessionExpired: true, message: JURY_SESSION_EXPIRED_MESSAGE };
   }
-  return { ok: false, sesionVencida: false, mensaje: MENSAJE_SERVIDOR };
+  return { ok: false, sessionExpired: false, message: SERVER_ERROR_MESSAGE };
 }
 
 /** Registra el voto definitivo del jurado en la ronda activa. */
-export async function votarJurado(decision: Decision): Promise<ResultadoJurado> {
-  const respuesta = await pedirJson<{ ok: boolean }>("/api/jurado/voto", {
-    metodo: "POST",
-    cuerpo: { decision },
+export async function voteJury(decision: Decision): Promise<JuryResult> {
+  const response = await requestJson<{ ok: boolean }>("/api/jurado/voto", {
+    method: "POST",
+    body: { decision },
   });
-  if (respuesta.ok) {
-    return { ok: true, valor: null };
+  if (response.ok) {
+    return { ok: true, value: null };
   }
-  if (respuesta.sinConexion) {
-    return { ok: false, sesionVencida: false, mensaje: MENSAJE_SIN_CONEXION };
+  if (response.offline) {
+    return { ok: false, sessionExpired: false, message: OFFLINE_MESSAGE };
   }
-  if (respuesta.estado === 401) {
-    return { ok: false, sesionVencida: true, mensaje: MENSAJE_SESION_VENCIDA_JURADO };
+  if (response.status === 401) {
+    return { ok: false, sessionExpired: true, message: JURY_SESSION_EXPIRED_MESSAGE };
   }
-  const mensaje =
-    (respuesta.codigo !== null ? MENSAJES_VOTO[respuesta.codigo] : undefined) ?? MENSAJE_SERVIDOR;
-  return { ok: false, sesionVencida: false, mensaje };
+  const message =
+    (response.code !== null ? VOTE_MESSAGES[response.code] : undefined) ?? SERVER_ERROR_MESSAGE;
+  return { ok: false, sessionExpired: false, message: message };
 }
 
 /**
  * Combina el estado recibido del servidor con los datos locales del voto. El borrador y la
  * confirmación solo se conservan mientras la ronda siga en votación.
  */
-function fusionarEstado(prev: JuryViewModel, vista: JuryViewModel): JuryViewModel {
-  const mismaVotacion = prev.screen === "votacion" && vista.screen === "votacion";
+function mergeState(prev: JuryViewModel, view: JuryViewModel): JuryViewModel {
+  const sameVoting = prev.screen === "voting" && view.screen === "voting";
   return {
-    ...vista,
-    access: ACCESO_INICIAL,
-    vote: mismaVotacion ? prev.vote : VOTO_INICIAL,
+    ...view,
+    access: INITIAL_ACCESS,
+    vote: sameVoting ? prev.vote : INITIAL_VOTE,
   };
 }
 
@@ -125,48 +125,48 @@ function fusionarEstado(prev: JuryViewModel, vista: JuryViewModel): JuryViewMode
  * cada INTERVALO_SONDEO_JURADO_MS y devuelve al acceso cuando la sesión deja de ser válida.
  */
 function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
-  const [state, setState] = useState<JuryViewModel>(ESTADO_INICIAL);
-  const [sesionActiva, setSesionActiva] = useState(false);
-  const estadoRef = useRef(state);
+  const [state, setState] = useState<JuryViewModel>(INITIAL_STATE);
+  const [sessionActive, setSessionActive] = useState(false);
+  const stateRef = useRef(state);
 
   useEffect(() => {
-    estadoRef.current = state;
+    stateRef.current = state;
   }, [state]);
 
-  const cerrarSesion = useCallback((mensaje: string) => {
-    setSesionActiva(false);
-    setState({ ...ESTADO_INICIAL, access: { status: "inactivo", errorMessage: mensaje } });
+  const endSession = useCallback((message: string) => {
+    setSessionActive(false);
+    setState({ ...INITIAL_STATE, access: { status: "idle", errorMessage: message } });
   }, []);
 
-  const refrescar = useCallback(async () => {
-    const resultado = await leerEstadoJurado();
-    if (resultado.ok) {
-      setState((prev) => fusionarEstado(prev, resultado.valor));
-    } else if (resultado.sesionVencida) {
-      cerrarSesion(resultado.mensaje);
+  const refresh = useCallback(async () => {
+    const result = await readJuryState();
+    if (result.ok) {
+      setState((prev) => mergeState(prev, result.value));
+    } else if (result.sessionExpired) {
+      endSession(result.message);
     }
-  }, [cerrarSesion]);
+  }, [endSession]);
 
   useEffect(() => {
-    if (!sesionActiva) return;
-    void refrescar();
-    const id = window.setInterval(() => void refrescar(), INTERVALO_SONDEO_JURADO_MS);
+    if (!sessionActive) return;
+    void refresh();
+    const id = window.setInterval(() => void refresh(), JURY_POLL_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [sesionActiva, refrescar]);
+  }, [sessionActive, refresh]);
 
-  const submitCode = useCallback((codigo: string) => {
-    setState((prev) => ({ ...prev, access: { status: "validando", errorMessage: null } }));
+  const submitCode = useCallback((code: string) => {
+    setState((prev) => ({ ...prev, access: { status: "validating", errorMessage: null } }));
     void (async () => {
-      const resultado = await loginJurado(codigo);
-      if (!resultado.ok) {
+      const result = await loginJury(code);
+      if (!result.ok) {
         setState((prev) => ({
           ...prev,
-          access: { status: "error", errorMessage: resultado.mensaje },
+          access: { status: "error", errorMessage: result.message },
         }));
         return;
       }
-      setState((prev) => ({ ...prev, access: ACCESO_INICIAL }));
-      setSesionActiva(true);
+      setState((prev) => ({ ...prev, access: INITIAL_ACCESS }));
+      setSessionActive(true);
     })();
   }, []);
 
@@ -189,7 +189,7 @@ function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
   }, []);
 
   const confirmVote = useCallback(() => {
-    const decision = estadoRef.current.vote.draft;
+    const decision = stateRef.current.vote.draft;
     if (decision === null) return;
 
     setState((prev) => ({
@@ -197,14 +197,14 @@ function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
       vote: { ...prev.vote, submitting: true, errorMessage: null },
     }));
     void (async () => {
-      const resultado = await votarJurado(decision);
-      if (resultado.ok) {
-        setState((prev) => ({ ...prev, screen: "voto_registrado", vote: VOTO_INICIAL }));
-        await refrescar();
+      const result = await voteJury(decision);
+      if (result.ok) {
+        setState((prev) => ({ ...prev, screen: "vote_registered", vote: INITIAL_VOTE }));
+        await refresh();
         return;
       }
-      if (resultado.sesionVencida) {
-        cerrarSesion(resultado.mensaje);
+      if (result.sessionExpired) {
+        endSession(result.message);
         return;
       }
       setState((prev) => ({
@@ -213,12 +213,12 @@ function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
           draft: prev.vote.draft,
           confirming: false,
           submitting: false,
-          errorMessage: resultado.mensaje,
+          errorMessage: result.message,
         },
       }));
-      await refrescar();
+      await refresh();
     })();
-  }, [refrescar, cerrarSesion]);
+  }, [refresh, endSession]);
 
   return useMemo(
     () => ({
@@ -239,6 +239,6 @@ function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
  * Estado del portal del jurado. Usa los datos de muestra solo con NEXT_PUBLIC_USE_MOCKS=true; en
  * otro caso consume la API. La selección ocurre en tiempo de compilación.
  */
-export const useJuryState: () => { state: JuryViewModel; actions: JuryActions } = USA_MOCKS
+export const useJuryState: () => { state: JuryViewModel; actions: JuryActions } = USE_MOCKS
   ? useJuryStateMock
   : useJuryStateApi;

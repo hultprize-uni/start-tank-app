@@ -8,65 +8,65 @@ import { jwtVerify, SignJWT } from "jose";
  * exige el rol del token, de modo que una sesión de jurado nunca habilita las rutas del operador.
  */
 
-export type RolSesion = "jurado" | "operador";
+export type SessionRole = "jury" | "operator";
 
 /** Sesión verificada de un participante. */
-export interface SesionActiva<R extends RolSesion = RolSesion> {
-  rol: R;
+export interface ActiveSession<R extends SessionRole = SessionRole> {
+  role: R;
   /** Identificador del jurado o del operador en la base de datos. */
   id: string;
 }
 
-const ALGORITMO = "HS256";
-const DURACION_SEGUNDOS = 60 * 60 * 12;
-const LONGITUD_MINIMA_SECRETO = 32;
+const ALGORITHM = "HS256";
+const DURATION_SECONDS = 60 * 60 * 12;
+const MIN_SECRET_LENGTH = 32;
 
-const NOMBRE_COOKIE: Readonly<Record<RolSesion, string>> = {
-  jurado: "st_jurado",
-  operador: "st_operador",
+const COOKIE_NAMES: Readonly<Record<SessionRole, string>> = {
+  jury: "st_jury",
+  operator: "st_operator",
 };
 
 /** Error que se lanza cuando la petición no tiene una sesión válida para el rol requerido. */
-export class SesionNoValidaError extends Error {
-  readonly rol: RolSesion;
+export class InvalidSessionError extends Error {
+  readonly role: SessionRole;
 
-  constructor(rol: RolSesion) {
-    super(`Se requiere una sesión válida de ${rol}.`);
+  constructor(role: SessionRole) {
+    super(`Se requiere una sesión válida de ${role}.`);
     this.name = "SesionNoValidaError";
-    this.rol = rol;
+    this.role = role;
   }
 }
 
 /** Obtiene la clave de firma. Lanza un error si la variable no está definida o es demasiado corta. */
-function claveSecreta(): Uint8Array {
-  const secreto = process.env.SESSION_SECRET;
-  if (!secreto || secreto.length < LONGITUD_MINIMA_SECRETO) {
+function secretKey(): Uint8Array {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < MIN_SECRET_LENGTH) {
     throw new Error(
-      `La variable de entorno SESSION_SECRET debe tener al menos ${LONGITUD_MINIMA_SECRETO} caracteres.`,
+      `La variable de entorno SESSION_SECRET debe tener al menos ${MIN_SECRET_LENGTH} caracteres.`,
     );
   }
-  return new TextEncoder().encode(secreto);
+  return new TextEncoder().encode(secret);
 }
 
 /** Firma un token con el rol y el identificador del participante. */
-export async function firmarSesion(rol: RolSesion, id: string): Promise<string> {
-  return new SignJWT({ rol })
-    .setProtectedHeader({ alg: ALGORITMO })
+export async function signSession(role: SessionRole, id: string): Promise<string> {
+  return new SignJWT({ role })
+    .setProtectedHeader({ alg: ALGORITHM })
     .setSubject(id)
     .setIssuedAt()
-    .setExpirationTime(`${DURACION_SEGUNDOS}s`)
-    .sign(claveSecreta());
+    .setExpirationTime(`${DURATION_SECONDS}s`)
+    .sign(secretKey());
 }
 
 /**
  * Verifica la firma, la expiración y el rol del token. Devuelve el identificador del participante
  * o nulo cuando el token no es válido para el rol indicado.
  */
-export async function verificarSesion(token: string, rol: RolSesion): Promise<string | null> {
-  const clave = claveSecreta();
+export async function verifySession(token: string, role: SessionRole): Promise<string | null> {
+  const key = secretKey();
   try {
-    const { payload } = await jwtVerify(token, clave, { algorithms: [ALGORITMO] });
-    if (payload.rol !== rol || typeof payload.sub !== "string") {
+    const { payload } = await jwtVerify(token, key, { algorithms: [ALGORITHM] });
+    if (payload.role !== role || typeof payload.sub !== "string") {
       return null;
     }
     return payload.sub;
@@ -76,58 +76,58 @@ export async function verificarSesion(token: string, rol: RolSesion): Promise<st
 }
 
 /** Opciones de la cookie de sesión. Solo se transmite por HTTPS en producción. */
-export function opcionesCookieSesion() {
+export function sessionCookieOptions() {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: DURACION_SEGUNDOS,
+    maxAge: DURATION_SECONDS,
   };
 }
 
 /** Establece en la respuesta la cookie de sesión del rol indicado. */
-export async function iniciarSesion(
-  respuesta: NextResponse,
-  rol: RolSesion,
+export async function startSession(
+  response: NextResponse,
+  role: SessionRole,
   id: string,
 ): Promise<void> {
-  const token = await firmarSesion(rol, id);
-  respuesta.cookies.set(NOMBRE_COOKIE[rol], token, opcionesCookieSesion());
+  const token = await signSession(role, id);
+  response.cookies.set(COOKIE_NAMES[role], token, sessionCookieOptions());
 }
 
 /** Lee la cookie del rol indicado y exige un token válido. */
-async function requerirSesion<R extends RolSesion>(rol: R): Promise<SesionActiva<R>> {
-  const almacen = await cookies();
-  const token = almacen.get(NOMBRE_COOKIE[rol])?.value;
+async function requireSession<R extends SessionRole>(role: R): Promise<ActiveSession<R>> {
+  const store = await cookies();
+  const token = store.get(COOKIE_NAMES[role])?.value;
   if (token === undefined) {
-    throw new SesionNoValidaError(rol);
+    throw new InvalidSessionError(role);
   }
 
-  const id = await verificarSesion(token, rol);
+  const id = await verifySession(token, role);
   if (id === null) {
-    throw new SesionNoValidaError(rol);
+    throw new InvalidSessionError(role);
   }
-  return { rol, id };
+  return { role: role, id };
 }
 
 /** Exige una sesión de jurado. Lanza SesionNoValidaError cuando no existe o no es válida. */
-export function requireJury(): Promise<SesionActiva<"jurado">> {
-  return requerirSesion("jurado");
+export function requireJury(): Promise<ActiveSession<"jury">> {
+  return requireSession("jury");
 }
 
 /** Exige una sesión de operador. Lanza SesionNoValidaError cuando no existe o no es válida. */
-export function requireOperator(): Promise<SesionActiva<"operador">> {
-  return requerirSesion("operador");
+export function requireOperator(): Promise<ActiveSession<"operator">> {
+  return requireSession("operator");
 }
 
 /**
  * Convierte un SesionNoValidaError en respuesta 401 para las rutas de API. Devuelve nulo cuando el
  * error no corresponde a la sesión, para que la ruta lo propague.
  */
-export function respuestaSinSesion(error: unknown): NextResponse | null {
-  if (error instanceof SesionNoValidaError) {
-    return NextResponse.json({ error: "SESION_NO_VALIDA" }, { status: 401 });
+export function noSessionResponse(error: unknown): NextResponse | null {
+  if (error instanceof InvalidSessionError) {
+    return NextResponse.json({ error: "INVALID_SESSION" }, { status: 401 });
   }
   return null;
 }

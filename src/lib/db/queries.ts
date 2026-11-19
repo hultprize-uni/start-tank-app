@@ -4,18 +4,18 @@ import type { OperatorViewModel } from "@/lib/api/operator.types";
 import type { ScreenViewModel } from "@/lib/api/screen.types";
 import { sql } from "./client";
 import {
-  clasificarRondas,
-  construirPantalla,
-  construirVistaJurado,
-  construirVistaOperador,
-  rondaReferenciaOperador,
-  rondaReferenciaPantalla,
-  type FilaAccion,
-  type FilaPosicion,
-  type FilaRanking,
-  type FilaRonda,
-  type FilaSaldo,
-  type VotoRonda,
+  classifyRounds,
+  buildScreen,
+  buildJuryView,
+  buildOperatorView,
+  operatorReferenceRound,
+  screenReferenceRound,
+  type ActionRow,
+  type AttendeePositionRow,
+  type RankingRow,
+  type RoundRow,
+  type BalanceSnapshotRow,
+  type RoundVoteRow,
 } from "./mapeo";
 
 /*
@@ -25,40 +25,40 @@ import {
  */
 
 /** Acciones del operador que la API acepta. REVELAR se resuelve con fn_revelar_veredicto. */
-export const ACCIONES_OPERADOR = [
-  "ABRIR",
-  "ULTIMA_LLAMADA",
-  "CERRAR",
-  "HABILITAR_VOTO",
-  "REVELAR",
-  "ANULAR_DEVOLVER",
-  "ANULAR_LIQUIDAR_1X",
+export const API_OPERATOR_ACTIONS = [
+  "OPEN",
+  "LAST_CALL",
+  "CLOSE",
+  "ENABLE_VOTING",
+  "REVEAL",
+  "CANCEL_REFUND",
+  "CANCEL_SETTLE_1X",
 ] as const;
 
-export type AccionOperador = (typeof ACCIONES_OPERADOR)[number];
+export type ApiOperatorAction = (typeof API_OPERATOR_ACTIONS)[number];
 
 /** Resultado jsonb devuelto por las funciones SQL. */
-export interface ResultadoFuncion {
+export interface SqlFunctionResult {
   ok: boolean;
   error?: string;
-  [clave: string]: unknown;
+  [key: string]: unknown;
 }
 
 /** Identidad de un jurado u operador, tal como se almacena en la base de datos. */
-export interface Participante {
+export interface Participant {
   id: string;
   nombre: string;
 }
 
 /** Límite de filas del leaderboard, dimensionado para hasta 100 asistentes. */
-const LIMITE_RANKING = 100;
+const RANKING_LIMIT = 100;
 
 /** Límite de acciones mostradas en el registro del operador. */
-const LIMITE_ACCIONES = 50;
+const ACTION_LIMIT = 50;
 
 /** Todas las rondas con los datos de su startup y de su fila de startup_leaderboard. */
-async function consultarRondas(): Promise<FilaRonda[]> {
-  return sql<FilaRonda>`
+async function queryRounds(): Promise<RoundRow[]> {
+  return sql<RoundRow>`
     select r.id_ronda::text as id_ronda,
            r.numero,
            r.estado,
@@ -84,21 +84,21 @@ async function consultarRondas(): Promise<FilaRonda[]> {
 }
 
 /** Votos de todos los jurados en una ronda. La decisión es nula para quien aún no votó. */
-async function consultarVotosRonda(idRonda: string): Promise<VotoRonda[]> {
-  return sql<VotoRonda>`
+async function queryRoundVotes(roundId: string): Promise<RoundVoteRow[]> {
+  return sql<RoundVoteRow>`
     select j.id_jurado::text as id_jurado,
            j.nombre,
            v.decision
       from jurado j
       left join veredicto v
         on v.id_jurado = j.id_jurado
-       and v.id_ronda = ${idRonda}::bigint
+       and v.id_ronda = ${roundId}::bigint
      order by j.id_jurado`;
 }
 
 /** Leaderboard de asistentes de una ronda, ordenado por posición. */
-async function consultarRanking(idRonda: string): Promise<FilaRanking[]> {
-  return sql<FilaRanking>`
+async function queryRanking(roundId: string): Promise<RankingRow[]> {
+  return sql<RankingRow>`
     select u.id_usuario::text as id_usuario,
            coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre,
            l.posicion,
@@ -106,29 +106,29 @@ async function consultarRanking(idRonda: string): Promise<FilaRanking[]> {
            l.aciertos
       from leaderboard l
       join usuario u on u.id_usuario = l.id_usuario
-     where l.id_ronda = ${idRonda}::bigint
+     where l.id_ronda = ${roundId}::bigint
      order by l.posicion
-     limit ${LIMITE_RANKING}`;
+     limit ${RANKING_LIMIT}`;
 }
 
 /** Número de asistentes con cuenta activa. */
-async function consultarUsuariosActivos(): Promise<number> {
-  const [fila] = await sql<{ total: number }>`
+async function queryActiveUsers(): Promise<number> {
+  const [row] = await sql<{ total: number }>`
     select count(*)::int as total
       from usuario
      where estado = 'ACTIVO'`;
-  return fila?.total ?? 0;
+  return row?.total ?? 0;
 }
 
 /** Número de jurados registrados. */
-async function consultarTotalJurados(): Promise<number> {
-  const [fila] = await sql<{ total: number }>`select count(*)::int as total from jurado`;
-  return fila?.total ?? 0;
+async function queryJurorCount(): Promise<number> {
+  const [row] = await sql<{ total: number }>`select count(*)::int as total from jurado`;
+  return row?.total ?? 0;
 }
 
 /** Saldos actuales de todos los asistentes. */
-async function consultarSaldos(): Promise<FilaSaldo[]> {
-  return sql<FilaSaldo>`
+async function queryBalances(): Promise<BalanceSnapshotRow[]> {
+  return sql<BalanceSnapshotRow>`
     select u.id_usuario::text as id_usuario,
            coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre,
            u.saldo_actual::text as saldo_actual
@@ -137,8 +137,8 @@ async function consultarSaldos(): Promise<FilaSaldo[]> {
 }
 
 /** Posiciones por asistente y ronda: monto invertido y retorno, si la ronda ya está liquidada. */
-async function consultarPosiciones(): Promise<FilaPosicion[]> {
-  return sql<FilaPosicion>`
+async function queryPositions(): Promise<AttendeePositionRow[]> {
+  return sql<AttendeePositionRow>`
     select u.id_usuario::text as id_usuario,
            coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre,
            r.numero,
@@ -156,20 +156,20 @@ async function consultarPosiciones(): Promise<FilaPosicion[]> {
 }
 
 /** Última acción de anulación registrada para una ronda, si existe. */
-async function consultarAccionAnulacion(idRonda: string): Promise<string | null> {
-  const [fila] = await sql<{ accion: string }>`
+async function queryCancelAction(roundId: string): Promise<string | null> {
+  const [row] = await sql<{ accion: string }>`
     select a.accion
       from accion_ronda a
-     where a.id_ronda = ${idRonda}::bigint
+     where a.id_ronda = ${roundId}::bigint
        and a.accion in ('ANULAR_DEVOLVER', 'ANULAR_LIQUIDAR_1X')
      order by a.id_accion desc
      limit 1`;
-  return fila?.accion ?? null;
+  return row?.accion ?? null;
 }
 
 /** Acciones recientes del operador, de la más nueva a la más antigua. */
-async function consultarAcciones(): Promise<FilaAccion[]> {
-  return sql<FilaAccion>`
+async function queryActions(): Promise<ActionRow[]> {
+  return sql<ActionRow>`
     select a.id_accion::text as id_accion,
            a.accion,
            a.ejecutada_en,
@@ -181,105 +181,105 @@ async function consultarAcciones(): Promise<FilaAccion[]> {
       join ronda r on r.id_ronda = a.id_ronda
       join startup s on s.id_startup = r.id_startup
      order by a.id_accion desc
-     limit ${LIMITE_ACCIONES}`;
+     limit ${ACTION_LIMIT}`;
 }
 
 /** Busca un jurado por su código de acceso. */
-export async function buscarJuradoPorCodigo(codigo: string): Promise<Participante | null> {
-  const [fila] = await sql<Participante>`
+export async function findJurorByCode(code: string): Promise<Participant | null> {
+  const [row] = await sql<Participant>`
     select id_jurado::text as id, nombre
       from jurado
-     where codigo_acceso = ${codigo}
+     where codigo_acceso = ${code}
      limit 1`;
-  return fila ?? null;
+  return row ?? null;
 }
 
 /** Busca un operador por su código de acceso. */
-export async function buscarOperadorPorCodigo(codigo: string): Promise<Participante | null> {
-  const [fila] = await sql<Participante>`
+export async function findOperatorByCode(code: string): Promise<Participant | null> {
+  const [row] = await sql<Participant>`
     select id_operador::text as id, nombre
       from operador
-     where codigo_acceso = ${codigo}
+     where codigo_acceso = ${code}
      limit 1`;
-  return fila ?? null;
+  return row ?? null;
 }
 
 /** Busca un jurado por su identificador de sesión. */
-async function buscarJuradoPorId(id: string): Promise<Participante | null> {
-  const [fila] = await sql<Participante>`
+async function findJurorById(id: string): Promise<Participant | null> {
+  const [row] = await sql<Participant>`
     select id_jurado::text as id, nombre
       from jurado
      where id_jurado = ${id}::bigint`;
-  return fila ?? null;
+  return row ?? null;
 }
 
 /**
  * Lee el view model de la pantalla pública. Devuelve nulo cuando el evento no tiene rondas.
  * Solo ejecuta consultas de lectura.
  */
-export async function leerPantalla(ahora: Date = new Date()): Promise<ScreenViewModel | null> {
-  const rondas = await consultarRondas();
-  const referencia = rondaReferenciaPantalla(rondas);
-  if (referencia === undefined) return null;
+export async function readScreen(now: Date = new Date()): Promise<ScreenViewModel | null> {
+  const rounds = await queryRounds();
+  const reference = screenReferenceRound(rounds);
+  if (reference === undefined) return null;
 
-  const ultimaTerminada = clasificarRondas(rondas).ultimaTerminada;
-  const [votos, ranking, usuariosActivos] = await Promise.all([
-    consultarVotosRonda(referencia.id_ronda),
-    ultimaTerminada ? consultarRanking(ultimaTerminada.id_ronda) : Promise.resolve([]),
-    consultarUsuariosActivos(),
+  const lastFinished = classifyRounds(rounds).lastFinished;
+  const [votes, ranking, activeUsers] = await Promise.all([
+    queryRoundVotes(reference.id_ronda),
+    lastFinished ? queryRanking(lastFinished.id_ronda) : Promise.resolve([]),
+    queryActiveUsers(),
   ]);
 
-  return construirPantalla({ rondas, votos, ranking, usuariosActivos }, ahora);
+  return buildScreen({ rounds: rounds, votes: votes, ranking, activeUsers: activeUsers }, now);
 }
 
 /**
  * Lee el view model del portal del jurado. Devuelve nulo cuando el jurado no existe.
  * Los votos de otros jurados se consultan, pero el view model solo expone conteos.
  */
-export async function leerVistaJurado(juradoId: string): Promise<JuryViewModel | null> {
-  const jurado = await buscarJuradoPorId(juradoId);
-  if (jurado === null) return null;
+export async function readJuryView(jurorId: string): Promise<JuryViewModel | null> {
+  const juror = await findJurorById(jurorId);
+  if (juror === null) return null;
 
-  const rondas = await consultarRondas();
-  const activa = clasificarRondas(rondas).activa;
-  const [votos, totalJurados] = await Promise.all([
-    activa ? consultarVotosRonda(activa.id_ronda) : Promise.resolve([]),
-    consultarTotalJurados(),
+  const rounds = await queryRounds();
+  const active = classifyRounds(rounds).active;
+  const [votes, totalJurors] = await Promise.all([
+    active ? queryRoundVotes(active.id_ronda) : Promise.resolve([]),
+    queryJurorCount(),
   ]);
 
-  return construirVistaJurado({
-    juradoId: jurado.id,
-    nombre: jurado.nombre,
-    rondas,
-    votos,
-    totalJurados,
+  return buildJuryView({
+    jurorId: juror.id,
+    name: juror.nombre,
+    rounds: rounds,
+    votes: votes,
+    totalJurors,
   });
 }
 
 /** Lee el view model completo de la consola del operador. Devuelve nulo cuando no hay rondas. */
-export async function leerVistaOperador(ahora: Date = new Date()): Promise<OperatorViewModel | null> {
-  const rondas = await consultarRondas();
-  const actual = rondaReferenciaOperador(rondas);
-  if (actual === undefined) return null;
+export async function readOperatorView(now: Date = new Date()): Promise<OperatorViewModel | null> {
+  const rounds = await queryRounds();
+  const current = operatorReferenceRound(rounds);
+  if (current === undefined) return null;
 
-  const [votos, accionAnulacion, usuariosActivos, saldos, posiciones, acciones] = await Promise.all([
-    consultarVotosRonda(actual.id_ronda),
-    consultarAccionAnulacion(actual.id_ronda),
-    consultarUsuariosActivos(),
-    consultarSaldos(),
-    consultarPosiciones(),
-    consultarAcciones(),
+  const [votes, cancelAction, activeUsers, balances, positions, actions] = await Promise.all([
+    queryRoundVotes(current.id_ronda),
+    queryCancelAction(current.id_ronda),
+    queryActiveUsers(),
+    queryBalances(),
+    queryPositions(),
+    queryActions(),
   ]);
 
-  return construirVistaOperador({
-    rondas,
-    votos,
-    accionAnulacion,
-    usuariosActivos,
-    saldos,
-    posiciones,
-    acciones,
-    ahora,
+  return buildOperatorView({
+    rounds: rounds,
+    votes: votes,
+    cancelAction: cancelAction,
+    activeUsers: activeUsers,
+    balances: balances,
+    positions: positions,
+    actions: actions,
+    now: now,
   });
 }
 
@@ -287,16 +287,16 @@ export async function leerVistaOperador(ahora: Date = new Date()): Promise<Opera
  * Registra el voto del jurado en la ronda activa mediante fn_registrar_voto. La función valida el
  * estado de la ronda y la unicidad del voto.
  */
-export async function registrarVoto(juradoId: string, decision: Decision): Promise<ResultadoFuncion> {
-  const rondas = await consultarRondas();
-  const activa = clasificarRondas(rondas).activa;
-  if (activa === undefined) {
-    return { ok: false, error: "RONDA_NO_EN_VOTACION" };
+export async function registerVote(jurorId: string, decision: Decision): Promise<SqlFunctionResult> {
+  const rounds = await queryRounds();
+  const active = classifyRounds(rounds).active;
+  if (active === undefined) {
+    return { ok: false, error: "ROUND_NOT_VOTING" };
   }
 
-  const [fila] = await sql<{ resultado: ResultadoFuncion }>`
-    select fn_registrar_voto(${juradoId}::bigint, ${activa.id_ronda}::bigint, ${decision}::varchar) as resultado`;
-  return fila.resultado;
+  const [row] = await sql<{ resultado: SqlFunctionResult }>`
+    select fn_registrar_voto(${jurorId}::bigint, ${active.id_ronda}::bigint, ${decision}::varchar) as resultado`;
+  return row.resultado;
 }
 
 /**
@@ -304,24 +304,24 @@ export async function registrarVoto(juradoId: string, decision: Decision): Promi
  * ronda programada y el resto sobre la ronda activa. REVELAR llama a fn_revelar_veredicto y las
  * demás acciones a fn_accion_operador.
  */
-export async function ejecutarAccionOperador(
-  operadorId: string,
-  accion: AccionOperador,
-): Promise<ResultadoFuncion> {
-  const rondas = await consultarRondas();
-  const c = clasificarRondas(rondas);
-  const ronda = accion === "ABRIR" ? c.pendiente : c.activa;
-  if (ronda === undefined) {
-    return { ok: false, error: "RONDA_NO_DISPONIBLE" };
+export async function executeOperatorAction(
+  operatorId: string,
+  action: ApiOperatorAction,
+): Promise<SqlFunctionResult> {
+  const rounds = await queryRounds();
+  const c = classifyRounds(rounds);
+  const round = action === "OPEN" ? c.pending : c.active;
+  if (round === undefined) {
+    return { ok: false, error: "ROUND_UNAVAILABLE" };
   }
 
-  if (accion === "REVELAR") {
-    const [fila] = await sql<{ resultado: ResultadoFuncion }>`
-      select fn_revelar_veredicto(${operadorId}::bigint, ${ronda.id_ronda}::bigint) as resultado`;
-    return fila.resultado;
+  if (action === "REVEAL") {
+    const [row] = await sql<{ resultado: SqlFunctionResult }>`
+      select fn_revelar_veredicto(${operatorId}::bigint, ${round.id_ronda}::bigint) as resultado`;
+    return row.resultado;
   }
 
-  const [fila] = await sql<{ resultado: ResultadoFuncion }>`
-    select fn_accion_operador(${operadorId}::bigint, ${ronda.id_ronda}::bigint, ${accion}::varchar) as resultado`;
-  return fila.resultado;
+  const [row] = await sql<{ resultado: SqlFunctionResult }>`
+    select fn_accion_operador(${operatorId}::bigint, ${round.id_ronda}::bigint, ${action}::varchar) as resultado`;
+  return row.resultado;
 }

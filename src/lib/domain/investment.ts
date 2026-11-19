@@ -1,15 +1,15 @@
 import { EVENT_CONFIG } from "./config";
 
 /** Motivos por los que una inversión es rechazada. */
-export type RechazoInversion =
+export type InvestmentRejection =
   | "RONDA_CERRADA"
   | "MINIMO_NO_ALCANZADO"
-  | "SALDO_INSUFICIENTE"
+  | "INSUFFICIENT_BALANCE"
   | "TOPE_DE_RONDA_EXCEDIDO";
 
-export type ResultadoInversion = { ok: true } | { ok: false; reason: RechazoInversion };
+export type InvestmentResult = { ok: true } | { ok: false; reason: InvestmentRejection };
 
-export interface SolicitudInversion {
+export interface InvestmentRequest {
   /** Monto solicitado en Impact Coins. */
   amount: number;
   /** Saldo disponible del asistente en el momento de la compra. */
@@ -31,21 +31,21 @@ export function roundCap(balanceAtOpen: number): number {
  * Valida una solicitud de compra en el orden: estado de la ronda, monto mínimo,
  * saldo disponible y tope por ronda. Devuelve el primer motivo de rechazo encontrado.
  */
-export function validateInvestment(solicitud: SolicitudInversion): ResultadoInversion {
-  if (!solicitud.roundOpen) {
+export function validateInvestment(request: InvestmentRequest): InvestmentResult {
+  if (!request.roundOpen) {
     return { ok: false, reason: "RONDA_CERRADA" };
   }
 
-  if (solicitud.amount < EVENT_CONFIG.minInvestment) {
+  if (request.amount < EVENT_CONFIG.minInvestment) {
     return { ok: false, reason: "MINIMO_NO_ALCANZADO" };
   }
 
-  if (solicitud.amount > solicitud.balance) {
-    return { ok: false, reason: "SALDO_INSUFICIENTE" };
+  if (request.amount > request.balance) {
+    return { ok: false, reason: "INSUFFICIENT_BALANCE" };
   }
 
-  const total = solicitud.investedInRound + solicitud.amount;
-  if (total > roundCap(solicitud.balanceAtOpen)) {
+  const total = request.investedInRound + request.amount;
+  if (total > roundCap(request.balanceAtOpen)) {
     return { ok: false, reason: "TOPE_DE_RONDA_EXCEDIDO" };
   }
 

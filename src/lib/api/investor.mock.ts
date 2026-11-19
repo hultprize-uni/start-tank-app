@@ -11,7 +11,7 @@ import type {
   InvestorActions,
   InvestorPhase,
   InvestorViewModel,
-  ResultadoInversion,
+  InvestmentResult,
   StandingEntry,
   StandingInfo,
   StartupInfo,
@@ -44,20 +44,20 @@ const ROOM_RANGE_COINS = 1_800;
 const MAX_INVESTORS = 70;
 
 const STARTUPS: StartupInfo[] = [
-  { name: "Aurora Agro", ods: "ODS 2 · Hambre cero", description: "Startup de ejemplo para la demostración." },
-  { name: "Nodo Solar", ods: "ODS 7 · Energía asequible", description: "Startup de ejemplo para la demostración." },
-  { name: "Aqua Lima", ods: "ODS 6 · Agua limpia", description: "Startup de ejemplo para la demostración." },
-  { name: "Tejido Vivo", ods: "ODS 12 · Producción responsable", description: "Startup de ejemplo para la demostración." },
-  { name: "Ruta Verde", ods: "ODS 11 · Ciudades sostenibles", description: "Startup de ejemplo para la demostración." },
+  { name: "Aurora Agro", sdg: "ODS 2 · Hambre cero", description: "Startup de ejemplo para la demostración." },
+  { name: "Nodo Solar", sdg: "ODS 7 · Energía asequible", description: "Startup de ejemplo para la demostración." },
+  { name: "Aqua Lima", sdg: "ODS 6 · Agua limpia", description: "Startup de ejemplo para la demostración." },
+  { name: "Tejido Vivo", sdg: "ODS 12 · Producción responsable", description: "Startup de ejemplo para la demostración." },
+  { name: "Ruta Verde", sdg: "ODS 11 · Ciudades sostenibles", description: "Startup de ejemplo para la demostración." },
 ];
 
 /** Votos simulados de los cuatro jurados por ronda. */
 const ROUND_DECISIONS: Decision[][] = [
-  ["RESPALDA", "RESPALDA", "RESPALDA", "RECHAZA"],
-  ["RESPALDA", "RESPALDA", "RECHAZA", "SE_ABSTIENE"],
-  ["RESPALDA", "RESPALDA", "RESPALDA", "RESPALDA"],
-  ["RESPALDA", "RECHAZA", "RECHAZA", "RECHAZA"],
-  ["RESPALDA", "RESPALDA", "RESPALDA", "RECHAZA"],
+  ["BACK", "BACK", "BACK", "REJECT"],
+  ["BACK", "BACK", "REJECT", "ABSTAIN"],
+  ["BACK", "BACK", "BACK", "BACK"],
+  ["BACK", "REJECT", "REJECT", "REJECT"],
+  ["BACK", "BACK", "BACK", "REJECT"],
 ];
 
 const TOP_NAMES = ["Sofía Mendoza", "Carlos Ruiz", "Lucía Paredes"];
@@ -103,8 +103,8 @@ function balanceForPosition(position: number): number {
 
 function computeVerdict(roundIndex: number, invested: number): VerdictInfo {
   const decisions = ROUND_DECISIONS[roundIndex];
-  const backs = decisions.filter((d) => d === "RESPALDA").length;
-  const voters = decisions.filter((d) => d !== "SE_ABSTIENE").length;
+  const backs = decisions.filter((d) => d === "BACK").length;
+  const voters = decisions.filter((d) => d !== "ABSTAIN").length;
   const multiplier = getMultiplier(backs, voters);
   const payout = Math.round(invested * multiplier);
   return { decisions, backs, voters, multiplier, invested, payout, gain: payout - invested };
@@ -265,7 +265,7 @@ export function useInvestorMockState(): UseInvestorStateResult {
     return () => window.clearInterval(timer);
   }, [state.phase]);
 
-  const invest = useCallback(async (amount: number): Promise<ResultadoInversion> => {
+  const invest = useCallback(async (amount: number): Promise<InvestmentResult> => {
     setState((s) => {
       if (s.phase !== "open" && s.phase !== "lastCall") return s;
       const remainingCap = getRoundCap(s.roundStartBalance) - s.invested;

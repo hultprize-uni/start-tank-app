@@ -1,11 +1,11 @@
 import type { Decision } from "@/lib/domain/types";
 
 /** Pantallas del portal del jurado, en el orden en que se recorren. */
-export type JuryScreen = "acceso" | "espera" | "votacion" | "voto_registrado";
+export type JuryScreen = "access" | "waiting" | "voting" | "vote_registered";
 
 /** Estado del formulario de acceso con código. */
 export interface JuryAccessView {
-  status: "inactivo" | "validando" | "error";
+  status: "idle" | "validating" | "error";
   errorMessage: string | null;
 }
 
@@ -17,7 +17,7 @@ export interface JuryRoundView {
 
 /** Criterio de evaluación que se muestra como recordatorio. */
 export interface JuryCriterion {
-  id: "viabilidad" | "impacto_ods";
+  id: "viability" | "sdg_impact";
   label: string;
 }
 

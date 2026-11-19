@@ -1,92 +1,92 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const sesionMock = vi.hoisted(() => vi.fn());
-const registrarMock = vi.hoisted(() => vi.fn());
+const mockSession = vi.hoisted(() => vi.fn());
+const registerMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/auth/investor", () => ({ getInvestorSession: sesionMock }));
-vi.mock("@/lib/db/investor-queries", () => ({ registrarInversion: registrarMock }));
+vi.mock("@/lib/auth/investor", () => ({ getInvestorSession: mockSession }));
+vi.mock("@/lib/db/investor-queries", () => ({ registerInvestment: registerMock }));
 
 import { POST } from "./route";
 
 /** Crea una petición JSON al endpoint de inversión con el cuerpo indicado. */
-function peticion(cuerpo: unknown): Request {
+function request(body: unknown): Request {
   return new Request("http://localhost/api/inversionista/invertir", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: typeof cuerpo === "string" ? cuerpo : JSON.stringify(cuerpo),
+    body: typeof body === "string" ? body : JSON.stringify(body),
   });
 }
 
 beforeEach(() => {
-  sesionMock.mockReset();
-  registrarMock.mockReset();
-  sesionMock.mockResolvedValue({ idUsuario: 7, saldo: 10_000, nombre: "Ana" });
+  mockSession.mockReset();
+  registerMock.mockReset();
+  mockSession.mockResolvedValue({ userId: 7, balance: 10_000, name: "Ana" });
 });
 
 describe("POST /api/inversionista/invertir", () => {
   it("responde 401 sin sesión y no invoca la función de inversión", async () => {
-    sesionMock.mockResolvedValue(null);
+    mockSession.mockResolvedValue(null);
 
-    const respuesta = await POST(peticion({ monto: 300 }));
+    const response = await POST(request({ amount: 300 }));
 
-    expect(respuesta.status).toBe(401);
-    await expect(respuesta.json()).resolves.toMatchObject({ error: "SIN_SESION" });
-    expect(registrarMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({ error: "NO_SESSION" });
+    expect(registerMock).not.toHaveBeenCalled();
   });
 
   it.each([
     ["ausente", {}],
-    ["en texto", { monto: "300" }],
-    ["decimal", { monto: 250.5 }],
-    ["cero", { monto: 0 }],
-    ["negativo", { monto: -250 }],
+    ["en texto", { amount: "300" }],
+    ["decimal", { amount: 250.5 }],
+    ["cero", { amount: 0 }],
+    ["negativo", { amount: -250 }],
     ["un cuerpo que no es JSON", "no es json"],
-  ])("rechaza el monto con 400 cuando es %s", async (_descripcion, cuerpo) => {
-    const respuesta = await POST(peticion(cuerpo));
+  ])("rechaza el monto con 400 cuando es %s", async (_description, body) => {
+    const response = await POST(request(body));
 
-    expect(respuesta.status).toBe(400);
-    await expect(respuesta.json()).resolves.toMatchObject({ error: "MONTO_INVALIDO" });
-    expect(registrarMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "INVALID_AMOUNT" });
+    expect(registerMock).not.toHaveBeenCalled();
   });
 
   it("informa el monto mínimo cuando la función lo rechaza", async () => {
-    registrarMock.mockResolvedValue({ ok: false, error: "MONTO_MINIMO", saldo: null });
+    registerMock.mockResolvedValue({ ok: false, error: "BELOW_MINIMUM", balance: null });
 
-    const respuesta = await POST(peticion({ monto: 100 }));
+    const response = await POST(request({ amount: 100 }));
 
-    expect(respuesta.status).toBe(422);
-    await expect(respuesta.json()).resolves.toEqual({
-      error: "MONTO_MINIMO",
-      mensaje: "El monto mínimo de compra es 250 coins.",
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: "BELOW_MINIMUM",
+      message: "El monto mínimo de compra es 250 coins.",
     });
   });
 
   it.each([
-    ["TOPE_RONDA_SUPERADO", 422],
-    ["SALDO_INSUFICIENTE", 422],
-    ["RONDA_NO_ABIERTA", 409],
-    ["RONDA_NO_EXISTE", 409],
-    ["USUARIO_INACTIVO", 403],
-    ["USUARIO_NO_EXISTE", 404],
-  ])("mapea %s al estado %i con mensaje en español", async (codigo, estado) => {
-    registrarMock.mockResolvedValue({ ok: false, error: codigo, saldo: 9_000 });
+    ["ROUND_CAP_EXCEEDED", 422],
+    ["INSUFFICIENT_BALANCE", 422],
+    ["ROUND_NOT_OPEN", 409],
+    ["ROUND_NOT_FOUND", 409],
+    ["USER_INACTIVE", 403],
+    ["USER_NOT_FOUND", 404],
+  ])("mapea %s al estado %i con mensaje en español", async (code, state) => {
+    registerMock.mockResolvedValue({ ok: false, error: code, balance: 9_000 });
 
-    const respuesta = await POST(peticion({ monto: 300 }));
-    const cuerpo = await respuesta.json();
+    const response = await POST(request({ amount: 300 }));
+    const body = await response.json();
 
-    expect(respuesta.status).toBe(estado);
-    expect(cuerpo.error).toBe(codigo);
-    expect(typeof cuerpo.mensaje).toBe("string");
-    expect(cuerpo.mensaje.length).toBeGreaterThan(0);
+    expect(response.status).toBe(state);
+    expect(body.error).toBe(code);
+    expect(typeof body.message).toBe("string");
+    expect(body.message.length).toBeGreaterThan(0);
   });
 
-  it("usa el identificador de la sesión y descarta cualquier idUsuario del cuerpo (RNF06)", async () => {
-    registrarMock.mockResolvedValue({ ok: true, saldo: 9_700 });
+  it("usa el identificador de la sesión y descarta cualquier userId del cuerpo (RNF06)", async () => {
+    registerMock.mockResolvedValue({ ok: true, balance: 9_700 });
 
-    const respuesta = await POST(peticion({ monto: 300, idUsuario: 99 }));
+    const response = await POST(request({ amount: 300, userId: 99 }));
 
-    expect(respuesta.status).toBe(200);
-    expect(registrarMock).toHaveBeenCalledWith(7, 300);
-    await expect(respuesta.json()).resolves.toEqual({ ok: true, saldo: 9_700 });
+    expect(response.status).toBe(200);
+    expect(registerMock).toHaveBeenCalledWith(7, 300);
+    await expect(response.json()).resolves.toEqual({ ok: true, balance: 9_700 });
   });
 });

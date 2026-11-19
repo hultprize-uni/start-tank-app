@@ -1,29 +1,29 @@
-import { iniciarSesion } from "@/lib/auth/code-session";
-import { buscarJuradoPorCodigo } from "@/lib/db/queries";
-import { leerCuerpoJson, respuestaError, respuestaJson } from "@/lib/http/respuestas";
+import { startSession } from "@/lib/auth/code-session";
+import { findJurorByCode } from "@/lib/db/queries";
+import { readJsonBody, errorResponse, jsonResponse } from "@/lib/http/respuestas";
 
 /** Longitud máxima admitida para un código de acceso. */
-const LONGITUD_MAXIMA_CODIGO = 64;
+const MAX_CODE_LENGTH = 64;
 
 /**
  * Valida el código de acceso del jurado contra la tabla jurado y, si coincide, establece la cookie
  * de sesión del rol jurado.
  */
 export async function POST(request: Request) {
-  const cuerpo = await leerCuerpoJson(request);
-  const valor = cuerpo?.codigo;
-  const codigo = typeof valor === "string" ? valor.trim() : "";
+  const body = await readJsonBody(request);
+  const value = body?.code;
+  const code = typeof value === "string" ? value.trim() : "";
 
-  if (codigo.length === 0 || codigo.length > LONGITUD_MAXIMA_CODIGO) {
-    return respuestaError(400, "CODIGO_REQUERIDO");
+  if (code.length === 0 || code.length > MAX_CODE_LENGTH) {
+    return errorResponse(400, "CODE_REQUIRED");
   }
 
-  const jurado = await buscarJuradoPorCodigo(codigo);
-  if (jurado === null) {
-    return respuestaError(401, "CODIGO_INVALIDO");
+  const juror = await findJurorByCode(code);
+  if (juror === null) {
+    return errorResponse(401, "INVALID_CODE");
   }
 
-  const respuesta = respuestaJson({ ok: true, nombre: jurado.nombre });
-  await iniciarSesion(respuesta, "jurado", jurado.id);
-  return respuesta;
+  const response = jsonResponse({ ok: true, name: juror.nombre });
+  await startSession(response, "jury", juror.id);
+  return response;
 }

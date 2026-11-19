@@ -14,33 +14,33 @@ describe("startupScore", () => {
 
 describe("pickWinner", () => {
   it("elige la startup con el puntaje más alto", () => {
-    const ganadora = pickWinner([
+    const winner = pickWinner([
       { id: "A", fraction: 0.5, investorPct: 0.9 },
       { id: "B", fraction: 1, investorPct: 0.3 },
       { id: "C", fraction: 0.25, investorPct: 0.2 },
     ]);
 
     // A: 0.30 + 0.36 = 0.66; B: 0.72; C: 0.23.
-    expect(ganadora?.id).toBe("B");
+    expect(winner?.id).toBe("B");
   });
 
   it("desempata por la mayor fracción de respaldo cuando el puntaje coincide", () => {
     // Ambas startups suman 0.5: X con fracción 0.5 y tracción 0.5; Y con fracción 0.75 y tracción 0.125.
-    const ganadora = pickWinner([
+    const winner = pickWinner([
       { id: "X", fraction: 0.5, investorPct: 0.5 },
       { id: "Y", fraction: 0.75, investorPct: 0.125 },
     ]);
 
-    expect(ganadora?.id).toBe("Y");
+    expect(winner?.id).toBe("Y");
   });
 
   it("conserva la primera startup cuando puntaje y fracción coinciden", () => {
-    const ganadora = pickWinner([
+    const winner = pickWinner([
       { id: "P", fraction: 0.5, investorPct: 0.5 },
       { id: "Q", fraction: 0.5, investorPct: 0.5 },
     ]);
 
-    expect(ganadora?.id).toBe("P");
+    expect(winner?.id).toBe("P");
   });
 
   it("devuelve undefined cuando no hay startups", () => {
@@ -64,22 +64,22 @@ describe("countHits", () => {
 
 describe("bestEye", () => {
   it("identifica al asistente con mayor número de aciertos", () => {
-    const mejor = bestEye([
+    const best = bestEye([
       { id: "ana", investmentBacks: [4, 1, 0] },
       { id: "luis", investmentBacks: [3, 3, 4, 2] },
       { id: "marta", investmentBacks: [0] },
     ]);
 
-    expect(mejor).toEqual({ id: "luis", hits: 3 });
+    expect(best).toEqual({ id: "luis", hits: 3 });
   });
 
   it("no premia la cantidad de inversiones que no son aciertos", () => {
-    const mejor = bestEye([
+    const best = bestEye([
       { id: "prudente", investmentBacks: [3] },
       { id: "arriesgado", investmentBacks: [1, 1, 1, 1] },
     ]);
 
-    expect(mejor).toEqual({ id: "prudente", hits: 1 });
+    expect(best).toEqual({ id: "prudente", hits: 1 });
   });
 
   it("devuelve undefined cuando no hay asistentes", () => {

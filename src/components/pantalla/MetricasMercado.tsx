@@ -1,31 +1,31 @@
 import styles from "./pantalla.module.css";
-import { formatearEntero } from "./formato";
+import { formatInteger } from "./formato";
 
-interface MetricasMercadoProps {
-  precio: number;
-  acumulado: number;
-  inversoresUnicos: number;
+interface MarketMetricsProps {
+  price: number;
+  accumulated: number;
+  uniqueInvestors: number;
 }
 
 /** Precio en vivo y las dos cifras de participación de la ronda: monto acumulado e inversores únicos. */
-export function MetricasMercado({ precio, acumulado, inversoresUnicos }: MetricasMercadoProps) {
+export function MarketMetrics({ price: price, accumulated: accumulated, uniqueInvestors: uniqueInvestors }: MarketMetricsProps) {
   return (
     <div>
       <p className={styles.eyebrow}>Precio en vivo</p>
-      <p className={styles.cifraGrande} aria-label={`Precio ${precio}`}>
-        {formatearEntero(precio)}
+      <p className={styles.figureLarge} aria-label={`Precio ${price}`}>
+        {formatInteger(price)}
       </p>
-      <div className={styles.rejilla}>
-        <article className={styles.tarjeta}>
+      <div className={styles.grid}>
+        <article className={styles.card}>
           <p className={styles.eyebrow}>Monto acumulado</p>
-          <p className={`${styles.valorTarjeta} ${styles.acentoCyan}`}>
-            {formatearEntero(acumulado)} IC
+          <p className={`${styles.cardValue} ${styles.accentCyan}`}>
+            {formatInteger(accumulated)} IC
           </p>
         </article>
-        <article className={styles.tarjeta}>
+        <article className={styles.card}>
           <p className={styles.eyebrow}>Inversores únicos</p>
-          <p className={`${styles.valorTarjeta} ${styles.acentoAmarillo}`}>
-            {formatearEntero(inversoresUnicos)}
+          <p className={`${styles.cardValue} ${styles.accentYellow}`}>
+            {formatInteger(uniqueInvestors)}
           </p>
         </article>
       </div>

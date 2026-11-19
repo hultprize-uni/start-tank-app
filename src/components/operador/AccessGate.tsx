@@ -8,25 +8,25 @@ interface AccessGateProps {
   /** Valida el código ingresado. Devuelve el mensaje de error, o null cuando el acceso se concede. */
   onSubmit: (code: string) => Promise<string | null>;
   /** Aviso mostrado al llegar al acceso, por ejemplo cuando la sesión venció. */
-  aviso?: string | null;
+  notice?: string | null;
 }
 
 /** Pantalla de acceso al portal del operador mediante código de acceso. */
-export function AccessGate({ onSubmit, aviso = null }: AccessGateProps) {
+export function AccessGate({ onSubmit, notice: notice = null }: AccessGateProps) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
+  const [sending, setSending] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (enviando) return;
-    setEnviando(true);
-    const mensaje = await onSubmit(code);
-    setEnviando(false);
-    setError(mensaje);
+    if (sending) return;
+    setSending(true);
+    const message = await onSubmit(code);
+    setSending(false);
+    setError(message);
   }
 
-  const mensaje = error ?? aviso;
+  const message = error ?? notice;
 
   return (
     <main className={styles.page}>
@@ -51,17 +51,17 @@ export function AccessGate({ onSubmit, aviso = null }: AccessGateProps) {
             value={code}
             onChange={(event) => setCode(event.target.value)}
             aria-invalid={error !== null}
-            aria-describedby={mensaje ? "codigo-error" : undefined}
+            aria-describedby={message ? "codigo-error" : undefined}
           />
-          {mensaje ? (
+          {message ? (
             <p id="codigo-error" className={styles.error} role="alert">
-              {mensaje}
+              {message}
             </p>
           ) : null}
           <button
             type="submit"
             className={styles.submit}
-            disabled={code.trim().length === 0 || enviando}
+            disabled={code.trim().length === 0 || sending}
           >
             Entrar
           </button>

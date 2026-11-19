@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_CONFIG } from "@/lib/domain/config";
-import { invertirMonto, obtenerEstadoInversionista, SIN_SESION } from "./investor.client";
+import { investAmount, fetchParticipantState, NO_SESSION } from "./investor.client";
 import { useInvestorMockState } from "./investor.mock";
 import type {
   InvestorActions,
   InvestorLoadStatus,
   InvestorViewModel,
-  ResultadoInversion,
+  InvestmentResult,
   UseInvestorStateResult,
 } from "./investor.types";
 
@@ -16,10 +16,10 @@ import type {
  */
 
 /** Mensaje mostrado cuando una actualización del estado no se completa. */
-const MENSAJE_ACTUALIZACION = "No fue posible actualizar la ronda. Reintentando.";
+const UPDATE_FAILED_MESSAGE = "No fue posible actualizar la ronda. Reintentando.";
 
 /** View model de la fase de ingreso, usado cuando la API responde sin sesión. */
-const VISTA_INGRESO: InvestorViewModel = {
+const LOGIN_VIEW: InvestorViewModel = {
   phase: "login",
   round: null,
   startup: null,
@@ -38,46 +38,46 @@ export function useInvestorRemoteState(): UseInvestorStateResult {
   const [vm, setVm] = useState<InvestorViewModel | null>(null);
   const [status, setStatus] = useState<InvestorLoadStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const actualizarRef = useRef<(() => Promise<void>) | null>(null);
+  const refreshRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
-    let activo = true;
-    let enVuelo = false;
+    let active = true;
+    let inFlight = false;
 
-    const actualizar = async () => {
-      if (enVuelo) return;
-      enVuelo = true;
+    const refresh = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
-        const respuesta = await obtenerEstadoInversionista();
-        if (!activo) return;
-        setVm(respuesta === SIN_SESION ? VISTA_INGRESO : respuesta);
+        const response = await fetchParticipantState();
+        if (!active) return;
+        setVm(response === NO_SESSION ? LOGIN_VIEW : response);
         setStatus("ready");
         setErrorMessage(null);
       } catch {
-        if (!activo) return;
+        if (!active) return;
         setStatus("error");
-        setErrorMessage(MENSAJE_ACTUALIZACION);
+        setErrorMessage(UPDATE_FAILED_MESSAGE);
       } finally {
-        enVuelo = false;
+        inFlight = false;
       }
     };
 
-    actualizarRef.current = actualizar;
-    void actualizar();
-    const temporizador = window.setInterval(() => void actualizar(), EVENT_CONFIG.investorPollMs);
+    refreshRef.current = refresh;
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), EVENT_CONFIG.investorPollMs);
 
     return () => {
-      activo = false;
-      actualizarRef.current = null;
-      window.clearInterval(temporizador);
+      active = false;
+      refreshRef.current = null;
+      window.clearInterval(timer);
     };
   }, []);
 
   /** Envía la inversión y actualiza el estado, con el resultado del servidor o con su rechazo. */
-  const invest = useCallback(async (amount: number): Promise<ResultadoInversion> => {
-    const resultado = await invertirMonto(amount);
-    await actualizarRef.current?.();
-    return resultado;
+  const invest = useCallback(async (amount: number): Promise<InvestmentResult> => {
+    const result = await investAmount(amount);
+    await refreshRef.current?.();
+    return result;
   }, []);
 
   const actions = useMemo<InvestorActions>(() => ({ invest }), [invest]);

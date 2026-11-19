@@ -22,11 +22,11 @@ export function calcVerdict(decisions: readonly Decision[]): VerdictResult {
   let voters = 0;
 
   for (const decision of decisions) {
-    if (decision === "SE_ABSTIENE") {
+    if (decision === "ABSTAIN") {
       continue;
     }
     voters += 1;
-    if (decision === "RESPALDA") {
+    if (decision === "BACK") {
       backs += 1;
     }
   }

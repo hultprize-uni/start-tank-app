@@ -1,18 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { leerEstadoJurado, loginJurado, votarJurado } from "./jury";
+import { readJuryState, loginJury, voteJury } from "./jury";
 
 /** Construye una respuesta JSON con el estado HTTP indicado. */
-function respuestaJson(cuerpo: unknown, estado = 200): Response {
-  return new Response(JSON.stringify(cuerpo), {
-    status: estado,
+function jsonResponse(body: unknown, state = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status: state,
     headers: { "Content-Type": "application/json" },
   });
 }
 
 /** Lee el cuerpo JSON enviado en la llamada indicada de fetch. */
-function cuerpoEnviado(llamada: unknown[]): unknown {
-  const init = llamada[1] as RequestInit;
+function sentBody(lastCall: unknown[]): unknown {
+  const init = lastCall[1] as RequestInit;
   return JSON.parse(String(init.body));
 }
 
@@ -29,114 +29,114 @@ afterEach(() => {
 
 describe("loginJurado", () => {
   it("envía el código a la ruta de acceso del jurado y concede el acceso", async () => {
-    fetchMock.mockResolvedValue(respuestaJson({ ok: true, nombre: "Jurado 3" }));
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true, name: "Jurado 3" }));
 
-    const resultado = await loginJurado("4821");
+    const result = await loginJury("4821");
 
-    expect(resultado.ok).toBe(true);
+    expect(result.ok).toBe(true);
     expect(fetchMock.mock.calls[0][0]).toBe("/api/jurado/login");
-    expect(cuerpoEnviado(fetchMock.mock.calls[0])).toEqual({ codigo: "4821" });
+    expect(sentBody(fetchMock.mock.calls[0])).toEqual({ code: "4821" });
   });
 
   it("informa en español cuando el código es inválido (401)", async () => {
-    fetchMock.mockResolvedValue(respuestaJson({ error: "CODIGO_INVALIDO" }, 401));
+    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_CODE" }, 401));
 
-    const resultado = await loginJurado("0000");
+    const result = await loginJury("0000");
 
-    expect(resultado).toEqual({
+    expect(result).toEqual({
       ok: false,
-      sesionVencida: false,
-      mensaje: "El código no es válido. Revísalo e inténtalo de nuevo.",
+      sessionExpired: false,
+      message: "El código no es válido. Revísalo e inténtalo de nuevo.",
     });
   });
 
   it("informa error de conexión cuando la petición falla en red", async () => {
     fetchMock.mockRejectedValue(new TypeError("fetch failed"));
 
-    const resultado = await loginJurado("4821");
+    const result = await loginJury("4821");
 
-    expect(resultado.ok).toBe(false);
-    if (!resultado.ok) {
-      expect(resultado.mensaje).toMatch(/No se pudo conectar/);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toMatch(/No se pudo conectar/);
     }
   });
 });
 
 describe("leerEstadoJurado", () => {
   it("devuelve el view model cuando la sesión es válida", async () => {
-    const vista = {
-      screen: "votacion",
-      access: { status: "inactivo", errorMessage: null },
+    const view = {
+      screen: "voting",
+      access: { status: "idle", errorMessage: null },
       jurorLabel: "Jurado 3",
       round: { number: 2, startupName: "Solar Nodo" },
       criteria: [],
       vote: { draft: null, confirming: false, submitting: false, errorMessage: null },
       votes: { emitted: 1, total: 4 },
     };
-    fetchMock.mockResolvedValue(respuestaJson(vista));
+    fetchMock.mockResolvedValue(jsonResponse(view));
 
-    const resultado = await leerEstadoJurado();
+    const result = await readJuryState();
 
     expect(fetchMock.mock.calls[0][0]).toBe("/api/jurado/estado");
-    expect(resultado).toEqual({ ok: true, valor: vista });
+    expect(result).toEqual({ ok: true, value: view });
   });
 
   it("marca la sesión como vencida ante un 401 para volver al acceso", async () => {
-    fetchMock.mockResolvedValue(respuestaJson({ error: "SESION_NO_VALIDA" }, 401));
+    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
 
-    const resultado = await leerEstadoJurado();
+    const result = await readJuryState();
 
-    expect(resultado.ok).toBe(false);
-    if (!resultado.ok) {
-      expect(resultado.sesionVencida).toBe(true);
-      expect(resultado.mensaje).toBe("Tu sesión venció. Ingresa tu código de nuevo.");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.sessionExpired).toBe(true);
+      expect(result.message).toBe("Tu sesión venció. Ingresa tu código de nuevo.");
     }
   });
 });
 
 describe("votarJurado", () => {
   it("envía la decisión elegida al endpoint de voto", async () => {
-    fetchMock.mockResolvedValue(respuestaJson({ ok: true }));
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
 
-    const resultado = await votarJurado("RESPALDA");
+    const result = await voteJury("BACK");
 
-    expect(resultado.ok).toBe(true);
+    expect(result.ok).toBe(true);
     expect(fetchMock.mock.calls[0][0]).toBe("/api/jurado/voto");
     expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST" });
-    expect(cuerpoEnviado(fetchMock.mock.calls[0])).toEqual({ decision: "RESPALDA" });
+    expect(sentBody(fetchMock.mock.calls[0])).toEqual({ decision: "BACK" });
   });
 
   it("traduce el voto duplicado a un mensaje en español", async () => {
-    fetchMock.mockResolvedValue(respuestaJson({ error: "VOTO_DUPLICADO" }, 409));
+    fetchMock.mockResolvedValue(jsonResponse({ error: "DUPLICATE_VOTE" }, 409));
 
-    const resultado = await votarJurado("RECHAZA");
+    const result = await voteJury("REJECT");
 
-    expect(resultado).toEqual({
+    expect(result).toEqual({
       ok: false,
-      sesionVencida: false,
-      mensaje: "Ya registraste tu voto en esta ronda.",
+      sessionExpired: false,
+      message: "Ya registraste tu voto en esta ronda.",
     });
   });
 
   it("devuelve la sesión vencida cuando el voto llega sin sesión (401)", async () => {
-    fetchMock.mockResolvedValue(respuestaJson({ error: "SESION_NO_VALIDA" }, 401));
+    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
 
-    const resultado = await votarJurado("SE_ABSTIENE");
+    const result = await voteJury("ABSTAIN");
 
-    expect(resultado.ok).toBe(false);
-    if (!resultado.ok) {
-      expect(resultado.sesionVencida).toBe(true);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.sessionExpired).toBe(true);
     }
   });
 
   it("usa el mensaje genérico para un error no contemplado", async () => {
-    fetchMock.mockResolvedValue(respuestaJson({ error: "ALGO_RARO" }, 500));
+    fetchMock.mockResolvedValue(jsonResponse({ error: "ALGO_RARO" }, 500));
 
-    const resultado = await votarJurado("RESPALDA");
+    const result = await voteJury("BACK");
 
-    expect(resultado.ok).toBe(false);
-    if (!resultado.ok) {
-      expect(resultado.mensaje).toBe("El servidor no pudo completar la solicitud. Inténtalo de nuevo.");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe("El servidor no pudo completar la solicitud. Inténtalo de nuevo.");
     }
   });
 });

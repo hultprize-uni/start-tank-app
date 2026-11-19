@@ -15,7 +15,7 @@ export function ScheduledScreen({ round, startup }: ScheduledScreenProps) {
         Ronda {round.number} de {round.total} · Programada
       </StatusBadge>
       <h1 className={styles.name}>{startup.name}</h1>
-      <p className={styles.ods}>{startup.ods}</p>
+      <p className={styles.sdg}>{startup.sdg}</p>
       <p className={styles.description}>{startup.description}</p>
       <p className={styles.note}>
         El operador abrirá el mercado en cuanto empiece el pitch. Esta pantalla se actualiza sola.

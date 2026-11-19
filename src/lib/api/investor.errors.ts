@@ -6,43 +6,43 @@ import { EVENT_CONFIG } from "@/lib/domain/config";
  */
 
 /** Error de la API del inversionista listo para enviarse al cliente. */
-export interface ErrorInversionista {
+export interface ParticipantError {
   /** Estado HTTP de la respuesta. */
-  estado: number;
+  status: number;
   /** Código estable que el cliente puede interpretar. */
-  codigo: string;
+  code: string;
   /** Mensaje en español para mostrar al asistente. */
-  mensaje: string;
+  message: string;
 }
 
-const MENSAJE_GENERICO = "No fue posible completar la operación. Intenta de nuevo.";
+const GENERIC_MESSAGE = "No fue posible completar la operación. Intenta de nuevo.";
 
 /** Errores conocidos, indexados por el código que devuelve la API o la función SQL. */
-const ERRORES: Readonly<Record<string, Omit<ErrorInversionista, "codigo">>> = {
-  SIN_SESION: { estado: 401, mensaje: "Inicia sesión para continuar." },
-  MONTO_INVALIDO: { estado: 400, mensaje: "El monto debe ser un número entero mayor que cero." },
-  MONTO_MINIMO: {
-    estado: 422,
-    mensaje: `El monto mínimo de compra es ${EVENT_CONFIG.minInvestment} coins.`,
+const ERRORS: Readonly<Record<string, Omit<ParticipantError, "code">>> = {
+  NO_SESSION: { status: 401, message: "Inicia sesión para continuar." },
+  INVALID_AMOUNT: { status: 400, message: "El monto debe ser un número entero mayor que cero." },
+  BELOW_MINIMUM: {
+    status: 422,
+    message: `El monto mínimo de compra es ${EVENT_CONFIG.minInvestment} coins.`,
   },
-  TOPE_RONDA_SUPERADO: {
-    estado: 422,
-    mensaje: "Superas tu tope de esta ronda, que equivale al 30 % de tu saldo al abrirla.",
+  ROUND_CAP_EXCEEDED: {
+    status: 422,
+    message: "Superas tu tope de esta ronda, que equivale al 30 % de tu saldo al abrirla.",
   },
-  SALDO_INSUFICIENTE: { estado: 422, mensaje: "Tu saldo no alcanza para este monto." },
-  RONDA_NO_ABIERTA: { estado: 409, mensaje: "La ronda no está abierta para invertir." },
-  RONDA_NO_EXISTE: { estado: 409, mensaje: "No hay una ronda disponible para invertir." },
-  USUARIO_NO_EXISTE: { estado: 404, mensaje: "No encontramos tu cuenta de inversionista." },
-  USUARIO_INACTIVO: { estado: 403, mensaje: "Tu cuenta no está activa." },
+  INSUFFICIENT_BALANCE: { status: 422, message: "Tu saldo no alcanza para este monto." },
+  ROUND_NOT_OPEN: { status: 409, message: "La ronda no está abierta para invertir." },
+  ROUND_NOT_FOUND: { status: 409, message: "No hay una ronda disponible para invertir." },
+  USER_NOT_FOUND: { status: 404, message: "No encontramos tu cuenta de inversionista." },
+  USER_INACTIVE: { status: 403, message: "Tu cuenta no está activa." },
 };
 
 /**
  * Devuelve el estado HTTP, el código y el mensaje para un código de error. Los códigos no
  * reconocidos usan un mensaje genérico con estado 500.
  */
-export function errorInversionista(codigo: string | undefined): ErrorInversionista {
-  if (codigo !== undefined && Object.prototype.hasOwnProperty.call(ERRORES, codigo)) {
-    return { codigo, ...ERRORES[codigo] };
+export function participantError(code: string | undefined): ParticipantError {
+  if (code !== undefined && Object.prototype.hasOwnProperty.call(ERRORS, code)) {
+    return { code, ...ERRORS[code] };
   }
-  return { codigo: codigo ?? "ERROR_INTERNO", estado: 500, mensaje: MENSAJE_GENERICO };
+  return { code: code ?? "INTERNAL_ERROR", status: 500, message: GENERIC_MESSAGE };
 }

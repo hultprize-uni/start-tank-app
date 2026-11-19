@@ -5,11 +5,11 @@ const sqlMock = vi.hoisted(() => vi.fn());
 vi.mock("./client", () => ({ sql: sqlMock }));
 
 import {
-  buscarJuradoPorCodigo,
-  ejecutarAccionOperador,
-  leerPantalla,
-  leerVistaJurado,
-  registrarVoto,
+  findJurorByCode,
+  executeOperatorAction,
+  readScreen,
+  readJuryView,
+  registerVote,
 } from "./queries";
 
 /** Respuestas simuladas indexadas por un fragmento del texto SQL de cada consulta. */
@@ -19,26 +19,26 @@ type Respuestas = Record<string, unknown[]>;
  * Configura el sql mockeado: cada consulta devuelve las filas del primer fragmento que aparece en
  * su texto. Una consulta sin fragmento registrado falla para no ocultar consultas inesperadas.
  */
-function configurarBase(respuestas: Respuestas): void {
+function setupBase(respuestas: Respuestas): void {
   sqlMock.mockImplementation(async (strings: TemplateStringsArray) => {
-    const texto = strings.join("?");
-    const clave = Object.keys(respuestas).find((fragmento) => texto.includes(fragmento));
-    if (clave === undefined) {
-      throw new Error(`Consulta no mockeada: ${texto.trim().slice(0, 80)}`);
+    const text = strings.join("?");
+    const key = Object.keys(respuestas).find((fragment) => text.includes(fragment));
+    if (key === undefined) {
+      throw new Error(`Consulta no mockeada: ${text.trim().slice(0, 80)}`);
     }
-    return respuestas[clave];
+    return respuestas[key];
   });
 }
 
 /** Texto de todas las consultas ejecutadas hasta el momento. */
-function textoConsultas(): string {
+function queriesText(): string {
   return sqlMock.mock.calls.map(([strings]) => (strings as TemplateStringsArray).join("?")).join("\n");
 }
 
-const FILA_RONDA_ABIERTA = {
+const OPEN_ROUND_ROW = {
   id_ronda: "1",
   numero: 1,
-  estado: "ABIERTA",
+  estado: "OPEN",
   multiplicador: null,
   segundos_ultima_llamada: null,
   startup_nombre: "AgroSense",
@@ -58,15 +58,15 @@ beforeEach(() => {
 
 describe("buscarJuradoPorCodigo", () => {
   it("devuelve nulo cuando ningún jurado tiene el código", async () => {
-    configurarBase({ "where codigo_acceso": [] });
-    await expect(buscarJuradoPorCodigo("INEXISTENTE")).resolves.toBeNull();
+    setupBase({ "where codigo_acceso": [] });
+    await expect(findJurorByCode("INEXISTENTE")).resolves.toBeNull();
   });
 
   it("devuelve el identificador y el nombre del jurado con ese código", async () => {
-    configurarBase({
+    setupBase({
       "where codigo_acceso": [{ id: "2", nombre: "Jurado de ejemplo 2" }],
     });
-    await expect(buscarJuradoPorCodigo("JUR-EJ-002")).resolves.toEqual({
+    await expect(findJurorByCode("JUR-EJ-002")).resolves.toEqual({
       id: "2",
       nombre: "Jurado de ejemplo 2",
     });
@@ -75,139 +75,139 @@ describe("buscarJuradoPorCodigo", () => {
 
 describe("leerPantalla", () => {
   it("devuelve nulo cuando el evento no tiene rondas", async () => {
-    configurarBase({ "from ronda r": [] });
-    await expect(leerPantalla()).resolves.toBeNull();
+    setupBase({ "from ronda r": [] });
+    await expect(readScreen()).resolves.toBeNull();
   });
 
   it("arma el mercado a partir de las filas de ronda y de startup_leaderboard", async () => {
-    configurarBase({
-      "from ronda r": [FILA_RONDA_ABIERTA],
+    setupBase({
+      "from ronda r": [OPEN_ROUND_ROW],
       "from jurado j": [],
       "estado = 'ACTIVO'": [{ total: 40 }],
     });
 
-    const vm = await leerPantalla(new Date("2026-11-08T15:00:00.000Z"));
+    const vm = await readScreen(new Date("2026-11-08T15:00:00.000Z"));
 
     expect(vm).toMatchObject({
-      fase: "MERCADO",
-      precio: 120,
-      acumulado: 4000,
-      inversoresUnicos: 18,
-      ronda: { numero: 1, startup: { nombre: "AgroSense", ods: { numero: 2 } } },
+      phase: "MARKET",
+      price: 120,
+      accumulated: 4000,
+      uniqueInvestors: 18,
+      round: { number: 1, startup: { name: "AgroSense", sdg: { number: 2 } } },
     });
   });
 
   it("no consulta el ranking mientras no existe una ronda terminada", async () => {
-    configurarBase({
-      "from ronda r": [FILA_RONDA_ABIERTA],
+    setupBase({
+      "from ronda r": [OPEN_ROUND_ROW],
       "from jurado j": [],
       "estado = 'ACTIVO'": [{ total: 40 }],
     });
 
-    await leerPantalla();
+    await readScreen();
 
-    expect(textoConsultas()).not.toContain("from leaderboard l");
+    expect(queriesText()).not.toContain("from leaderboard l");
   });
 });
 
 describe("leerVistaJurado", () => {
   it("devuelve nulo cuando el jurado de la sesión ya no existe", async () => {
-    configurarBase({ "where id_jurado": [] });
-    await expect(leerVistaJurado("99")).resolves.toBeNull();
+    setupBase({ "where id_jurado": [] });
+    await expect(readJuryView("99")).resolves.toBeNull();
   });
 
   it("muestra el voto registrado del jurado en la ronda en votación", async () => {
-    configurarBase({
+    setupBase({
       "where id_jurado": [{ id: "2", nombre: "Jurado de ejemplo 2" }],
-      "from ronda r": [{ ...FILA_RONDA_ABIERTA, estado: "EN_VOTACION" }],
+      "from ronda r": [{ ...OPEN_ROUND_ROW, estado: "VOTING" }],
       "from jurado j": [
-        { id_jurado: "1", nombre: "Jurado de ejemplo 1", decision: "RESPALDA" },
-        { id_jurado: "2", nombre: "Jurado de ejemplo 2", decision: "RECHAZA" },
+        { id_jurado: "1", nombre: "Jurado de ejemplo 1", decision: "BACK" },
+        { id_jurado: "2", nombre: "Jurado de ejemplo 2", decision: "REJECT" },
       ],
       "select count(*)::int as total from jurado": [{ total: 2 }],
     });
 
-    const vm = await leerVistaJurado("2");
+    const vm = await readJuryView("2");
 
     expect(vm).toMatchObject({
-      screen: "voto_registrado",
+      screen: "vote_registered",
       jurorLabel: "Jurado de ejemplo 2",
       votes: { emitted: 2, total: 2 },
     });
-    expect(JSON.stringify(vm)).not.toContain("RESPALDA");
+    expect(JSON.stringify(vm)).not.toContain("BACK");
   });
 });
 
 describe("registrarVoto", () => {
   it("no llama a fn_registrar_voto cuando no hay ronda activa", async () => {
-    configurarBase({
-      "from ronda r": [{ ...FILA_RONDA_ABIERTA, estado: "PROGRAMADA" }],
+    setupBase({
+      "from ronda r": [{ ...OPEN_ROUND_ROW, estado: "SCHEDULED" }],
     });
 
-    await expect(registrarVoto("2", "RESPALDA")).resolves.toEqual({
+    await expect(registerVote("2", "BACK")).resolves.toEqual({
       ok: false,
-      error: "RONDA_NO_EN_VOTACION",
+      error: "ROUND_NOT_VOTING",
     });
-    expect(textoConsultas()).not.toContain("fn_registrar_voto");
+    expect(queriesText()).not.toContain("fn_registrar_voto");
   });
 
   it("envía el voto a la ronda activa y devuelve el resultado de la función", async () => {
-    configurarBase({
-      "from ronda r": [{ ...FILA_RONDA_ABIERTA, id_ronda: "3", estado: "EN_VOTACION" }],
+    setupBase({
+      "from ronda r": [{ ...OPEN_ROUND_ROW, id_ronda: "3", estado: "VOTING" }],
       "fn_registrar_voto": [{ resultado: { ok: true } }],
     });
 
-    await expect(registrarVoto("2", "SE_ABSTIENE")).resolves.toEqual({ ok: true });
+    await expect(registerVote("2", "ABSTAIN")).resolves.toEqual({ ok: true });
 
-    const llamada = sqlMock.mock.calls.find(([strings]) =>
+    const lastCall = sqlMock.mock.calls.find(([strings]) =>
       (strings as TemplateStringsArray).join("?").includes("fn_registrar_voto"),
     );
-    expect(llamada?.slice(1)).toEqual(["2", "3", "SE_ABSTIENE"]);
+    expect(lastCall?.slice(1)).toEqual(["2", "3", "ABSTAIN"]);
   });
 });
 
 describe("ejecutarAccionOperador", () => {
   it("abre la siguiente ronda programada en lugar de la activa", async () => {
-    configurarBase({
+    setupBase({
       "from ronda r": [
-        { ...FILA_RONDA_ABIERTA, id_ronda: "1", numero: 1, estado: "LIQUIDADA" },
-        { ...FILA_RONDA_ABIERTA, id_ronda: "2", numero: 2, estado: "PROGRAMADA" },
+        { ...OPEN_ROUND_ROW, id_ronda: "1", numero: 1, estado: "SETTLED" },
+        { ...OPEN_ROUND_ROW, id_ronda: "2", numero: 2, estado: "SCHEDULED" },
       ],
-      "fn_accion_operador": [{ resultado: { ok: true, estado: "ABIERTA" } }],
+      "fn_accion_operador": [{ resultado: { ok: true, estado: "OPEN" } }],
     });
 
-    await expect(ejecutarAccionOperador("1", "ABRIR")).resolves.toEqual({
+    await expect(executeOperatorAction("1", "OPEN")).resolves.toEqual({
       ok: true,
-      estado: "ABIERTA",
+      estado: "OPEN",
     });
 
-    const llamada = sqlMock.mock.calls.find(([strings]) =>
+    const lastCall = sqlMock.mock.calls.find(([strings]) =>
       (strings as TemplateStringsArray).join("?").includes("fn_accion_operador"),
     );
-    expect(llamada?.slice(1)).toEqual(["1", "2", "ABRIR"]);
+    expect(lastCall?.slice(1)).toEqual(["1", "2", "OPEN"]);
   });
 
   it("llama a fn_revelar_veredicto para la acción REVELAR", async () => {
-    configurarBase({
-      "from ronda r": [{ ...FILA_RONDA_ABIERTA, id_ronda: "4", estado: "EN_VOTACION" }],
+    setupBase({
+      "from ronda r": [{ ...OPEN_ROUND_ROW, id_ronda: "4", estado: "VOTING" }],
       "fn_revelar_veredicto": [{ resultado: { ok: true, multiplicador: 1.4 } }],
     });
 
-    await ejecutarAccionOperador("1", "REVELAR");
+    await executeOperatorAction("1", "REVEAL");
 
-    expect(textoConsultas()).toContain("fn_revelar_veredicto");
-    expect(textoConsultas()).not.toContain("fn_accion_operador");
+    expect(queriesText()).toContain("fn_revelar_veredicto");
+    expect(queriesText()).not.toContain("fn_accion_operador");
   });
 
   it("no ejecuta la acción cuando no existe la ronda que le corresponde", async () => {
-    configurarBase({
-      "from ronda r": [{ ...FILA_RONDA_ABIERTA, estado: "LIQUIDADA" }],
+    setupBase({
+      "from ronda r": [{ ...OPEN_ROUND_ROW, estado: "SETTLED" }],
     });
 
-    await expect(ejecutarAccionOperador("1", "CERRAR")).resolves.toEqual({
+    await expect(executeOperatorAction("1", "CLOSE")).resolves.toEqual({
       ok: false,
-      error: "RONDA_NO_DISPONIBLE",
+      error: "ROUND_UNAVAILABLE",
     });
-    expect(textoConsultas()).not.toContain("fn_accion_operador");
+    expect(queriesText()).not.toContain("fn_accion_operador");
   });
 });

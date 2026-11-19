@@ -1,7 +1,7 @@
-import { requireOperator, respuestaSinSesion } from "@/lib/auth/code-session";
+import { requireOperator, noSessionResponse } from "@/lib/auth/code-session";
 import { buildSettlementCsv } from "@/lib/api/operator.export";
-import { leerVistaOperador } from "@/lib/db/queries";
-import { ENCABEZADOS_SIN_CACHE, respuestaError } from "@/lib/http/respuestas";
+import { readOperatorView } from "@/lib/db/queries";
+import { NO_CACHE_HEADERS, errorResponse } from "@/lib/http/respuestas";
 
 /** Marca de orden de bytes para que Excel reconozca la codificación UTF-8. */
 const UTF8_BOM = "﻿";
@@ -13,23 +13,23 @@ const UTF8_BOM = "﻿";
 export async function GET() {
   try {
     await requireOperator();
-    const vista = await leerVistaOperador();
-    if (vista === null) {
-      return respuestaError(404, "SIN_RONDAS");
+    const view = await readOperatorView();
+    if (view === null) {
+      return errorResponse(404, "NO_ROUNDS");
     }
 
-    const fecha = new Date().toISOString().slice(0, 10);
-    return new Response(UTF8_BOM + buildSettlementCsv(vista), {
+    const date = new Date().toISOString().slice(0, 10);
+    return new Response(UTF8_BOM + buildSettlementCsv(view), {
       status: 200,
       headers: {
-        ...ENCABEZADOS_SIN_CACHE,
+        ...NO_CACHE_HEADERS,
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="liquidacion-${fecha}.csv"`,
+        "Content-Disposition": `attachment; filename="liquidacion-${date}.csv"`,
       },
     });
   } catch (error) {
-    const sinSesion = respuestaSinSesion(error);
-    if (sinSesion !== null) return sinSesion;
+    const noSession = noSessionResponse(error);
+    if (noSession !== null) return noSession;
     throw error;
   }
 }

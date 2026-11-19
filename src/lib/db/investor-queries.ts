@@ -12,8 +12,8 @@ import type {
 } from "@/lib/api/investor.types";
 import { EVENT_CONFIG } from "@/lib/domain/config";
 import type { Decision, RoundState } from "@/lib/domain/types";
-import { parsearOds } from "./mapeo";
-import type { ResultadoFuncion } from "./queries";
+import { parseSdg } from "./mapeo";
+import type { SqlFunctionResult } from "./queries";
 import { sql } from "./client";
 
 /*
@@ -23,21 +23,21 @@ import { sql } from "./client";
  */
 
 /** Nombre con el que se presenta la fila propia del inversionista en la clasificación. */
-const NOMBRE_PROPIO = "Tú";
+const OWN_NAME = "Tú";
 
 /** Estados en los que una ronda ocupa el turno de la sala. */
-const ESTADOS_ACTIVOS: ReadonlySet<RoundState> = new Set<RoundState>([
-  "ABIERTA",
-  "ULTIMA_LLAMADA",
-  "CERRADA",
-  "EN_VOTACION",
+const ACTIVE_STATES: ReadonlySet<RoundState> = new Set<RoundState>([
+  "OPEN",
+  "LAST_CALL",
+  "CLOSED",
+  "VOTING",
 ]);
 
 /** Estados terminales de una ronda: liquidada o anulada. */
-const ESTADOS_TERMINADOS: ReadonlySet<RoundState> = new Set<RoundState>(["LIQUIDADA", "ANULADA"]);
+const FINISHED_STATES: ReadonlySet<RoundState> = new Set<RoundState>(["SETTLED", "CANCELLED"]);
 
 /** Fila de la ronda con los datos de su startup y de su startup_leaderboard. */
-export interface FilaRondaInversionista {
+export interface ParticipantRoundRow {
   id_ronda: string;
   numero: number;
   estado: RoundState;
@@ -53,14 +53,14 @@ export interface FilaRondaInversionista {
 }
 
 /** Monto invertido y retorno del asistente en una ronda. */
-export interface FilaInversionUsuario {
+export interface UserInvestmentRow {
   id_ronda: string;
   monto: string;
   retorno: string;
 }
 
 /** Fila del leaderboard de asistentes de una ronda. */
-export interface FilaLeaderboardInversionista {
+export interface ParticipantLeaderboardRow {
   id_usuario: string;
   nombre: string;
   posicion: number;
@@ -69,113 +69,113 @@ export interface FilaLeaderboardInversionista {
 }
 
 /** Datos necesarios para armar el view model del inversionista. */
-export interface DatosEstadoInversionista {
-  idUsuario: number;
-  saldo: number;
-  rondas: readonly FilaRondaInversionista[];
-  inversiones: readonly FilaInversionUsuario[];
+export interface ParticipantStateData {
+  userId: number;
+  balance: number;
+  rounds: readonly ParticipantRoundRow[];
+  investments: readonly UserInvestmentRow[];
   /** Votos emitidos en la última ronda terminada. Las abstenciones se incluyen. */
-  decisionesUltima: readonly Decision[];
+  lastDecisions: readonly Decision[];
   /** Primeras tres filas del leaderboard de la última ronda terminada. */
-  topTres: readonly FilaLeaderboardInversionista[];
+  topThreeRows: readonly ParticipantLeaderboardRow[];
   /** Fila del inversionista en el leaderboard de la última ronda terminada. */
-  filaPropia: FilaLeaderboardInversionista | null;
+  ownRow: ParticipantLeaderboardRow | null;
   /** Número de filas del leaderboard de la última ronda terminada. */
-  participantes: number;
+  participants: number;
   /** Posición del inversionista en la ronda terminada anterior, si existe. */
-  posicionPrevia: number | null;
+  previousPosition: number | null;
 }
 
 /** Resultado de registrar una inversión. El saldo se devuelve solo en caso de éxito. */
-export interface ResultadoInversion {
+export interface InvestmentResult {
   ok: boolean;
   error?: string;
-  saldo?: number | null;
+  balance?: number | null;
 }
 
 /** Rondas ordenadas por número ascendente sin modificar la lista original. */
-function ordenar(rondas: readonly FilaRondaInversionista[]): FilaRondaInversionista[] {
-  return [...rondas].sort((a, b) => a.numero - b.numero);
+function sortRounds(rounds: readonly ParticipantRoundRow[]): ParticipantRoundRow[] {
+  return [...rounds].sort((a, b) => a.numero - b.numero);
 }
 
 /** Rondas terminadas en orden ascendente. La última de la lista es la última terminada. */
-function terminadas(rondas: readonly FilaRondaInversionista[]): FilaRondaInversionista[] {
-  return ordenar(rondas).filter((r) => ESTADOS_TERMINADOS.has(r.estado));
+function finished(rounds: readonly ParticipantRoundRow[]): ParticipantRoundRow[] {
+  return sortRounds(rounds).filter((r) => FINISHED_STATES.has(r.estado));
 }
 
 /** Segundos restantes de la última llamada, acotados entre cero y el conteo configurado. */
-function segundosRestantes(segundos: number | null): number {
-  if (segundos === null) return EVENT_CONFIG.lastCallSeconds;
-  const transcurridos = Math.floor(segundos);
-  return Math.max(0, EVENT_CONFIG.lastCallSeconds - transcurridos);
+function secondsRemaining(seconds: number | null): number {
+  if (seconds === null) return EVENT_CONFIG.lastCallSeconds;
+  const elapsed = Math.floor(seconds);
+  return Math.max(0, EVENT_CONFIG.lastCallSeconds - elapsed);
 }
 
 /** Nombre visible de la startup y de su ODS, por ejemplo "ODS 7 · Energía asequible y no contaminante". */
-function construirStartup(fila: FilaRondaInversionista): StartupInfo {
-  const ods = parsearOds(fila.ods);
-  const etiqueta = ods.numero > 0 ? `ODS ${ods.numero} · ${ods.nombre}` : (fila.ods ?? "");
-  return { name: fila.startup_nombre, ods: etiqueta, description: fila.descripcion ?? "" };
+function buildStartupInfo(row: ParticipantRoundRow): StartupInfo {
+  const sdg = parseSdg(row.ods);
+  const label = sdg.number > 0 ? `ODS ${sdg.number} · ${sdg.name}` : (row.ods ?? "");
+  return { name: row.startup_nombre, sdg: label, description: row.descripcion ?? "" };
 }
 
 /**
  * Posición propia: fila del leaderboard de la última ronda terminada. Si la fila falta, se usa la
  * última posición de la tabla como valor de respaldo.
  */
-function construirPropia(datos: DatosEstadoInversionista): StandingEntry {
-  const posicion = datos.filaPropia?.posicion ?? datos.participantes;
-  const saldo = datos.filaPropia ? Number(datos.filaPropia.saldo) : datos.saldo;
-  return { position: posicion, name: NOMBRE_PROPIO, balance: saldo, isCurrent: true };
+function buildOwnEntry(data: ParticipantStateData): StandingEntry {
+  const position = data.ownRow?.posicion ?? data.participants;
+  const balance = data.ownRow ? Number(data.ownRow.saldo) : data.balance;
+  return { position: position, name: OWN_NAME, balance: balance, isCurrent: true };
 }
 
 /** Clasificación parcial: top 3 de la última ronda terminada y posición propia. */
-function construirStanding(datos: DatosEstadoInversionista): StandingInfo {
-  const me = construirPropia(datos);
-  const topThree: StandingEntry[] = datos.topTres.map((fila) => ({
-    position: fila.posicion,
-    name: fila.nombre,
-    balance: Number(fila.saldo),
-    isCurrent: fila.id_usuario === String(datos.idUsuario),
+function buildStandingInfo(data: ParticipantStateData): StandingInfo {
+  const me = buildOwnEntry(data);
+  const topThree: StandingEntry[] = data.topThreeRows.map((row) => ({
+    position: row.posicion,
+    name: row.nombre,
+    balance: Number(row.saldo),
+    isCurrent: row.id_usuario === String(data.userId),
   }));
-  const liquidadas = datos.rondas.filter((r) => r.estado === "LIQUIDADA").length;
+  const settledCount = data.rounds.filter((r) => r.estado === "SETTLED").length;
   return {
     position: me.position,
-    previousPosition: datos.posicionPrevia ?? me.position,
-    participants: datos.participantes,
-    hits: datos.filaPropia?.aciertos ?? 0,
-    hitsTotal: liquidadas,
+    previousPosition: data.previousPosition ?? me.position,
+    participants: data.participants,
+    hits: data.ownRow?.aciertos ?? 0,
+    hitsTotal: settledCount,
     topThree,
     me,
   };
 }
 
 /** Precio y acumulado del mercado de la ronda en curso. El precio base se usa mientras no existe fila. */
-function construirMercado(ronda: FilaRondaInversionista): MarketInfo {
-  const precio = ronda.precio_vivo === null ? EVENT_CONFIG.priceBase : Number(ronda.precio_vivo);
+function buildMarket(round: ParticipantRoundRow): MarketInfo {
+  const price = round.precio_vivo === null ? EVENT_CONFIG.priceBase : Number(round.precio_vivo);
   return {
-    price: precio,
-    priceChange: precio - EVENT_CONFIG.priceBase,
-    totalRaised: Number(ronda.monto_acumulado ?? 0),
-    investorCount: ronda.inversores_unicos ?? 0,
+    price: price,
+    priceChange: price - EVENT_CONFIG.priceBase,
+    totalRaised: Number(round.monto_acumulado ?? 0),
+    investorCount: round.inversores_unicos ?? 0,
   };
 }
 
 /** Veredicto de la ronda terminada: votos del jurado, multiplicador y resultado del asistente. */
-function construirVeredicto(
-  decisiones: readonly Decision[],
-  ronda: FilaRondaInversionista,
-  inversion: { monto: number; retorno: number },
+function buildVerdict(
+  decisions: readonly Decision[],
+  round: ParticipantRoundRow,
+  investment: { amount: number; payout: number },
 ): VerdictInfo {
-  const backs = decisiones.filter((d) => d === "RESPALDA").length;
-  const voters = decisiones.filter((d) => d !== "SE_ABSTIENE").length;
-  const multiplier = ronda.multiplicador === null ? 1 : Number(ronda.multiplicador);
+  const backs = decisions.filter((d) => d === "BACK").length;
+  const voters = decisions.filter((d) => d !== "ABSTAIN").length;
+  const multiplier = round.multiplicador === null ? 1 : Number(round.multiplicador);
   return {
-    decisions: [...decisiones],
+    decisions: [...decisions],
     backs,
     voters,
     multiplier,
-    invested: inversion.monto,
-    payout: inversion.retorno,
-    gain: inversion.retorno - inversion.monto,
+    invested: investment.amount,
+    payout: investment.payout,
+    gain: investment.payout - investment.amount,
   };
 }
 
@@ -184,82 +184,82 @@ function construirVeredicto(
  * activa; si no hay ronda activa, de la última terminada y de la existencia de rondas pendientes.
  * Es una función pura: no accede a la base de datos.
  */
-export function construirEstadoInversionista(datos: DatosEstadoInversionista): InvestorViewModel {
-  const ordenadas = ordenar(datos.rondas);
-  const activa = ordenadas.find((r) => ESTADOS_ACTIVOS.has(r.estado));
-  const pendiente = ordenadas.find((r) => r.estado === "PROGRAMADA");
-  const ultima = terminadas(datos.rondas).pop();
+export function buildParticipantState(data: ParticipantStateData): InvestorViewModel {
+  const sorted = sortRounds(data.rounds);
+  const active = sorted.find((r) => ACTIVE_STATES.has(r.estado));
+  const pending = sorted.find((r) => r.estado === "SCHEDULED");
+  const last = finished(data.rounds).pop();
 
-  let fase: InvestorPhase;
-  let referencia: FilaRondaInversionista | undefined;
-  if (activa !== undefined) {
-    referencia = activa;
-    if (activa.estado === "ABIERTA") fase = "open";
-    else if (activa.estado === "ULTIMA_LLAMADA") fase = "lastCall";
-    else fase = "voting";
-  } else if (ultima !== undefined) {
-    referencia = ultima;
-    fase = pendiente === undefined ? "final" : "result";
+  let phase: InvestorPhase;
+  let reference: ParticipantRoundRow | undefined;
+  if (active !== undefined) {
+    reference = active;
+    if (active.estado === "OPEN") phase = "open";
+    else if (active.estado === "LAST_CALL") phase = "lastCall";
+    else phase = "voting";
+  } else if (last !== undefined) {
+    reference = last;
+    phase = pending === undefined ? "final" : "result";
   } else {
-    referencia = pendiente;
-    fase = "scheduled";
+    reference = pending;
+    phase = "scheduled";
   }
 
-  const inversionFila = referencia
-    ? datos.inversiones.find((i) => i.id_ronda === referencia?.id_ronda)
+  const investmentRow = reference
+    ? data.investments.find((i) => i.id_ronda === reference?.id_ronda)
     : undefined;
-  const inversion = {
-    monto: Number(inversionFila?.monto ?? 0),
-    retorno: Number(inversionFila?.retorno ?? 0),
+  const investment = {
+    amount: Number(investmentRow?.monto ?? 0),
+    payout: Number(investmentRow?.retorno ?? 0),
   };
 
   // Saldo al abrir la ronda de referencia: el saldo actual más lo invertido, menos lo recibido por
   // la liquidación. Coincide con la regla de fn_registrar_inversion.
-  const saldoApertura = datos.saldo + inversion.monto - inversion.retorno;
+  const openingBalance = data.balance + investment.amount - investment.payout;
   const wallet: WalletInfo = {
-    balance: datos.saldo,
-    investedInRound: inversion.monto,
-    roundCap: getRoundCap(saldoApertura),
+    balance: data.balance,
+    investedInRound: investment.amount,
+    roundCap: getRoundCap(openingBalance),
   };
 
-  const round: RoundInfo | null = referencia
-    ? { number: referencia.numero, total: datos.rondas.length }
+  const round: RoundInfo | null = reference
+    ? { number: reference.numero, total: data.rounds.length }
     : null;
-  const startup: StartupInfo | null = referencia ? construirStartup(referencia) : null;
+  const startup: StartupInfo | null = reference ? buildStartupInfo(reference) : null;
 
-  const enMercado = fase === "open" || fase === "lastCall";
+  const inMarket = phase === "open" || phase === "lastCall";
   const market: MarketInfo | null =
-    enMercado && referencia
-      ? construirMercado(referencia)
+    inMarket && reference
+      ? buildMarket(reference)
       : null;
 
-  const revelada = fase === "result" || fase === "final";
+  const revealedRound = phase === "result" || phase === "final";
 
   return {
-    phase: fase,
+    phase: phase,
     round,
     startup,
     wallet,
     market,
-    countdownSeconds: fase === "lastCall" ? segundosRestantes(referencia?.segundos_ultima_llamada ?? null) : null,
+    countdownSeconds: phase === "lastCall" ? secondsRemaining(reference?.segundos_ultima_llamada ?? null) : null,
     verdict:
-      revelada && referencia ? construirVeredicto(datos.decisionesUltima, referencia, inversion) : null,
-    standing: revelada ? construirStanding(datos) : null,
+      revealedRound && reference ? buildVerdict(data.lastDecisions, reference, investment) : null,
+    standing: revealedRound ? buildStandingInfo(data) : null,
   };
 }
 
 /** Saldo actual del asistente. */
-async function consultarSaldo(idUsuario: number): Promise<number> {
-  const [fila] = await sql<{ saldo: string }>`
+async function queryBalance(userId: number): Promise<number> {
+  const [row] = await sql<{ saldo: string }>`
     select saldo_actual::text as saldo
       from usuario
-     where id_usuario = ${idUsuario}::bigint`;
-  return Number(fila?.saldo ?? 0);
+     where id_usuario = ${userId}::bigint`;
+  return Number(row?.saldo ?? 0);
 }
 
 /** Todas las rondas con los datos de su startup y de su fila de startup_leaderboard. */
-async function consultarRondasInversionista(): Promise<FilaRondaInversionista[]> {
-  return sql<FilaRondaInversionista>`
+async function queryParticipantRounds(): Promise<ParticipantRoundRow[]> {
+  return sql<ParticipantRoundRow>`
     select r.id_ronda::text as id_ronda,
            r.numero,
            r.estado,
@@ -278,28 +278,28 @@ async function consultarRondasInversionista(): Promise<FilaRondaInversionista[]>
 }
 
 /** Montos y retornos del asistente agrupados por ronda. */
-async function consultarInversionesUsuario(idUsuario: number): Promise<FilaInversionUsuario[]> {
-  return sql<FilaInversionUsuario>`
+async function queryUserInvestments(userId: number): Promise<UserInvestmentRow[]> {
+  return sql<UserInvestmentRow>`
     select i.id_ronda::text as id_ronda,
            sum(i.monto)::text as monto,
            coalesce(sum(i.retorno), 0)::text as retorno
       from inversion i
-     where i.id_usuario = ${idUsuario}::bigint
+     where i.id_usuario = ${userId}::bigint
      group by i.id_ronda`;
 }
 
 /** Decisiones emitidas por los jurados en una ronda. */
-async function consultarDecisiones(idRonda: string): Promise<Decision[]> {
-  const filas = await sql<{ decision: Decision }>`
+async function queryDecisions(roundId: string): Promise<Decision[]> {
+  const rows = await sql<{ decision: Decision }>`
     select v.decision
       from veredicto v
-     where v.id_ronda = ${idRonda}::bigint`;
-  return filas.map((fila) => fila.decision);
+     where v.id_ronda = ${roundId}::bigint`;
+  return rows.map((row) => row.decision);
 }
 
 /** Primeras tres filas del leaderboard de una ronda. */
-async function consultarTopTres(idRonda: string): Promise<FilaLeaderboardInversionista[]> {
-  return sql<FilaLeaderboardInversionista>`
+async function queryTopThree(roundId: string): Promise<ParticipantLeaderboardRow[]> {
+  return sql<ParticipantLeaderboardRow>`
     select u.id_usuario::text as id_usuario,
            coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre,
            l.posicion,
@@ -307,17 +307,17 @@ async function consultarTopTres(idRonda: string): Promise<FilaLeaderboardInversi
            l.aciertos
       from leaderboard l
       join usuario u on u.id_usuario = l.id_usuario
-     where l.id_ronda = ${idRonda}::bigint
+     where l.id_ronda = ${roundId}::bigint
      order by l.posicion
      limit 3`;
 }
 
 /** Fila del asistente en el leaderboard de una ronda, si existe. */
-async function consultarFilaLeaderboard(
-  idRonda: string,
-  idUsuario: number,
-): Promise<FilaLeaderboardInversionista | null> {
-  const [fila] = await sql<FilaLeaderboardInversionista>`
+async function queryLeaderboardRow(
+  roundId: string,
+  userId: number,
+): Promise<ParticipantLeaderboardRow | null> {
+  const [row] = await sql<ParticipantLeaderboardRow>`
     select u.id_usuario::text as id_usuario,
            coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre,
            l.posicion,
@@ -325,64 +325,64 @@ async function consultarFilaLeaderboard(
            l.aciertos
       from leaderboard l
       join usuario u on u.id_usuario = l.id_usuario
-     where l.id_ronda = ${idRonda}::bigint
-       and l.id_usuario = ${idUsuario}::bigint`;
-  return fila ?? null;
+     where l.id_ronda = ${roundId}::bigint
+       and l.id_usuario = ${userId}::bigint`;
+  return row ?? null;
 }
 
 /** Número de filas del leaderboard de una ronda. */
-async function consultarParticipantes(idRonda: string): Promise<number> {
-  const [fila] = await sql<{ total: number }>`
+async function queryParticipantCount(roundId: string): Promise<number> {
+  const [row] = await sql<{ total: number }>`
     select count(*)::int as total
       from leaderboard
-     where id_ronda = ${idRonda}::bigint`;
-  return fila?.total ?? 0;
+     where id_ronda = ${roundId}::bigint`;
+  return row?.total ?? 0;
 }
 
 /**
  * Lee el view model del inversionista para la sesión indicada. Las consultas del leaderboard se
  * ejecutan solo cuando existe una ronda terminada.
  */
-export async function leerEstadoInversionista(idUsuario: number): Promise<InvestorViewModel> {
-  const [saldo, rondas, inversiones] = await Promise.all([
-    consultarSaldo(idUsuario),
-    consultarRondasInversionista(),
-    consultarInversionesUsuario(idUsuario),
+export async function readParticipantState(userId: number): Promise<InvestorViewModel> {
+  const [balance, rounds, investments] = await Promise.all([
+    queryBalance(userId),
+    queryParticipantRounds(),
+    queryUserInvestments(userId),
   ]);
 
-  const terminados = terminadas(rondas);
-  const ultima = terminados[terminados.length - 1];
-  const previa = terminados[terminados.length - 2];
+  const finishedRounds = finished(rounds);
+  const last = finishedRounds[finishedRounds.length - 1];
+  const previous = finishedRounds[finishedRounds.length - 2];
 
-  let decisionesUltima: Decision[] = [];
-  let topTres: FilaLeaderboardInversionista[] = [];
-  let filaPropia: FilaLeaderboardInversionista | null = null;
-  let participantes = 0;
-  if (ultima !== undefined) {
-    [decisionesUltima, topTres, filaPropia, participantes] = await Promise.all([
-      consultarDecisiones(ultima.id_ronda),
-      consultarTopTres(ultima.id_ronda),
-      consultarFilaLeaderboard(ultima.id_ronda, idUsuario),
-      consultarParticipantes(ultima.id_ronda),
+  let lastDecisions: Decision[] = [];
+  let topThreeRows: ParticipantLeaderboardRow[] = [];
+  let ownRow: ParticipantLeaderboardRow | null = null;
+  let participants = 0;
+  if (last !== undefined) {
+    [lastDecisions, topThreeRows, ownRow, participants] = await Promise.all([
+      queryDecisions(last.id_ronda),
+      queryTopThree(last.id_ronda),
+      queryLeaderboardRow(last.id_ronda, userId),
+      queryParticipantCount(last.id_ronda),
     ]);
   }
 
-  let posicionPrevia: number | null = null;
-  if (previa !== undefined) {
-    const filaPrevia = await consultarFilaLeaderboard(previa.id_ronda, idUsuario);
-    posicionPrevia = filaPrevia?.posicion ?? null;
+  let previousPosition: number | null = null;
+  if (previous !== undefined) {
+    const previousRow = await queryLeaderboardRow(previous.id_ronda, userId);
+    previousPosition = previousRow?.posicion ?? null;
   }
 
-  return construirEstadoInversionista({
-    idUsuario,
-    saldo,
-    rondas,
-    inversiones,
-    decisionesUltima,
-    topTres,
-    filaPropia,
-    participantes,
-    posicionPrevia,
+  return buildParticipantState({
+    userId: userId,
+    balance: balance,
+    rounds: rounds,
+    investments: investments,
+    lastDecisions: lastDecisions,
+    topThreeRows: topThreeRows,
+    ownRow: ownRow,
+    participants: participants,
+    previousPosition: previousPosition,
   });
 }
 
@@ -391,21 +391,21 @@ export async function leerEstadoInversionista(idUsuario: number): Promise<Invest
  * identificador del asistente lo fija el servidor a partir de la sesión, nunca el cuerpo de la
  * petición. Si no hay ronda abierta, devuelve RONDA_NO_ABIERTA sin invocar la función.
  */
-export async function registrarInversion(idUsuario: number, monto: number): Promise<ResultadoInversion> {
-  const [activa] = await sql<{ id_ronda: string }>`
+export async function registerInvestment(userId: number, amount: number): Promise<InvestmentResult> {
+  const [active] = await sql<{ id_ronda: string }>`
     select r.id_ronda::text as id_ronda
       from ronda r
      where r.estado in ('ABIERTA', 'ULTIMA_LLAMADA')
      order by r.numero
      limit 1`;
-  if (activa === undefined) {
-    return { ok: false, error: "RONDA_NO_ABIERTA" };
+  if (active === undefined) {
+    return { ok: false, error: "ROUND_NOT_OPEN" };
   }
 
-  const [fila] = await sql<{ resultado: ResultadoFuncion }>`
-    select fn_registrar_inversion(${idUsuario}::bigint, ${activa.id_ronda}::bigint, ${monto}::numeric) as resultado`;
-  if (fila === undefined) {
-    return { ok: false, error: "ERROR_INTERNO" };
+  const [row] = await sql<{ resultado: SqlFunctionResult }>`
+    select fn_registrar_inversion(${userId}::bigint, ${active.id_ronda}::bigint, ${amount}::numeric) as resultado`;
+  if (row === undefined) {
+    return { ok: false, error: "INTERNAL_ERROR" };
   }
-  return fila.resultado;
+  return row.resultado;
 }

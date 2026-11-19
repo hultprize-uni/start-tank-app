@@ -1,63 +1,63 @@
 import type { Decision } from "@/lib/domain/types";
-import type { Liquidacion } from "@/lib/api/screen.types";
-import { CabeceraRonda } from "./CabeceraRonda";
-import { formatearEntero, formatearMultiplicador, formatearPorcentaje } from "./formato";
+import type { Settlement } from "@/lib/api/screen.types";
+import { RoundHeader } from "./CabeceraRonda";
+import { formatInteger, formatMultiplier, formatPercentage } from "./formato";
 import styles from "./pantalla.module.css";
 
-const ETIQUETA_DECISION: Record<Decision, string> = {
-  RESPALDA: "Respalda",
-  RECHAZA: "Rechaza",
-  SE_ABSTIENE: "Se abstiene",
+const DECISION_LABEL: Record<Decision, string> = {
+  BACK: "Respalda",
+  REJECT: "Rechaza",
+  ABSTAIN: "Se abstiene",
 };
 
-const CLASE_DECISION: Record<Decision, string> = {
-  RESPALDA: styles.decisionRespalda,
-  RECHAZA: styles.decisionRechaza,
-  SE_ABSTIENE: styles.decisionAbstencion,
+const DECISION_CLASS_NAME: Record<Decision, string> = {
+  BACK: styles.decisionBack,
+  REJECT: styles.decisionReject,
+  ABSTAIN: styles.decisionAbstain,
 };
 
-interface FaseLiquidacionProps {
-  vm: Liquidacion;
+interface SettlementPhaseProps {
+  vm: Settlement;
 }
 
 /*
  * Fase Liquidacion: revela los cuatro votos a la vez, el multiplicador
  * resultante y el retorno de la ronda.
  */
-export function FaseLiquidacion({ vm }: FaseLiquidacionProps) {
+export function SettlementPhase({ vm }: SettlementPhaseProps) {
   return (
     <>
-      <CabeceraRonda ronda={vm.ronda} />
+      <RoundHeader round={vm.round} />
       <section aria-label="Votos revelados">
-        <div className={styles.rejillaCuatro}>
-          {vm.votos.map((voto) => (
-            <article key={voto.jurado} className={styles.tarjeta}>
-              <p className={styles.eyebrow}>{voto.jurado}</p>
-              <p className={`${styles.valorTarjeta} ${CLASE_DECISION[voto.decision]}`}>
-                {ETIQUETA_DECISION[voto.decision]}
+        <div className={styles.gridFour}>
+          {vm.votes.map((vote) => (
+            <article key={vote.juror} className={styles.card}>
+              <p className={styles.eyebrow}>{vote.juror}</p>
+              <p className={`${styles.cardValue} ${DECISION_CLASS_NAME[vote.decision]}`}>
+                {DECISION_LABEL[vote.decision]}
               </p>
             </article>
           ))}
         </div>
       </section>
-      <div className={styles.rejilla}>
-        <article className={styles.tarjeta}>
+      <div className={styles.grid}>
+        <article className={styles.card}>
           <p className={styles.eyebrow}>Multiplicador</p>
-          <p className={`${styles.valorTarjeta} ${styles.acentoAmarillo}`}>
-            {formatearMultiplicador(vm.multiplicador)}
+          <p className={`${styles.cardValue} ${styles.accentYellow}`}>
+            {formatMultiplier(vm.multiplier)}
           </p>
-          <p className={styles.subtitulo}>
-            {formatearPorcentaje(vm.fraccionRespaldo)} de respaldo entre votos emitidos
+          <p className={styles.subtitle}>
+            {formatPercentage(vm.backingFraction)} de respaldo entre votos emitidos
           </p>
         </article>
-        <article className={styles.tarjeta}>
+        <article className={styles.card}>
           <p className={styles.eyebrow}>Monto invertido</p>
-          <p className={styles.valorTarjeta}>{formatearEntero(vm.montoInvertido)} IC</p>
+          <p className={styles.cardValue}>{formatInteger(vm.amountInvested)} IC</p>
         </article>
-        <article className={styles.tarjeta}>
+        <article className={styles.card}>
           <p className={styles.eyebrow}>Retorno de la ronda</p>
-          <p className={`${styles.valorTarjeta} ${styles.acentoCyan}`}>
-            {formatearEntero(vm.retornoRonda)} IC
+          <p className={`${styles.cardValue} ${styles.accentCyan}`}>
+            {formatInteger(vm.roundReturn)} IC
           </p>
         </article>
       </div>

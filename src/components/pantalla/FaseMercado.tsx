@@ -1,20 +1,20 @@
-import type { MercadoAbierto } from "@/lib/api/screen.types";
-import { CabeceraRonda } from "./CabeceraRonda";
-import { MetricasMercado } from "./MetricasMercado";
+import type { OpenMarket } from "@/lib/api/screen.types";
+import { RoundHeader } from "./CabeceraRonda";
+import { MarketMetrics } from "./MetricasMercado";
 
-interface FaseMercadoProps {
-  vm: MercadoAbierto;
+interface MarketPhaseProps {
+  vm: OpenMarket;
 }
 
 /** Fase Mercado abierto: startup, ODS, precio en vivo, monto acumulado e inversores unicos. */
-export function FaseMercado({ vm }: FaseMercadoProps) {
+export function MarketPhase({ vm }: MarketPhaseProps) {
   return (
     <>
-      <CabeceraRonda ronda={vm.ronda} />
-      <MetricasMercado
-        precio={vm.precio}
-        acumulado={vm.acumulado}
-        inversoresUnicos={vm.inversoresUnicos}
+      <RoundHeader round={vm.round} />
+      <MarketMetrics
+        price={vm.price}
+        accumulated={vm.accumulated}
+        uniqueInvestors={vm.uniqueInvestors}
       />
     </>
   );

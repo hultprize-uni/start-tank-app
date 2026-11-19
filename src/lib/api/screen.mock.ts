@@ -1,12 +1,12 @@
 import { EVENT_CONFIG } from "@/lib/domain/config";
 import type {
-  FilaInversionista,
-  FilaStartup,
-  RondaRef,
+  ScreenInvestorRow,
+  ScreenStartupRow,
+  RoundRef,
   ScreenPhase,
   ScreenViewModel,
-  StartupGanadora,
-  VotoRevelado,
+  WinningStartup,
+  RevealedVote,
 } from "./screen.types";
 
 /*
@@ -16,150 +16,150 @@ import type {
  */
 
 /** Fase que se muestra cuando no se fuerza una por query. */
-export const FASE_MOCK: ScreenPhase = "MERCADO";
+export const MOCK_PHASE: ScreenPhase = "MARKET";
 
-const RONDA_MOCK: RondaRef = {
-  numero: 4,
+const MOCK_ROUND: RoundRef = {
+  number: 4,
   startup: {
-    nombre: "Aqua Viva",
-    ods: { numero: 6, nombre: "Agua limpia y saneamiento" },
+    name: "Aqua Viva",
+    sdg: { number: 6, name: "Agua limpia y saneamiento" },
   },
 };
 
-const INVERSIONISTAS_MOCK: FilaInversionista[] = [
-  { posicion: 1, nombre: "Lucia Mendoza", saldo: 14_800 },
-  { posicion: 2, nombre: "Andres Rojas", saldo: 13_250 },
-  { posicion: 3, nombre: "Valeria Chavez", saldo: 12_900 },
-  { posicion: 4, nombre: "Diego Paredes", saldo: 11_400 },
-  { posicion: 5, nombre: "Sofia Quispe", saldo: 10_950 },
-  { posicion: 6, nombre: "Mateo Huaman", saldo: 10_400 },
-  { posicion: 7, nombre: "Camila Ortiz", saldo: 9_850 },
-  { posicion: 8, nombre: "Renzo Villar", saldo: 9_300 },
-  { posicion: 9, nombre: "Daniela Pino", saldo: 8_700 },
-  { posicion: 10, nombre: "Jorge Salas", saldo: 8_150 },
-  { posicion: 11, nombre: "Fernanda Lazo", saldo: 7_600 },
-  { posicion: 12, nombre: "Bruno Cárdenas", saldo: 7_050 },
+const MOCK_INVESTORS: ScreenInvestorRow[] = [
+  { position: 1, name: "Lucia Mendoza", balance: 14_800 },
+  { position: 2, name: "Andres Rojas", balance: 13_250 },
+  { position: 3, name: "Valeria Chavez", balance: 12_900 },
+  { position: 4, name: "Diego Paredes", balance: 11_400 },
+  { position: 5, name: "Sofia Quispe", balance: 10_950 },
+  { position: 6, name: "Mateo Huaman", balance: 10_400 },
+  { position: 7, name: "Camila Ortiz", balance: 9_850 },
+  { position: 8, name: "Renzo Villar", balance: 9_300 },
+  { position: 9, name: "Daniela Pino", balance: 8_700 },
+  { position: 10, name: "Jorge Salas", balance: 8_150 },
+  { position: 11, name: "Fernanda Lazo", balance: 7_600 },
+  { position: 12, name: "Bruno Cárdenas", balance: 7_050 },
 ];
 
-const STARTUPS_MOCK: FilaStartup[] = [
-  { posicion: 1, nombre: "Aqua Viva", acumulado: 9_500, precio: 148 },
-  { posicion: 2, nombre: "Huella Verde", acumulado: 8_200, precio: 141 },
-  { posicion: 3, nombre: "Kallpa Energia", acumulado: 6_750, precio: 134 },
-  { posicion: 4, nombre: "Tejido Andino", acumulado: 4_300, precio: 121 },
-  { posicion: 5, nombre: "Nodo Salud", acumulado: 2_900, precio: 115 },
+const MOCK_STARTUPS: ScreenStartupRow[] = [
+  { position: 1, name: "Aqua Viva", accumulated: 9_500, price: 148 },
+  { position: 2, name: "Huella Verde", accumulated: 8_200, price: 141 },
+  { position: 3, name: "Kallpa Energia", accumulated: 6_750, price: 134 },
+  { position: 4, name: "Tejido Andino", accumulated: 4_300, price: 121 },
+  { position: 5, name: "Nodo Salud", accumulated: 2_900, price: 115 },
 ];
 
-const VOTOS_MOCK: VotoRevelado[] = [
-  { jurado: "Jurado 1", decision: "RESPALDA" },
-  { jurado: "Jurado 2", decision: "RESPALDA" },
-  { jurado: "Jurado 3", decision: "RECHAZA" },
-  { jurado: "Jurado 4", decision: "SE_ABSTIENE" },
+const MOCK_VOTES: RevealedVote[] = [
+  { juror: "Jurado 1", decision: "BACK" },
+  { juror: "Jurado 2", decision: "BACK" },
+  { juror: "Jurado 3", decision: "REJECT" },
+  { juror: "Jurado 4", decision: "ABSTAIN" },
 ];
 
 /** Precio en vivo: sube por cada `priceStepCoins` de monto acumulado, dentro de los limites. */
-function calcularPrecio(acumulado: number): number {
+function computePrice(accumulated: number): number {
   const { priceBase, priceMin, priceMax, priceStepCoins } = EVENT_CONFIG;
-  const precio = Math.round(priceBase + acumulado / priceStepCoins);
-  return Math.min(priceMax, Math.max(priceMin, precio));
+  const price = Math.round(priceBase + accumulated / priceStepCoins);
+  return Math.min(priceMax, Math.max(priceMin, price));
 }
 
 /** Fraccion de respaldo: respaldos entre votos emitidos. Las abstenciones se excluyen. */
-function calcularFraccion(votos: VotoRevelado[]): number {
-  const emitidos = votos.filter((voto) => voto.decision !== "SE_ABSTIENE");
-  if (emitidos.length === 0) return 0;
-  const respaldos = emitidos.filter((voto) => voto.decision === "RESPALDA").length;
-  return respaldos / emitidos.length;
+function computeFraction(votes: RevealedVote[]): number {
+  const cast = votes.filter((vote) => vote.decision !== "ABSTAIN");
+  if (cast.length === 0) return 0;
+  const backs = cast.filter((vote) => vote.decision === "BACK").length;
+  return backs / cast.length;
 }
 
-function calcularMultiplicador(fraccion: number): number {
-  return EVENT_CONFIG.multiplierBase + EVENT_CONFIG.multiplierSlope * fraccion;
+function computeMultiplier(fraction: number): number {
+  return EVENT_CONFIG.multiplierBase + EVENT_CONFIG.multiplierSlope * fraction;
 }
 
-function construirLiquidacion(ahora: string): ScreenViewModel {
-  const montoInvertido = 7_500;
-  const fraccionRespaldo = calcularFraccion(VOTOS_MOCK);
-  const multiplicador = calcularMultiplicador(fraccionRespaldo);
+function buildSettlement(now: string): ScreenViewModel {
+  const amountInvested = 7_500;
+  const backingFraction = computeFraction(MOCK_VOTES);
+  const multiplier = computeMultiplier(backingFraction);
   return {
-    fase: "LIQUIDACION",
-    actualizadoEn: ahora,
-    ronda: RONDA_MOCK,
-    votos: VOTOS_MOCK,
-    fraccionRespaldo,
-    multiplicador,
-    montoInvertido,
-    retornoRonda: Math.round(montoInvertido * multiplicador),
+    phase: "SETTLEMENT",
+    updatedAt: now,
+    round: MOCK_ROUND,
+    votes: MOCK_VOTES,
+    backingFraction: backingFraction,
+    multiplier: multiplier,
+    amountInvested: amountInvested,
+    roundReturn: Math.round(amountInvested * multiplier),
   };
 }
 
-function construirCierre(ahora: string): ScreenViewModel {
-  const fraccionRespaldo = 0.75;
-  const porcentajeInversores = 0.6;
-  const ganadora: StartupGanadora = {
-    nombre: STARTUPS_MOCK[0].nombre,
-    ods: { numero: 6, nombre: "Agua limpia y saneamiento" },
-    puntaje:
-      EVENT_CONFIG.winnerWeightJury * fraccionRespaldo +
-      EVENT_CONFIG.winnerWeightTraction * porcentajeInversores,
-    fraccionRespaldo,
-    porcentajeInversores,
+function buildClosing(now: string): ScreenViewModel {
+  const backingFraction = 0.75;
+  const investorPercentage = 0.6;
+  const winner: WinningStartup = {
+    name: MOCK_STARTUPS[0].name,
+    sdg: { number: 6, name: "Agua limpia y saneamiento" },
+    score:
+      EVENT_CONFIG.winnerWeightJury * backingFraction +
+      EVENT_CONFIG.winnerWeightTraction * investorPercentage,
+    backingFraction: backingFraction,
+    investorPercentage: investorPercentage,
   };
   return {
-    fase: "CIERRE",
-    actualizadoEn: ahora,
-    ganadora,
-    top3: INVERSIONISTAS_MOCK.slice(0, 3),
-    mejorOjo: { nombre: "Valeria Chavez", aciertos: 5 },
+    phase: "CLOSING",
+    updatedAt: now,
+    winner: winner,
+    top3: MOCK_INVESTORS.slice(0, 3),
+    bestEye: { name: "Valeria Chavez", hits: 5 },
   };
 }
 
 /** Produce el modelo de una fase. `tick` avanza con cada sondeo para simular actividad en vivo. */
-export function simularLectura(fase: ScreenPhase, tick: number): ScreenViewModel {
-  const ahora = new Date().toISOString();
+export function simulateReading(phase: ScreenPhase, tick: number): ScreenViewModel {
+  const now = new Date().toISOString();
 
-  switch (fase) {
-    case "MERCADO": {
-      const acumulado = 4_000 + tick * 500;
+  switch (phase) {
+    case "MARKET": {
+      const accumulated = 4_000 + tick * 500;
       return {
-        fase,
-        actualizadoEn: ahora,
-        ronda: RONDA_MOCK,
-        precio: calcularPrecio(acumulado),
-        acumulado,
-        inversoresUnicos: 18 + tick,
+        phase: phase,
+        updatedAt: now,
+        round: MOCK_ROUND,
+        price: computePrice(accumulated),
+        accumulated: accumulated,
+        uniqueInvestors: 18 + tick,
       };
     }
-    case "ULTIMA_LLAMADA": {
-      const acumulado = 9_500 + tick * 250;
+    case "LAST_CALL": {
+      const accumulated = 9_500 + tick * 250;
       return {
-        fase,
-        actualizadoEn: ahora,
-        ronda: RONDA_MOCK,
-        precio: calcularPrecio(acumulado),
-        acumulado,
-        inversoresUnicos: 31,
-        segundosRestantes: Math.max(0, EVENT_CONFIG.lastCallSeconds - tick * 2),
+        phase: phase,
+        updatedAt: now,
+        round: MOCK_ROUND,
+        price: computePrice(accumulated),
+        accumulated: accumulated,
+        uniqueInvestors: 31,
+        secondsRemaining: Math.max(0, EVENT_CONFIG.lastCallSeconds - tick * 2),
       };
     }
-    case "VOTACION":
+    case "VOTING":
       return {
-        fase,
-        actualizadoEn: ahora,
-        ronda: RONDA_MOCK,
-        votosEmitidos: Math.min(VOTOS_MOCK.length, 1 + Math.floor(tick / 2)),
-        juradosTotal: VOTOS_MOCK.length,
+        phase: phase,
+        updatedAt: now,
+        round: MOCK_ROUND,
+        votesCast: Math.min(MOCK_VOTES.length, 1 + Math.floor(tick / 2)),
+        jurorsTotal: MOCK_VOTES.length,
       };
-    case "LIQUIDACION":
-      return construirLiquidacion(ahora);
-    case "ENTRE_RONDAS":
+    case "SETTLEMENT":
+      return buildSettlement(now);
+    case "BETWEEN_ROUNDS":
       return {
-        fase,
-        actualizadoEn: ahora,
-        rondaCerrada: RONDA_MOCK,
-        inversionistas: INVERSIONISTAS_MOCK,
-        startups: STARTUPS_MOCK,
+        phase: phase,
+        updatedAt: now,
+        closedRound: MOCK_ROUND,
+        investors: MOCK_INVESTORS,
+        startups: MOCK_STARTUPS,
       };
-    case "CIERRE":
-      return construirCierre(ahora);
+    case "CLOSING":
+      return buildClosing(now);
   }
 }
 

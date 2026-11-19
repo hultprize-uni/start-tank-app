@@ -22,13 +22,13 @@ const MOCK_OPEN_VOTING_DELAY_MS = 4_000;
 const MOCK_SUBMIT_DELAY_MS = 500;
 
 export const MOCK_CRITERIA: readonly JuryCriterion[] = [
-  { id: "viabilidad", label: "Viabilidad" },
-  { id: "impacto_ods", label: "Impacto ODS" },
+  { id: "viability", label: "Viabilidad" },
+  { id: "sdg_impact", label: "Impacto ODS" },
 ];
 
 const INITIAL_STATE: JuryViewModel = {
-  screen: "acceso",
-  access: { status: "inactivo", errorMessage: null },
+  screen: "access",
+  access: { status: "idle", errorMessage: null },
   jurorLabel: null,
   round: null,
   criteria: MOCK_CRITERIA,
@@ -59,7 +59,7 @@ export function useJuryState(): { state: JuryViewModel; actions: JuryActions } {
     (code: string) => {
       setState((prev) => ({
         ...prev,
-        access: { status: "validando", errorMessage: null },
+        access: { status: "validating", errorMessage: null },
       }));
 
       schedule(() => {
@@ -76,8 +76,8 @@ export function useJuryState(): { state: JuryViewModel; actions: JuryActions } {
           }
           return {
             ...prev,
-            screen: "espera",
-            access: { status: "inactivo", errorMessage: null },
+            screen: "waiting",
+            access: { status: "idle", errorMessage: null },
             jurorLabel: "Jurado 3",
             round: { number: 2, startupName: "Startup Nombre" },
           };
@@ -88,11 +88,11 @@ export function useJuryState(): { state: JuryViewModel; actions: JuryActions } {
   );
 
   useEffect(() => {
-    if (state.screen !== "espera") return;
+    if (state.screen !== "waiting") return;
     const id = window.setTimeout(() => {
       setState((prev) => ({
         ...prev,
-        screen: "votacion",
+        screen: "voting",
         votes: { ...prev.votes, emitted: 2 },
       }));
     }, MOCK_OPEN_VOTING_DELAY_MS);
@@ -129,7 +129,7 @@ export function useJuryState(): { state: JuryViewModel; actions: JuryActions } {
     schedule(() => {
       setState((prev) => ({
         ...prev,
-        screen: "voto_registrado",
+        screen: "vote_registered",
         vote: { draft: null, confirming: false, submitting: false, errorMessage: null },
         votes: {
           ...prev.votes,

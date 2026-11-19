@@ -1,6 +1,6 @@
 /* Escenario 16:9 de la pantalla del evento. Las medidas usan unidades cqw para escalar con el proyector. */
 
-.pantalla {
+.screen {
   position: fixed;
   inset: 0;
   display: flex;
@@ -10,7 +10,7 @@
   overflow: hidden;
 }
 
-.escenario {
+.stage {
   container-type: size;
   position: relative;
   width: min(100vw, calc(100vh * 16 / 9));
@@ -24,7 +24,7 @@
   overflow: hidden;
 }
 
-.encabezado {
+.header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -32,17 +32,17 @@
   font-size: 1.3cqw;
 }
 
-.marca {
+.brand {
   color: var(--accent);
   font-size: 1.3cqw;
 }
 
-.etiquetaFase {
+.phaseLabel {
   color: var(--accent-2);
   font-size: 1.3cqw;
 }
 
-.cuerpo {
+.body {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -60,7 +60,7 @@
   text-transform: uppercase;
 }
 
-.titulo {
+.title {
   font-family: var(--font-display);
   font-weight: 900;
   font-size: 6.4cqw;
@@ -69,13 +69,13 @@
   margin: 0;
 }
 
-.subtitulo {
+.subtitle {
   color: var(--fg-2);
   font-size: 1.8cqw;
   margin: 0;
 }
 
-.cifraGrande {
+.figureLarge {
   font-family: var(--font-display);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
@@ -86,21 +86,21 @@
   margin: 0;
 }
 
-.cifraAcento {
+.figureAccent {
   color: var(--accent-3);
 }
 
-.cifraCyan {
+.figureCyan {
   color: var(--accent-2);
 }
 
-.rejilla {
+.grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2cqw;
 }
 
-.tarjeta {
+.card {
   border: 1px solid var(--line-2);
   border-radius: var(--r-card);
   background: var(--bg-card);
@@ -110,7 +110,7 @@
   gap: 1cqh;
 }
 
-.valorTarjeta {
+.cardValue {
   font-family: var(--font-display);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
@@ -119,7 +119,7 @@
   margin: 0;
 }
 
-.insignia {
+.badge {
   display: inline-flex;
   align-self: flex-start;
   align-items: center;
@@ -131,23 +131,23 @@
   font-weight: 800;
 }
 
-.pulso {
+.pulse {
   animation: stPulse 1s ease-in-out infinite;
 }
 
-.punto {
+.dot {
   width: 2.2cqw;
   height: 2.2cqw;
   border-radius: 50%;
   border: 2px solid var(--line-strong);
 }
 
-.puntoEmitido {
+.dotCast {
   background: var(--accent-2);
   border-color: var(--accent-2);
 }
 
-.fila {
+.row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -157,19 +157,19 @@
   font-size: 1.6cqw;
 }
 
-.tablaLista {
+.listTable {
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
-.pie {
+.footer {
   color: var(--fg-4);
   font-size: 1.3cqw;
 }
 
-.ganadora {
+.winner {
   border: 1px solid var(--accent-3);
   border-radius: var(--r-card);
   padding: 3cqh 3cqw;
@@ -179,62 +179,62 @@
   gap: 1.5cqh;
 }
 
-.acentoAmarillo {
+.accentYellow {
   color: var(--accent-3);
 }
 
-.acentoCyan {
+.accentCyan {
   color: var(--accent-2);
 }
 
-.rejillaCuatro {
+.gridFour {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 2cqw;
 }
 
-.hileraPuntos {
+.dotRow {
   display: flex;
   gap: 2cqw;
 }
 
-.decisionRespalda {
+.decisionBack {
   color: var(--positive);
 }
 
-.decisionRechaza {
+.decisionReject {
   color: var(--negative);
 }
 
-.decisionAbstencion {
+.decisionAbstain {
   color: var(--fg-3);
 }
 
-.rejillaDos {
+.gridTwo {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3cqw;
   min-height: 0;
 }
 
-.lista {
+.list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.valorFila {
+.rowValue {
   font-family: var(--font-display);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
 
-.tituloGanadora {
+.winnerTitle {
   color: var(--accent-3);
   font-size: 7cqw;
 }
 
-.selectorDesarrollo {
+.devSelector {
   position: fixed;
   top: 12px;
   right: 12px;
@@ -246,7 +246,7 @@
   color: var(--fg-2);
 }
 
-.selectorDesarrollo select {
+.devSelector select {
   background: var(--bg-card);
   color: var(--fg-1);
   border: 1px solid var(--line-2);

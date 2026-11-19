@@ -5,4 +5,4 @@
  */
 
 /** Indica si los portales del jurado y del operador usan los datos de muestra. */
-export const USA_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
+export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";

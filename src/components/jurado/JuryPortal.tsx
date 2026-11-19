@@ -13,15 +13,15 @@ export function JuryPortal() {
 
   return (
     <JuryShell jurorLabel={state.jurorLabel}>
-      {state.screen === "acceso" && (
+      {state.screen === "access" && (
         <AccessForm access={state.access} onSubmit={actions.submitCode} />
       )}
 
-      {state.screen === "espera" && state.round !== null && (
+      {state.screen === "waiting" && state.round !== null && (
         <WaitingScreen round={state.round} criteria={state.criteria} />
       )}
 
-      {state.screen === "votacion" && state.round !== null && (
+      {state.screen === "voting" && state.round !== null && (
         <VotePanel
           round={state.round}
           criteria={state.criteria}
@@ -33,7 +33,7 @@ export function JuryPortal() {
         />
       )}
 
-      {state.screen === "voto_registrado" && state.round !== null && (
+      {state.screen === "vote_registered" && state.round !== null && (
         <VoteRegistered round={state.round} votes={state.votes} />
       )}
     </JuryShell>

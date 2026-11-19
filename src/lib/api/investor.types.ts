@@ -22,7 +22,7 @@ export interface RoundInfo {
 export interface StartupInfo {
   name: string;
   /** Etiqueta del Objetivo de Desarrollo Sostenible, por ejemplo "ODS 7 · Energía asequible". */
-  ods: string;
+  sdg: string;
   description: string;
 }
 
@@ -103,12 +103,12 @@ export interface InvestorViewModel {
 }
 
 /** Resultado de confirmar una inversión. El mensaje explica el motivo del rechazo. */
-export type ResultadoInversion = { ok: true } | { ok: false; mensaje: string };
+export type InvestmentResult = { ok: true } | { ok: false; message: string };
 
 /** Acciones del portal del inversionista. */
 export interface InvestorActions {
   /** Registra una inversión de monto entero en la ronda abierta. */
-  invest: (amount: number) => Promise<ResultadoInversion>;
+  invest: (amount: number) => Promise<InvestmentResult>;
 }
 
 /** Estado de la última carga del view model. */

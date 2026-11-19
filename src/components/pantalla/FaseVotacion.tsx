@@ -1,36 +1,36 @@
-import type { Votacion } from "@/lib/api/screen.types";
-import { CabeceraRonda } from "./CabeceraRonda";
+import type { Voting } from "@/lib/api/screen.types";
+import { RoundHeader } from "./CabeceraRonda";
 import styles from "./pantalla.module.css";
 
-interface FaseVotacionProps {
-  vm: Votacion;
+interface VotingPhaseProps {
+  vm: Voting;
 }
 
 /*
  * Fase Votacion: el jurado delibera. Solo se cuentan los votos emitidos;
  * su sentido no se muestra hasta la liquidacion.
  */
-export function FaseVotacion({ vm }: FaseVotacionProps) {
-  const indices = Array.from({ length: vm.juradosTotal }, (_, indice) => indice);
+export function VotingPhase({ vm }: VotingPhaseProps) {
+  const indices = Array.from({ length: vm.jurorsTotal }, (_, index) => index);
 
   return (
     <>
-      <CabeceraRonda ronda={vm.ronda} />
+      <RoundHeader round={vm.round} />
       <section>
         <p className={styles.eyebrow}>Votación en curso</p>
-        <p className={styles.subtitulo}>El jurado delibera. Los votos se revelan al cierre.</p>
+        <p className={styles.subtitle}>El jurado delibera. Los votos se revelan al cierre.</p>
       </section>
       <section>
-        <p className={`${styles.cifraGrande} ${styles.cifraAcento}`}>
-          {vm.votosEmitidos} de {vm.juradosTotal}
+        <p className={`${styles.figureLarge} ${styles.figureAccent}`}>
+          {vm.votesCast} de {vm.jurorsTotal}
         </p>
-        <p className={styles.subtitulo}>votos emitidos</p>
+        <p className={styles.subtitle}>votos emitidos</p>
       </section>
-      <div className={styles.hileraPuntos} role="img" aria-label={`${vm.votosEmitidos} de ${vm.juradosTotal} votos emitidos`}>
-        {indices.map((indice) => (
+      <div className={styles.dotRow} role="img" aria-label={`${vm.votesCast} de ${vm.jurorsTotal} votos emitidos`}>
+        {indices.map((index) => (
           <span
-            key={indice}
-            className={`${styles.punto} ${indice < vm.votosEmitidos ? styles.puntoEmitido : ""}`}
+            key={index}
+            className={`${styles.dot} ${index < vm.votesCast ? styles.dotCast : ""}`}
           />
         ))}
       </div>
