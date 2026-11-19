@@ -44,12 +44,12 @@
 
 /* El texto oscuro sobre el acento alcanza 5.5:1; el blanco no alcanza 4.5:1. */
 .primary {
-  background: var(--accent);
+  background: #c92e75;
   color: var(--bg-page);
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--st-pink-hot);
+  background: #b02766;
 }
 
 .ghost {
