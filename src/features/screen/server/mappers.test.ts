@@ -182,4 +182,23 @@ describe("buildScreen", () => {
     expect(vm.top3.map((f) => f.name)).toEqual(["Ana", "Luis", "Eva"]);
     expect(vm.bestEye).toEqual({ name: "Luis", hits: 5 });
   });
+
+  it("muestra la espera previa cuando ninguna ronda ha iniciado", () => {
+    const first = round({ numero: 1, estado: "SCHEDULED", startup_nombre: "Aqua Viva" });
+    const second = round({ numero: 2, estado: "SCHEDULED", startup_nombre: "Huella" });
+    const vm = buildScreen(screen([second, first]), NOW);
+
+    expect(vm).toMatchObject({
+      phase: "WAITING",
+      updatedAt: NOW.toISOString(),
+      nextRound: { number: 1, startup: { name: "Aqua Viva", sdg: { number: 6 } } },
+    });
+  });
+
+  it("no muestra la espera una vez iniciada la primera ronda", () => {
+    const open = round({ numero: 1, estado: "OPEN" });
+    const next = round({ numero: 2, estado: "SCHEDULED" });
+
+    expect(buildScreen(screen([open, next]), NOW)).toMatchObject({ phase: "MARKET" });
+  });
 });

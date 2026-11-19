@@ -10,6 +10,7 @@ import type { ScreenPhase, ScreenViewModel } from "../types";
 
 /** Fases válidas del view model. Se usan para validar la respuesta del servidor. */
 const VALID_PHASES: readonly ScreenPhase[] = [
+  "WAITING",
   "MARKET",
   "LAST_CALL",
   "VOTING",
