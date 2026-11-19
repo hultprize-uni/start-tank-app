@@ -1,19 +1,23 @@
 .header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-3);
+  gap: 12px var(--sp-3);
 }
 
 .header .logo {
-  width: 128px;
+  width: 120px;
   height: auto;
   flex: none;
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--sp-3);
+  margin-left: auto;
   min-width: 0;
 }
