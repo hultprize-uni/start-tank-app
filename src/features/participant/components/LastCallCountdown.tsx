@@ -1,32 +1,34 @@
+import { Countdown, ProgressBar } from "@/shared/ui";
 import { EVENT_CONFIG } from "@/shared/domain/config";
 import styles from "./LastCallCountdown.module.css";
+
+/** Segundos finales en los que el contador cambia a tono de aviso. */
+const WARNING_SECONDS = 10;
 
 interface LastCallCountdownProps {
   /** Segundos restantes antes del cierre automático. */
   seconds: number;
 }
 
-/** Formatea segundos como m:ss, por ejemplo "0:42". */
-function formatClock(totalSeconds: number): string {
-  const safe = Math.max(0, Math.floor(totalSeconds));
-  const minutes = Math.floor(safe / 60);
-  const secs = String(safe % 60).padStart(2, "0");
-  return `${minutes}:${secs}`;
-}
-
-/** Cuenta regresiva de la última llamada con barra que se vacía hasta el cierre. */
+/** Cuenta regresiva de la última llamada con una barra que se vacía hasta el cierre. */
 export function LastCallCountdown({ seconds }: LastCallCountdownProps) {
-  const fillPercent = Math.min(100, (seconds / EVENT_CONFIG.lastCallSeconds) * 100);
+  const isWarning = seconds <= WARNING_SECONDS;
 
   return (
     <div className={styles.countdown}>
       <span className={styles.label}>Cierre automático en</span>
-      <span className={styles.clock} aria-live="polite">
-        {formatClock(seconds)}
-      </span>
-      <div className={styles.track}>
-        <div className={styles.fill} style={{ width: `${fillPercent}%` }} />
-      </div>
+      <Countdown
+        seconds={seconds}
+        label="Tiempo restante de la última llamada"
+        tone={isWarning ? "warning" : "default"}
+      />
+      <ProgressBar
+        value={seconds}
+        max={EVENT_CONFIG.lastCallSeconds}
+        label="Barra de tiempo de la última llamada"
+        valueText={`${seconds} segundos`}
+        tone="yellow"
+      />
     </div>
   );
 }

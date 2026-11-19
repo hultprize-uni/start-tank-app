@@ -1,0 +1,59 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  background: var(--bg-band);
+}
+
+.previewTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.scenario {
+  color: var(--fg-2);
+}
+
+.value {
+  font-variant-numeric: tabular-nums;
+}
+
+.low {
+  color: var(--st-pink-light);
+}
+
+.neutral {
+  color: var(--fg-1);
+}
+
+.high {
+  color: var(--st-cyan-light);
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg-3);
+}

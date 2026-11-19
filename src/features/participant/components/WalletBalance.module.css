@@ -1,0 +1,49 @@
+.wallet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.value {
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-1);
+}
+
+.unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-3);
+}
+
+.sm .value {
+  font-size: 22px;
+}
+
+.lg {
+  align-items: flex-start;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 2px solid transparent;
+  border-radius: var(--r-inner);
+  background:
+    linear-gradient(var(--bg-page), var(--bg-page)) padding-box,
+    var(--grad-hero) border-box;
+}
+
+.lg .value {
+  font-size: 34px;
+  line-height: 1.05;
+}

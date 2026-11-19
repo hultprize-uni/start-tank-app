@@ -1,7 +1,6 @@
+import { Badge, Button } from "@/shared/ui";
+import { formatCoins } from "../format";
 import type { RoundInfo, StartupInfo, WalletInfo } from "../types";
-import { ActionButton } from "./ActionButton";
-import { formatCoins } from "./format";
-import { StatusBadge } from "./StatusBadge";
 import styles from "./VotingScreen.module.css";
 
 interface VotingScreenProps {
@@ -14,7 +13,7 @@ interface VotingScreenProps {
 export function VotingScreen({ round, startup, wallet }: VotingScreenProps) {
   return (
     <section className={styles.screen}>
-      <StatusBadge tone="pink">Mercado cerrado</StatusBadge>
+      <Badge tone="pink">Mercado cerrado</Badge>
       <h1 className={styles.title}>El jurado delibera.</h1>
       <p className={styles.lead}>
         {startup.name} · Ronda {round.number} de {round.total}. El operador revelará el veredicto
@@ -26,9 +25,9 @@ export function VotingScreen({ round, startup, wallet }: VotingScreenProps) {
         <span className={styles.amount}>{formatCoins(wallet.investedInRound)}</span>
       </div>
 
-      <ActionButton variant="muted" size="lg" disabled>
+      <Button variant="ghost" size="lg" fullWidth disabled>
         Invertir · bloqueado
-      </ActionButton>
+      </Button>
     </section>
   );
 }

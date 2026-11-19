@@ -1,5 +1,5 @@
+import { Badge } from "@/shared/ui";
 import type { RoundInfo, StartupInfo } from "../types";
-import { StatusBadge } from "./StatusBadge";
 import styles from "./ScheduledScreen.module.css";
 
 interface ScheduledScreenProps {
@@ -11,14 +11,14 @@ interface ScheduledScreenProps {
 export function ScheduledScreen({ round, startup }: ScheduledScreenProps) {
   return (
     <section className={styles.screen}>
-      <StatusBadge tone="yellow">
+      <Badge tone="yellow">
         Ronda {round.number} de {round.total} · Programada
-      </StatusBadge>
+      </Badge>
       <h1 className={styles.name}>{startup.name}</h1>
       <p className={styles.sdg}>{startup.sdg}</p>
       <p className={styles.description}>{startup.description}</p>
       <p className={styles.note}>
-        El operador abrirá el mercado en cuanto empiece el pitch. Esta pantalla se actualiza sola.
+        El operador abrirá el mercado cuando empiece el pitch. Esta pantalla se actualiza sola.
       </p>
     </section>
   );

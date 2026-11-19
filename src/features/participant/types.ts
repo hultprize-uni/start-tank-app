@@ -48,6 +48,9 @@ export interface MarketInfo {
   investorCount: number;
 }
 
+/** Modo de anulación elegido por el operador: devolver lo invertido o liquidar a 1.0x. */
+export type AnnulmentMode = "refund" | "settle-1x";
+
 /** Resultado de la votación del jurado. */
 export interface VerdictInfo {
   /** Voto de cada jurado. */
@@ -62,6 +65,23 @@ export interface VerdictInfo {
   payout: number;
   /** Ganancia neta de la ronda: retorno menos monto invertido. */
   gain: number;
+  /** Modo de anulación, o nulo si la ronda no fue anulada. Con anulación no se muestran los votos. */
+  annulment: AnnulmentMode | null;
+}
+
+/** Estado de una ronda en el riel lateral y en el historial del inversionista. */
+export type RoundTrackState = "pending" | "current" | "settled" | "annulled";
+
+/** Resumen de una ronda del evento para el riel lateral y el historial del inversionista. */
+export interface RoundSummary {
+  /** Número de la ronda, desde 1. */
+  number: number;
+  startupName: string;
+  state: RoundTrackState;
+  /** Monto invertido por el inversionista en la ronda. */
+  invested: number;
+  /** Ganancia neta de la ronda; nula mientras la ronda no está liquidada ni anulada. */
+  gain: number | null;
 }
 
 /** Fila del leaderboard del evento. */
@@ -99,7 +119,10 @@ export interface ParticipantViewModel {
   /** Segundos restantes de la última llamada. Solo tiene valor en la fase lastCall. */
   countdownSeconds: number | null;
   verdict: VerdictInfo | null;
+  /** Clasificación. Nula hasta que termina la primera ronda. */
   standing: StandingInfo | null;
+  /** Todas las rondas del evento, en orden. */
+  rounds: RoundSummary[];
 }
 
 /** Resultado de confirmar una inversión. El mensaje explica el motivo del rechazo. */
