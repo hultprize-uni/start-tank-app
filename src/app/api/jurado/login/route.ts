@@ -1,6 +1,6 @@
-import { startSession } from "@/lib/auth/code-session";
+import { startSession } from "@/server/auth/code-session";
 import { findJurorByCode } from "@/lib/db/queries";
-import { readJsonBody, errorResponse, jsonResponse } from "@/lib/http/respuestas";
+import { readJsonBody, errorResponse, jsonResponse } from "@/server/http/responses";
 
 /** Longitud máxima admitida para un código de acceso. */
 const MAX_CODE_LENGTH = 64;

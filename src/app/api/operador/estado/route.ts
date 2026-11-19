@@ -1,6 +1,6 @@
-import { requireOperator, noSessionResponse } from "@/lib/auth/code-session";
+import { requireOperator, noSessionResponse } from "@/server/auth/code-session";
 import { readOperatorView } from "@/lib/db/queries";
-import { errorResponse, jsonResponse } from "@/lib/http/respuestas";
+import { errorResponse, jsonResponse } from "@/server/http/responses";
 
 /** Devuelve el view model de la consola del operador para la sesión vigente. */
 export async function GET() {

@@ -1,7 +1,7 @@
-import { requireOperator, noSessionResponse } from "@/lib/auth/code-session";
+import { requireOperator, noSessionResponse } from "@/server/auth/code-session";
 import { buildSettlementCsv } from "@/lib/api/operator.export";
 import { readOperatorView } from "@/lib/db/queries";
-import { NO_CACHE_HEADERS, errorResponse } from "@/lib/http/respuestas";
+import { NO_CACHE_HEADERS, errorResponse } from "@/server/http/responses";
 
 /** Marca de orden de bytes para que Excel reconozca la codificación UTF-8. */
 const UTF8_BOM = "﻿";

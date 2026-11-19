@@ -1,6 +1,6 @@
-import { requireOperator, noSessionResponse } from "@/lib/auth/code-session";
+import { requireOperator, noSessionResponse } from "@/server/auth/code-session";
 import { API_OPERATOR_ACTIONS, executeOperatorAction, type ApiOperatorAction } from "@/lib/db/queries";
-import { readJsonBody, errorResponse, jsonResponse } from "@/lib/http/respuestas";
+import { readJsonBody, errorResponse, jsonResponse } from "@/server/http/responses";
 
 function isAction(value: unknown): value is ApiOperatorAction {
   return typeof value === "string" && (API_OPERATOR_ACTIONS as readonly string[]).includes(value);

@@ -1,11 +1,11 @@
 import { cookies } from "next/headers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { signSession } from "@/lib/auth/code-session";
+import { signSession } from "@/server/auth/code-session";
 
 const sqlMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
-vi.mock("@/lib/db/client", () => ({ sql: sqlMock }));
+vi.mock("@/server/db/client", () => ({ sql: sqlMock }));
 
 import { POST } from "./route";
 

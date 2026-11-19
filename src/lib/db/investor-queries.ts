@@ -14,7 +14,7 @@ import { EVENT_CONFIG } from "@/shared/domain/config";
 import type { Decision, RoundState } from "@/shared/domain/types";
 import { parseSdg } from "./mapeo";
 import type { SqlFunctionResult } from "./queries";
-import { sql } from "./client";
+import { sql } from "../../server/db/client";
 
 /*
  * Consultas y constructor del view model del portal del inversionista. Las lecturas arman

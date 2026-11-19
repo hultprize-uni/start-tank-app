@@ -1,7 +1,7 @@
 import { participantError } from "@/lib/api/investor.errors";
 import { getInvestorSession } from "@/lib/auth/investor";
 import { registerInvestment } from "@/lib/db/investor-queries";
-import { readJsonBody, jsonResponse } from "@/lib/http/respuestas";
+import { readJsonBody, jsonResponse } from "@/server/http/responses";
 
 export const dynamic = "force-dynamic";
 

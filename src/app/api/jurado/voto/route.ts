@@ -1,7 +1,7 @@
 import type { Decision } from "@/shared/domain/types";
-import { requireJury, noSessionResponse } from "@/lib/auth/code-session";
+import { requireJury, noSessionResponse } from "@/server/auth/code-session";
 import { registerVote } from "@/lib/db/queries";
-import { readJsonBody, errorResponse, jsonResponse } from "@/lib/http/respuestas";
+import { readJsonBody, errorResponse, jsonResponse } from "@/server/http/responses";
 
 /** Decisiones admitidas para el voto del jurado. */
 const DECISIONS: readonly Decision[] = ["BACK", "REJECT", "ABSTAIN"];

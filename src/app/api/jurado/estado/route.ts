@@ -1,6 +1,6 @@
-import { requireJury, noSessionResponse } from "@/lib/auth/code-session";
+import { requireJury, noSessionResponse } from "@/server/auth/code-session";
 import { readJuryView } from "@/lib/db/queries";
-import { errorResponse, jsonResponse } from "@/lib/http/respuestas";
+import { errorResponse, jsonResponse } from "@/server/http/responses";
 
 /** Devuelve el view model del portal del jurado para la sesión vigente. */
 export async function GET() {

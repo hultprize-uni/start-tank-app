@@ -2,7 +2,7 @@ import type { Decision } from "@/shared/domain/types";
 import type { JuryViewModel } from "@/lib/api/jury.types";
 import type { OperatorViewModel } from "@/lib/api/operator.types";
 import type { ScreenViewModel } from "@/lib/api/screen.types";
-import { sql } from "./client";
+import { sql } from "../../server/db/client";
 import {
   classifyRounds,
   buildScreen,

@@ -1,5 +1,5 @@
 import { readScreen } from "@/lib/db/queries";
-import { errorResponse, jsonResponse } from "@/lib/http/respuestas";
+import { errorResponse, jsonResponse } from "@/server/http/responses";
 
 /*
  * Ruta pública de solo lectura de la pantalla del evento. No exige sesión y no ejecuta escrituras.

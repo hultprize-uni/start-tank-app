@@ -1,5 +1,5 @@
 import { getInvestorSql, provisionInvestor } from "@/lib/db/investor-db";
-import { getNeonAuth } from "@/lib/auth/neon-auth";
+import { getNeonAuth } from "@/server/auth/neon-auth";
 
 /**
  * Lee la sesión de Neon Auth y devuelve la billetera del asistente.

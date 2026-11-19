@@ -1,7 +1,7 @@
 import { participantError } from "@/lib/api/investor.errors";
 import { getInvestorSession } from "@/lib/auth/investor";
 import { readParticipantState } from "@/lib/db/investor-queries";
-import { jsonResponse } from "@/lib/http/respuestas";
+import { jsonResponse } from "@/server/http/responses";
 
 /*
  * Estado del portal del inversionista. La identidad proviene solo de la sesión de Neon Auth; la
