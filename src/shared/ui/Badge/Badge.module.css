@@ -1,0 +1,33 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.cyan {
+  background: color-mix(in srgb, var(--st-cyan) 16%, transparent);
+  color: var(--st-cyan-light);
+}
+
+.pink {
+  background: color-mix(in srgb, var(--st-pink) 16%, transparent);
+  color: var(--st-pink-light);
+}
+
+.yellow {
+  background: color-mix(in srgb, var(--st-yellow) 14%, transparent);
+  color: var(--st-yellow);
+}
+
+.neutral {
+  background: var(--line-1);
+  color: var(--fg-2);
+}

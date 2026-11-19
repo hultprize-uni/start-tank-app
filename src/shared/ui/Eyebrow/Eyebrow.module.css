@@ -1,0 +1,25 @@
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-eyebrow);
+  font-weight: 800;
+  letter-spacing: var(--ls-eyebrow);
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.cyan {
+  color: var(--st-cyan-light);
+}
+
+.pink {
+  color: var(--st-pink-light);
+}
+
+.yellow {
+  color: var(--st-yellow);
+}
+
+.muted {
+  color: var(--fg-3);
+}

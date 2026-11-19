@@ -1,0 +1,173 @@
+.background {
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 80% at 50% 0%,
+    var(--st-ink-700) 0%,
+    var(--bg-page) 60%
+  );
+}
+
+.fixed {
+  position: fixed;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.glow {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.16;
+}
+
+.glowCyan {
+  left: -20vmax;
+  top: -25vmax;
+  background: radial-gradient(circle, var(--st-cyan), transparent 65%);
+  animation: drift 28s ease-in-out infinite alternate;
+}
+
+.glowPink {
+  right: -25vmax;
+  bottom: -30vmax;
+  background: radial-gradient(circle, var(--st-pink), transparent 65%);
+  animation: drift 34s ease-in-out infinite alternate-reverse;
+}
+
+.shark {
+  position: absolute;
+  left: 0;
+  will-change: transform;
+}
+
+.shark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  fill: var(--st-cyan-light);
+}
+
+.sharkLarge {
+  top: 20%;
+  width: min(52vw, 620px);
+  opacity: 0.11;
+  animation: swimRight 80s linear infinite;
+}
+
+.sharkSmall {
+  top: 66%;
+  width: min(30vw, 340px);
+  opacity: 0.07;
+  animation: swimLeft 110s linear infinite;
+  animation-delay: -40s;
+}
+
+.bob {
+  animation: bob 7s ease-in-out infinite alternate;
+}
+
+.bobSlow {
+  animation-duration: 9s;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -40px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--st-cyan-light) 35%, transparent);
+  background: radial-gradient(
+    circle at 30% 30%,
+    color-mix(in srgb, var(--fg-1) 18%, transparent),
+    transparent 60%
+  );
+  opacity: 0;
+  animation: rise linear infinite;
+}
+
+@keyframes swimRight {
+  from {
+    transform: translateX(-60vw);
+  }
+  to {
+    transform: translateX(110vw);
+  }
+}
+
+@keyframes swimLeft {
+  from {
+    transform: translateX(110vw);
+  }
+  to {
+    transform: translateX(-45vw);
+  }
+}
+
+@keyframes bob {
+  from {
+    transform: translateY(-14px) rotate(-1.5deg);
+  }
+  to {
+    transform: translateY(14px) rotate(1.5deg);
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(8vmax, 6vmax);
+  }
+}
+
+@keyframes rise {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(12px, -55vh);
+  }
+  100% {
+    transform: translate(-8px, -115vh);
+    opacity: 0;
+  }
+}
+
+/* Movimiento reducido: el fondo queda estático y sin burbujas */
+@media (prefers-reduced-motion: reduce) {
+  .glow,
+  .shark,
+  .bob,
+  .bubble {
+    animation: none;
+  }
+
+  .sharkLarge {
+    transform: translateX(30vw);
+  }
+
+  .bubble {
+    display: none;
+  }
+}
+
+.background[data-reduced-motion="true"] .glow,
+.background[data-reduced-motion="true"] .shark,
+.background[data-reduced-motion="true"] .bob {
+  animation: none;
+}
+
+.background[data-reduced-motion="true"] .sharkLarge {
+  transform: translateX(30vw);
+}

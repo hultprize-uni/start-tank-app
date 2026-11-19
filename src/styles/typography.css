@@ -1,5 +1,5 @@
 :root{
---font-display:var(--font-archivo),Archivo,sans-serif;--font-body:var(--font-manrope),Manrope,system-ui,sans-serif;
+--font-display:"Archivo Variable",Archivo,system-ui,sans-serif;--font-body:"Manrope Variable",Manrope,system-ui,sans-serif;
 --fs-hero:clamp(42px,6.4vw,88px);/* @kind font */--fs-h2:clamp(32px,4.4vw,58px);/* @kind font */--fs-h3:19px;--fs-lead:19px;--fs-body:15px;--fs-small:13px;--fs-eyebrow:11.5px;
 --ls-display:-.035em;--ls-eyebrow:.14em;
 }
