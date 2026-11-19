@@ -1,7 +1,21 @@
 import type { Decision } from "@/shared/domain/types";
 
-/** Pantallas del portal del jurado, en el orden en que se recorren. */
-export type JuryScreen = "access" | "waiting" | "voting" | "vote_registered";
+/** Pantalla visible del portal del jurado. */
+export type JuryScreen = "access" | "waiting" | "voting" | "vote_registered" | "result";
+
+/**
+ * Fase de la ronda vigente vista desde el jurado. Cada fase corresponde a un estado de la ronda,
+ * salvo "final", que indica que el evento no tiene ronda pendiente ni en curso.
+ */
+export type JuryPhase =
+  | "scheduled"
+  | "open"
+  | "last_call"
+  | "closed"
+  | "voting"
+  | "result"
+  | "cancelled"
+  | "final";
 
 /** Estado del formulario de acceso con código. */
 export interface JuryAccessView {
@@ -12,7 +26,13 @@ export interface JuryAccessView {
 /** Ronda que el jurado evalúa o espera evaluar. */
 export interface JuryRoundView {
   number: number;
+  /** Cantidad de rondas del evento. */
+  total: number;
   startupName: string;
+  /** Objetivo de Desarrollo Sostenible, por ejemplo "ODS 6". Nulo si no está registrado. */
+  sdg: string | null;
+  /** Descripción breve de la startup. Nula si no está registrada. */
+  description: string | null;
 }
 
 /** Criterio de evaluación que se muestra como recordatorio. */
@@ -39,15 +59,49 @@ export interface JuryVotesView {
   total: number;
 }
 
+/** Entrada del recorrido de rondas del evento. */
+export interface JuryRailItem {
+  number: number;
+  startupName: string;
+  /** settled: ronda liquidada o anulada; current: ronda en escena; pending: aún no inicia. */
+  status: "settled" | "current" | "pending";
+  /** Decisión propia de una ronda terminada. Nula cuando no hay voto o la ronda no ha terminado. */
+  ownDecision: Decision | null;
+}
+
+/** Voto de un jurado publicado al liquidar la ronda. */
+export interface JuryRevealVote {
+  label: string;
+  /** Indica si el voto corresponde al jurado de la sesión. */
+  isOwn: boolean;
+  decision: Decision | null;
+}
+
+/** Veredicto de la ronda liquidada: multiplicador y votos publicados a la vez. */
+export interface JuryRevealView {
+  multiplier: number | null;
+  votes: readonly JuryRevealVote[];
+  /** Indica si la ronda es la última del evento. */
+  isLastRound: boolean;
+}
+
 /** Modelo de vista completo del portal del jurado. */
 export interface JuryViewModel {
   screen: JuryScreen;
+  /** Fase de la ronda vigente. Nula mientras el jurado no ha ingresado. */
+  phase: JuryPhase | null;
   access: JuryAccessView;
   jurorLabel: string | null;
   round: JuryRoundView | null;
+  /** Recorrido de todas las rondas del evento, en orden. */
+  rail: readonly JuryRailItem[];
   criteria: readonly JuryCriterion[];
   vote: JuryVoteView;
   votes: JuryVotesView;
+  /** Decisión registrada por el jurado en la ronda vigente. Nula si aún no vota. */
+  ownVote: Decision | null;
+  /** Veredicto publicado. Solo existe cuando la fase es "result". */
+  reveal: JuryRevealView | null;
 }
 
 /** Acciones que el portal dispara sobre el estado. */

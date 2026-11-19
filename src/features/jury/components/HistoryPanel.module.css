@@ -1,0 +1,49 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 18px;
+  border: 1px solid var(--line-1);
+  border-radius: 18px;
+  background: var(--bg-band);
+}
+
+.caption {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.back {
+  color: var(--st-cyan-light);
+}
+
+.reject {
+  color: var(--st-pink-light);
+}
+
+.abstain {
+  color: var(--st-yellow);
+}

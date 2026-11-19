@@ -1,5 +1,6 @@
+import { Button, Dialog } from "@/shared/ui";
 import type { Decision } from "@/shared/domain/types";
-import { DECISION_LABELS } from "./decisions";
+import { DECISION_COPY } from "./copy";
 import styles from "./VoteConfirmDialog.module.css";
 
 interface VoteConfirmDialogProps {
@@ -16,46 +17,33 @@ export function VoteConfirmDialog({
   onCancel,
   onConfirm,
 }: VoteConfirmDialogProps) {
-  const { title, description } = DECISION_LABELS[decision];
+  const copy = DECISION_COPY[decision];
 
   return (
-    <div className={styles.backdrop}>
-      <div
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirmar-voto-titulo"
-      >
-        <p className={styles.eyebrow}>Voto definitivo</p>
-        <h2 id="confirmar-voto-titulo" className={styles.title}>
-          ¿Confirmas tu voto?
-        </h2>
-        <p className={styles.summary}>
-          Vas a votar: <strong>{title}</strong>. {description}
-        </p>
-        <p className={styles.warning}>
-          Esta acción es definitiva. No podrás cambiar tu voto en esta ronda.
-        </p>
-
-        <div className={styles.actions}>
-          <button
-            className={styles.secondary}
-            type="button"
-            onClick={onCancel}
-            disabled={submitting}
-          >
-            Volver
-          </button>
-          <button
-            className={styles.primary}
-            type="button"
-            onClick={onConfirm}
-            disabled={submitting}
-          >
-            {submitting ? "Registrando..." : "Confirmar voto"}
-          </button>
-        </div>
+    <Dialog
+      open
+      onClose={onCancel}
+      title="¿Confirmas tu voto?"
+      lead="Voto definitivo"
+    >
+      <p className={styles.summary}>
+        Vas a votar: <strong>{copy.choice}</strong>. {copy.confirmation}
+      </p>
+      <p className={styles.warning}>
+        Esta acción es definitiva. No podrás cambiar tu voto en esta ronda.
+      </p>
+      <div className={styles.actions}>
+        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
+          Volver
+        </Button>
+        <Button
+          loading={submitting}
+          loadingLabel="Registrando voto"
+          onClick={onConfirm}
+        >
+          Confirmar voto
+        </Button>
       </div>
-    </div>
+    </Dialog>
   );
 }
