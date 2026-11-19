@@ -1,26 +1,33 @@
+import { Badge, GradientCard } from "@/shared/ui";
 import type { Decision } from "@/shared/domain/types";
-import type {
-  RoundInfo,
-  StandingInfo,
-  StartupInfo,
-  VerdictInfo,
-} from "../types";
 import { formatCoins, formatMultiplier, formatSignedCoins } from "../format";
-import { Leaderboard } from "./Leaderboard";
-import { StatusBadge } from "./StatusBadge";
+import type { AnnulmentMode, RoundInfo, StartupInfo, VerdictInfo } from "../types";
 import styles from "./ResultScreen.module.css";
 
 interface ResultScreenProps {
   round: RoundInfo;
   startup: StartupInfo;
   verdict: VerdictInfo;
-  standing: StandingInfo;
 }
 
+/** Texto visible del voto de cada jurado. */
+const DECISION_LABEL: Record<Decision, string> = {
+  BACK: "Respalda",
+  REJECT: "Rechaza",
+  ABSTAIN: "Se abstiene",
+};
+
+/** Clase de color de cada voto en la tira de votos. */
 const DECISION_CLASS: Record<Decision, string> = {
   BACK: "backs",
   REJECT: "rejects",
   ABSTAIN: "abstains",
+};
+
+/** Texto que explica una anulación según el modo elegido por el operador. */
+const ANNULMENT_TEXT: Record<AnnulmentMode, string> = {
+  refund: "El operador anuló la ronda. Tu inversión volvió íntegra a tu saldo.",
+  "settle-1x": "El operador anuló la ronda y la liquidó a 1.0x.",
 };
 
 /** Texto de los respaldos. Las abstenciones se mencionan aparte y no cuentan en el multiplicador. */
@@ -32,73 +39,68 @@ function describeBacks(verdict: VerdictInfo): string {
   return `${base} · ${abstentions} ${plural}`;
 }
 
-/** Texto de la posición frente a la ronda anterior. */
-function describePositionChange(standing: StandingInfo): { text: string; tone: string } {
-  const delta = standing.previousPosition - standing.position;
-  if (delta > 0) return { text: `▲ ${delta}`, tone: styles.up };
-  if (delta < 0) return { text: `▼ ${Math.abs(delta)}`, tone: styles.down };
-  return { text: "= igual", tone: styles.flat };
-}
-
 /** Texto que indica cuándo empieza la siguiente ronda o se cierra el evento. */
 function describeWaiting(round: RoundInfo): string {
   if (round.number >= round.total) return "Esperando el cierre del evento";
   return `Esperando ronda ${round.number + 1}`;
 }
 
-/** Veredicto de la ronda: votos, multiplicador, retorno, posición y clasificación. */
-export function ResultScreen({ round, startup, verdict, standing }: ResultScreenProps) {
+/** Veredicto de la ronda: votos, multiplicador y retorno del asistente. Con anulación no muestra votos. */
+export function ResultScreen({ round, startup, verdict }: ResultScreenProps) {
+  const isAnnulled = verdict.annulment !== null;
   const gainTone =
     verdict.gain > 0 ? styles.gainUp : verdict.gain < 0 ? styles.gainDown : styles.gainFlat;
-  const position = describePositionChange(standing);
 
   return (
     <section className={styles.screen}>
-      <StatusBadge tone="cyan">Veredicto · Ronda {round.number}</StatusBadge>
+      {isAnnulled ? (
+        <Badge tone="yellow">Ronda anulada</Badge>
+      ) : (
+        <Badge tone="cyan">Veredicto · Ronda {round.number}</Badge>
+      )}
       <h1 className={styles.name}>{startup.name}</h1>
 
-      <div className={styles.votes} aria-label="Votos del jurado">
-        {verdict.decisions.map((decision, index) => (
-          <span key={index} className={`${styles.vote} ${styles[DECISION_CLASS[decision]]}`} />
-        ))}
-      </div>
-      <p className={styles.backsText}>{describeBacks(verdict)}</p>
+      {isAnnulled ? (
+        <p className={styles.lead}>{ANNULMENT_TEXT[verdict.annulment ?? "refund"]}</p>
+      ) : (
+        <>
+          <ul className={styles.votes} aria-label="Votos del jurado">
+            {verdict.decisions.map((decision, index) => (
+              <li
+                key={index}
+                className={`${styles.vote} ${styles[DECISION_CLASS[decision]]}`}
+              >
+                <span className="visually-hidden">
+                  Jurado {index + 1}: {DECISION_LABEL[decision]}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className={styles.lead}>{describeBacks(verdict)}</p>
+        </>
+      )}
 
-      <div className={styles.multiplierFrame}>
-        <div className={styles.multiplierInner}>
-          <span className={styles.label}>Multiplicador</span>
-          <span className={styles.multiplier}>{formatMultiplier(verdict.multiplier)}</span>
-        </div>
-      </div>
+      <GradientCard glow panelClassName={styles.multiplierPanel}>
+        <span className={styles.label}>Multiplicador</span>
+        <span className={styles.multiplier}>{formatMultiplier(verdict.multiplier)}</span>
+      </GradientCard>
 
-      <div className={styles.summary}>
-        <div className={styles.summaryRow}>
-          <span className={styles.muted}>Invertiste</span>
-          <span>{formatCoins(verdict.invested)}</span>
+      <dl className={styles.summary}>
+        <div className={styles.row}>
+          <dt className={styles.muted}>Invertiste</dt>
+          <dd>{formatCoins(verdict.invested)}</dd>
         </div>
-        <div className={styles.summaryRow}>
-          <span className={styles.muted}>Retorno</span>
-          <span>{formatCoins(verdict.payout)}</span>
+        <div className={styles.row}>
+          <dt className={styles.muted}>Retorno</dt>
+          <dd>{formatCoins(verdict.payout)}</dd>
         </div>
-        <div className={`${styles.summaryRow} ${styles.summaryTotal}`}>
-          <span>Ganancia de la ronda</span>
-          <span className={gainTone}>{formatSignedCoins(verdict.gain)}</span>
+        <div className={`${styles.row} ${styles.total}`}>
+          <dt>Ganancia de la ronda</dt>
+          <dd className={gainTone}>{formatSignedCoins(verdict.gain)}</dd>
         </div>
-      </div>
+      </dl>
 
-      <div className={styles.position}>
-        <div>
-          <span className={styles.label}>Tu posición</span>
-          <p className={styles.positionValue}>
-            #{standing.position} <span className={styles.positionOf}>de {standing.participants}</span>
-          </p>
-        </div>
-        <span className={`${styles.positionDelta} ${position.tone}`}>{position.text}</span>
-      </div>
-
-      <Leaderboard standing={standing} />
-
-      <div className={styles.waiting}>{describeWaiting(round)}</div>
+      <p className={styles.waiting}>{describeWaiting(round)}</p>
     </section>
   );
 }
