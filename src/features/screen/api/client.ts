@@ -40,7 +40,7 @@ export const INITIAL_STATE: ScreenReadState = { vm: null, receivedAt: null, offl
 /** Indica si el cuerpo de la respuesta tiene la forma mínima de un view model. */
 function isViewModel(body: unknown): body is ScreenViewModel {
   if (typeof body !== "object" || body === null) return false;
-  const { phase: phase, updatedAt: updatedAt } = body as { phase?: unknown; updatedAt?: unknown };
+  const { phase, updatedAt } = body as { phase?: unknown; updatedAt?: unknown };
   return (
     typeof phase === "string" &&
     VALID_PHASES.includes(phase as ScreenPhase) &&
@@ -83,9 +83,9 @@ export function reduceState(
 ): ScreenReadState {
   switch (result.kind) {
     case "reading":
-      return { vm: result.vm, receivedAt: receivedAt, offline: false };
+      return { vm: result.vm, receivedAt, offline: false };
     case "no_rounds":
-      return { vm: null, receivedAt: receivedAt, offline: false };
+      return { vm: null, receivedAt, offline: false };
     case "error":
       return { ...previous, offline: true };
   }
@@ -93,7 +93,7 @@ export function reduceState(
 
 /**
  * Segundos restantes de la última llamada, expresados con la hora del servidor.
- * `actualizadoEn` es el instante del servidor en que se calculó `segundosRestantes`, de modo que el
+ * `updatedAt` es el instante del servidor en que se calculó `secondsRemaining`, de modo que el
  * cierre ocurre en `actualizadoEn + segundosRestantes`. La hora actual del servidor se estima
  * sumando al reloj local el desfase medido en la recepción. Como el desfase se cancela, el
  * resultado no depende de la hora local del proyector.
@@ -112,7 +112,7 @@ export function liveSecondsRemaining(
 }
 
 /**
- * Ejecuta `consultar` de inmediato y luego cada `intervaloMs`. Una consulta nueva no se inicia
+ * Ejecuta `poll` de inmediato y luego cada `intervalMs`. Una consulta nueva no se inicia
  * mientras la anterior sigue en curso. Devuelve la función que detiene el sondeo.
  */
 export function startPolling(options: {

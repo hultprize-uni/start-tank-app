@@ -28,7 +28,7 @@ function createFakeUserTable() {
 
 const identity = { externalId: "usr_neon_001", email: "asistente@example.com", name: "Ana Pérez" };
 
-describe("provisionInvestor", () => {
+describe("provisionParticipant", () => {
   it("crea la billetera de 10,000 en el primer ingreso", async () => {
     const table = createFakeUserTable();
 

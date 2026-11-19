@@ -101,7 +101,7 @@ export async function readOperatorState(): Promise<OperatorResult<OperatorViewMo
 async function sendAction(action: ApiAction) {
   return requestJson<{ ok: boolean; state?: string | null }>(API_ROUTES.operator.action, {
     method: "POST",
-    body: { accion: action },
+    body: { action },
   });
 }
 
@@ -119,13 +119,13 @@ function failedResult(response: {
   }
   const message =
     (response.code !== null ? ACTION_MESSAGES[response.code] : undefined) ?? SERVER_ERROR_MESSAGE;
-  return { ok: false, sessionExpired: false, message: message };
+  return { ok: false, sessionExpired: false, message };
 }
 
 /**
  * Ejecuta una solicitud del operador sobre la ronda que controla. Antes de llamar a la API verifica
  * el estado de la acción en el view model: si está bloqueada, no envía nada y devuelve el motivo.
- * Cerrar envía CERRAR y, si la ronda queda CERRADA, envía HABILITAR_VOTO para abrir la votación.
+ * Cerrar envía CLOSE y, si la ronda queda CLOSED, envía ENABLE_VOTING para abrir la votación.
  */
 export async function executeOperatorAction(
   request: OperatorRequest,
@@ -146,7 +146,7 @@ export async function executeOperatorAction(
     if (action === undefined || !action.enabled) {
       const message =
         action?.blockedReason ?? "La acción no está disponible en el estado actual de la ronda.";
-      return { ok: false, sessionExpired: false, message: message };
+      return { ok: false, sessionExpired: false, message };
     }
   }
 

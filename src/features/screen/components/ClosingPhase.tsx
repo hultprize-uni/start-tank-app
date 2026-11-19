@@ -8,7 +8,7 @@ interface ClosingPhaseProps {
 
 /** Fase Cierre del evento: startup ganadora, top 3 de inversionistas y mejor ojo. */
 export function ClosingPhase({ vm }: ClosingPhaseProps) {
-  const { winner: winner } = vm;
+  const { winner } = vm;
   const points = Math.round(winner.score * 100);
 
   return (

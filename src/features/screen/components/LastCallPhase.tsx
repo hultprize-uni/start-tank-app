@@ -20,7 +20,7 @@ interface CountdownProps {
 }
 
 /* Presenta la cuenta recibida. El hook `useScreenState` la recalcula cada segundo. */
-function Countdown({ seconds: seconds }: CountdownProps) {
+function Countdown({ seconds }: CountdownProps) {
   const imminent = seconds <= IMMINENT_THRESHOLD;
 
   return (

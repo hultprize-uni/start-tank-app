@@ -47,5 +47,5 @@ export async function readScreen(now: Date = new Date()): Promise<ScreenViewMode
     queryActiveUsers(),
   ]);
 
-  return buildScreen({ rounds: rounds, votes: votes, ranking, activeUsers: activeUsers }, now);
+  return buildScreen({ rounds, votes, ranking, activeUsers }, now);
 }

@@ -13,7 +13,7 @@ import { handleOperatorAction as POST } from "./handlers";
 function setCookies(values: Record<string, string>): void {
   vi.mocked(cookies).mockResolvedValue({
     get: (name: string) =>
-      name in values ? { name: name, value: values[name] } : undefined,
+      name in values ? { name, value: values[name] } : undefined,
   } as never);
 }
 

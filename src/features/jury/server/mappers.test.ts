@@ -45,12 +45,12 @@ describe("buildJuryView", () => {
     const rounds = [round({ numero: 3, estado: "VOTING", startup_nombre: "EduRuta" })];
     const noVote = buildJuryView({
       ...base,
-      rounds: rounds,
+      rounds,
       votes: [vote("2", "Jurado de ejemplo 2", null), vote("1", "Jurado de ejemplo 1", "BACK")],
     });
-    const conVoto = buildJuryView({
+    const withVote = buildJuryView({
       ...base,
-      rounds: rounds,
+      rounds,
       votes: [vote("2", "Jurado de ejemplo 2", "REJECT"), vote("1", "Jurado de ejemplo 1", "BACK")],
     });
 
@@ -59,7 +59,7 @@ describe("buildJuryView", () => {
       round: { number: 3, startupName: "EduRuta" },
       votes: { emitted: 1, total: 4 },
     });
-    expect(conVoto).toMatchObject({ screen: "vote_registered", votes: { emitted: 2, total: 4 } });
+    expect(withVote).toMatchObject({ screen: "vote_registered", votes: { emitted: 2, total: 4 } });
   });
 
   it("no expone el sentido de los votos de otros jurados", () => {

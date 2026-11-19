@@ -38,7 +38,7 @@ export async function loginJury(code: string): Promise<JuryResult> {
   }
   const message =
     (response.code !== null ? LOGIN_MESSAGES[response.code] : undefined) ?? SERVER_ERROR_MESSAGE;
-  return { ok: false, sessionExpired: false, message: message };
+  return { ok: false, sessionExpired: false, message };
 }
 
 /** Lee el view model del portal del jurado para la sesión vigente. */
@@ -73,5 +73,5 @@ export async function voteJury(decision: Decision): Promise<JuryResult> {
   }
   const message =
     (response.code !== null ? VOTE_MESSAGES[response.code] : undefined) ?? SERVER_ERROR_MESSAGE;
-  return { ok: false, sessionExpired: false, message: message };
+  return { ok: false, sessionExpired: false, message };
 }

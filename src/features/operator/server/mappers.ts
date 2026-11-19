@@ -163,7 +163,7 @@ function cancelModeOf(action: string | null): CancelMode | null {
 
 /**
  * Construye el view model de la consola del operador. Devuelve nulo cuando no existen rondas.
- * El sentido de los votos se revela solo cuando la ronda está LIQUIDADA.
+ * El sentido de los votos se revela solo cuando la ronda está SETTLED.
  */
 export function buildOperatorView(data: OperatorData): OperatorViewModel | null {
   const current = operatorReferenceRound(data.rounds);
@@ -201,7 +201,7 @@ export function buildOperatorView(data: OperatorData): OperatorViewModel | null 
     },
     screenSynced: true,
     actions: buildActions(state, cast, totalVotes, c.lastFinished !== undefined),
-    jurors: jurors,
+    jurors,
     market: {
       accumulated: accumulatedOf(current),
       uniqueInvestors: current.inversores_unicos ?? 0,

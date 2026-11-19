@@ -31,7 +31,7 @@ const LOGIN_VIEW: ParticipantViewModel = {
 };
 
 /**
- * Hook del estado real. Consulta /api/inversionista/estado al montar y cada
+ * Hook del estado real. Consulta la ruta de estado del participante al montar y cada
  * EVENT_CONFIG.investorPollMs. Al recargar la página, el estado se reanuda desde el servidor.
  */
 export function useParticipantRemoteState(): UseParticipantStateResult {

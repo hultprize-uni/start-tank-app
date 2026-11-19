@@ -37,7 +37,7 @@ interface OperatorConsoleProps {
 export function OperatorConsole({
   viewModel,
   notice,
-  sampleMode: sampleMode,
+  sampleMode,
   onRunAction,
   onUndo,
   onCancelRound,

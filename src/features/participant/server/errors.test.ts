@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { participantError } from "./errors";
 
-describe("errorInversionista", () => {
+describe("participantError", () => {
   it.each([
     ["BELOW_MINIMUM", 422, "El monto mínimo de compra es 250 coins."],
     ["ROUND_CAP_EXCEEDED", 422, "Superas tu tope de esta ronda, que equivale al 30 % de tu saldo al abrirla."],

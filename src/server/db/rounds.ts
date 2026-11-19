@@ -59,7 +59,7 @@ export function sortRounds(rounds: readonly RoundRow[]): RoundRow[] {
 }
 
 export interface RoundClassification {
-  /** Ronda en curso: ABIERTA, ULTIMA_LLAMADA, CERRADA o EN_VOTACION. */
+  /** Ronda en curso: OPEN, LAST_CALL, CLOSED o VOTING. */
   active: RoundRow | undefined;
   /** Primera ronda aún no abierta. */
   pending: RoundRow | undefined;

@@ -28,7 +28,7 @@ async function readErrorCode(response: Response): Promise<string | null> {
 }
 
 /**
- * Ejecuta una petición JSON contra la API local. Las fallas de red devuelven sinConexion; las
+ * Ejecuta una petición JSON contra la API local. Las fallas de red devuelven offline; las
  * respuestas no 2xx devuelven el estado HTTP y el código de error del servidor.
  */
 export async function requestJson<T>(
@@ -60,7 +60,7 @@ export async function requestJson<T>(
 
   try {
     const data = (await response.json()) as T;
-    return { ok: true, data: data };
+    return { ok: true, data };
   } catch {
     return { ok: false, status: response.status, code: null, offline: false };
   }

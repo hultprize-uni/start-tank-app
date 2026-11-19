@@ -116,7 +116,7 @@ function buildStartupInfo(row: ParticipantRoundRow): StartupInfo {
 function buildOwnEntry(data: ParticipantStateData): StandingEntry {
   const position = data.ownRow?.posicion ?? data.participants;
   const balance = data.ownRow ? Number(data.ownRow.saldo) : data.balance;
-  return { position: position, name: OWN_NAME, balance: balance, isCurrent: true };
+  return { position, name: OWN_NAME, balance, isCurrent: true };
 }
 
 /** Clasificación parcial: top 3 de la última ronda terminada y posición propia. */
@@ -144,7 +144,7 @@ function buildStandingInfo(data: ParticipantStateData): StandingInfo {
 function buildMarket(round: ParticipantRoundRow): MarketInfo {
   const price = round.precio_vivo === null ? EVENT_CONFIG.priceBase : Number(round.precio_vivo);
   return {
-    price: price,
+    price,
     priceChange: price - EVENT_CONFIG.priceBase,
     totalRaised: Number(round.monto_acumulado ?? 0),
     investorCount: round.inversores_unicos ?? 0,
@@ -228,7 +228,7 @@ export function buildParticipantState(data: ParticipantStateData): ParticipantVi
   const revealedRound = phase === "result" || phase === "final";
 
   return {
-    phase: phase,
+    phase,
     round,
     startup,
     wallet,

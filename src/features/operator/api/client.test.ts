@@ -88,7 +88,7 @@ function view(options: {
 function sentActions(fetchMock: ReturnType<typeof vi.fn>): unknown[] {
   return fetchMock.mock.calls
     .filter((lastCall) => String(lastCall[0]) === API_ROUTES.operator.action)
-    .map((lastCall) => JSON.parse(String((lastCall[1] as RequestInit).body)).accion);
+    .map((lastCall) => JSON.parse(String((lastCall[1] as RequestInit).body)).action);
 }
 
 const fetchMock = vi.fn();
@@ -155,7 +155,7 @@ describe("executeOperatorAction: reveal", () => {
     expect(result).toEqual({ ok: false, sessionExpired: false, message: "Faltan 2 voto(s)" });
   });
 
-  it("envía REVELAR cuando los cuatro votos están emitidos", async () => {
+  it("envía REVEAL cuando los cuatro votos están emitidos", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ ok: true, state: "SETTLED" }));
 
     const result = await executeOperatorAction(

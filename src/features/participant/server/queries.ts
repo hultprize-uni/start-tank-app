@@ -156,15 +156,15 @@ export async function readParticipantState(userId: number): Promise<ParticipantV
   }
 
   return buildParticipantState({
-    userId: userId,
-    balance: balance,
-    rounds: rounds,
-    investments: investments,
-    lastDecisions: lastDecisions,
-    topThreeRows: topThreeRows,
-    ownRow: ownRow,
-    participants: participants,
-    previousPosition: previousPosition,
+    userId,
+    balance,
+    rounds,
+    investments,
+    lastDecisions,
+    topThreeRows,
+    ownRow,
+    participants,
+    previousPosition,
   });
 }
 
@@ -172,7 +172,7 @@ export async function readParticipantState(userId: number): Promise<ParticipantV
 /**
  * Registra una inversión del asistente en la ronda abierta mediante fn_registrar_inversion. El
  * identificador del asistente lo fija el servidor a partir de la sesión, nunca el cuerpo de la
- * petición. Si no hay ronda abierta, devuelve RONDA_NO_ABIERTA sin invocar la función.
+ * petición. Si no hay ronda abierta, devuelve ROUND_NOT_OPEN sin invocar la función.
  */
 export async function registerInvestment(userId: number, amount: number): Promise<FunctionResult> {
   const [active] = await sql<{ id_ronda: string }>`

@@ -56,7 +56,7 @@ export function useScreenState(forcedPhase?: ScreenPhase): ScreenReading {
 
   const inLastCall = base.vm?.phase === "LAST_CALL";
 
-  // La cuenta regresiva se recalcula cada segundo mientras la fase es ULTIMA_LLAMADA.
+  // La cuenta regresiva se recalcula cada segundo mientras la fase es LAST_CALL.
   useEffect(() => {
     if (!inLastCall) return;
     const id = setInterval(repaint, 1000);
@@ -66,7 +66,7 @@ export function useScreenState(forcedPhase?: ScreenPhase): ScreenReading {
   if (base.vm !== null && base.vm.phase === "LAST_CALL" && base.receivedAt !== null) {
     const secondsRemaining = liveSecondsRemaining(base.vm, base.receivedAt, Date.now());
     return {
-      vm: { ...base.vm, secondsRemaining: secondsRemaining },
+      vm: { ...base.vm, secondsRemaining },
       offline: base.offline,
     };
   }

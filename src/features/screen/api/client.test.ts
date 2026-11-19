@@ -9,7 +9,7 @@ import {
 import { API_ROUTES } from "@/shared/lib/api-routes";
 import type { ScreenViewModel } from "../types";
 
-const RONDA = {
+const ROUND = {
   number: 4,
   startup: { name: "Aqua Viva", sdg: { number: 6, name: "Agua limpia y saneamiento" } },
 };
@@ -17,7 +17,7 @@ const RONDA = {
 const MARKET: ScreenViewModel = {
   phase: "MARKET",
   updatedAt: "2026-11-08T15:00:00.000Z",
-  round: RONDA,
+  round: ROUND,
   price: 120,
   accumulated: 4_000,
   uniqueInvestors: 18,
@@ -26,7 +26,7 @@ const MARKET: ScreenViewModel = {
 const LAST_CALL: ScreenViewModel = {
   phase: "LAST_CALL",
   updatedAt: "2026-11-08T15:00:00.000Z",
-  round: RONDA,
+  round: ROUND,
   price: 150,
   accumulated: 9_500,
   uniqueInvestors: 31,
@@ -158,7 +158,7 @@ describe("startPolling", () => {
 
   it("consulta de inmediato y luego cada intervalo hasta detenerse", async () => {
     const poll = vi.fn(async () => {});
-    const stop = startPolling({ intervalMs: 2_000, poll: poll });
+    const stop = startPolling({ intervalMs: 2_000, poll });
 
     expect(poll).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(4_000);
@@ -177,7 +177,7 @@ describe("startPolling", () => {
           release = resolver;
         }),
     );
-    const stop = startPolling({ intervalMs: 2_000, poll: poll });
+    const stop = startPolling({ intervalMs: 2_000, poll });
 
     await vi.advanceTimersByTimeAsync(6_000);
     expect(poll).toHaveBeenCalledTimes(1);

@@ -8,7 +8,7 @@ interface MarketMetricsProps {
 }
 
 /** Precio en vivo y las dos cifras de participación de la ronda: monto acumulado e inversores únicos. */
-export function MarketMetrics({ price: price, accumulated: accumulated, uniqueInvestors: uniqueInvestors }: MarketMetricsProps) {
+export function MarketMetrics({ price, accumulated, uniqueInvestors }: MarketMetricsProps) {
   return (
     <div>
       <p className={styles.eyebrow}>Precio en vivo</p>

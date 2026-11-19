@@ -32,7 +32,7 @@ export class InvalidSessionError extends Error {
 
   constructor(role: SessionRole) {
     super(`Se requiere una sesión válida de ${role}.`);
-    this.name = "SesionNoValidaError";
+    this.name = "InvalidSessionError";
     this.role = role;
   }
 }
@@ -108,21 +108,21 @@ async function requireSession<R extends SessionRole>(role: R): Promise<ActiveSes
   if (id === null) {
     throw new InvalidSessionError(role);
   }
-  return { role: role, id };
+  return { role, id };
 }
 
-/** Exige una sesión de jurado. Lanza SesionNoValidaError cuando no existe o no es válida. */
+/** Exige una sesión de jurado. Lanza InvalidSessionError cuando no existe o no es válida. */
 export function requireJury(): Promise<ActiveSession<"jury">> {
   return requireSession("jury");
 }
 
-/** Exige una sesión de operador. Lanza SesionNoValidaError cuando no existe o no es válida. */
+/** Exige una sesión de operador. Lanza InvalidSessionError cuando no existe o no es válida. */
 export function requireOperator(): Promise<ActiveSession<"operator">> {
   return requireSession("operator");
 }
 
 /**
- * Convierte un SesionNoValidaError en respuesta 401 para las rutas de API. Devuelve nulo cuando el
+ * Convierte un InvalidSessionError en respuesta 401 para las rutas de API. Devuelve nulo cuando el
  * error no corresponde a la sesión, para que la ruta lo propague.
  */
 export function noSessionResponse(error: unknown): NextResponse | null {

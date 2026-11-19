@@ -6,7 +6,7 @@ interface RoundHeaderProps {
 }
 
 /** Nombre de la startup en turno, su ODS y el numero de ronda. */
-export function RoundHeader({ round: round }: RoundHeaderProps) {
+export function RoundHeader({ round }: RoundHeaderProps) {
   return (
     <section aria-label={`Ronda ${round.number}`}>
       <p className={styles.eyebrow}>Ronda {round.number}</p>

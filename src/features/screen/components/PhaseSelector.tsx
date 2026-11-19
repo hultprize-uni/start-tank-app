@@ -14,7 +14,7 @@ interface PhaseSelectorProps {
  * Selector de fase para desarrollo. Cambia el parametro `fase` de la URL.
  * El servidor lo renderiza solo en modo desarrollo.
  */
-export function PhaseSelector({ currentPhase: currentPhase }: PhaseSelectorProps) {
+export function PhaseSelector({ currentPhase }: PhaseSelectorProps) {
   const router = useRouter();
 
   return (

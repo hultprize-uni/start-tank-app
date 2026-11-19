@@ -102,10 +102,10 @@ function buildSettlement(
 
   return {
     phase: "SETTLEMENT",
-    updatedAt: updatedAt,
+    updatedAt,
     round: toRoundRef(last),
     votes: revealedList,
-    backingFraction: backingFraction,
+    backingFraction,
     multiplier: toNumber(last.multiplicador ?? 1),
     amountInvested: toNumber(last.monto_invertido),
     roundReturn: toNumber(last.retorno_ronda),
@@ -119,7 +119,7 @@ function buildBetweenRounds(
 ): BetweenRounds {
   return {
     phase: "BETWEEN_ROUNDS",
-    updatedAt: updatedAt,
+    updatedAt,
     closedRound: toRoundRef(closedRound),
     investors: data.ranking.map(toScreenInvestorRow),
     startups: startupRows(data.rounds),
@@ -139,7 +139,7 @@ function buildClosing(data: ScreenData, updatedAt: string): Closing | null {
         fraction: toNumber(row.fraccion_respaldo),
         investorPct:
           data.activeUsers > 0 ? (row.inversores_unicos ?? 0) / data.activeUsers : 0,
-        row: row,
+        row,
       };
       return standing;
     });
@@ -153,7 +153,7 @@ function buildClosing(data: ScreenData, updatedAt: string): Closing | null {
 
   return {
     phase: "CLOSING",
-    updatedAt: updatedAt,
+    updatedAt,
     winner: {
       name: winner.row.startup_nombre,
       sdg: parseSdg(winner.row.ods),
@@ -184,8 +184,8 @@ export function buildScreen(data: ScreenData, now: Date): ScreenViewModel | null
     if (active.estado === "OPEN") {
       return {
         phase: "MARKET",
-        updatedAt: updatedAt,
-        round: round,
+        updatedAt,
+        round,
         price: priceOf(active),
         accumulated: accumulatedOf(active),
         uniqueInvestors: active.inversores_unicos ?? 0,
@@ -194,8 +194,8 @@ export function buildScreen(data: ScreenData, now: Date): ScreenViewModel | null
     if (active.estado === "LAST_CALL") {
       return {
         phase: "LAST_CALL",
-        updatedAt: updatedAt,
-        round: round,
+        updatedAt,
+        round,
         price: priceOf(active),
         accumulated: accumulatedOf(active),
         uniqueInvestors: active.inversores_unicos ?? 0,
@@ -204,8 +204,8 @@ export function buildScreen(data: ScreenData, now: Date): ScreenViewModel | null
     }
     return {
       phase: "VOTING",
-      updatedAt: updatedAt,
-      round: round,
+      updatedAt,
+      round,
       votesCast: data.votes.filter((v) => v.decision !== null).length,
       jurorsTotal: data.votes.length,
     };

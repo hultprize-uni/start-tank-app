@@ -23,7 +23,7 @@ export const JURY_CRITERIA: readonly JuryCriterion[] = [
 
 /**
  * Construye el view model del portal del jurado. La pantalla "votacion" se muestra solo cuando la
- * ronda está en EN_VOTACION y el jurado aún no ha votado en ella.
+ * ronda está en VOTING y el jurado aún no ha votado en ella.
  */
 export function buildJuryView(data: JuryData): JuryViewModel {
   const active = classifyRounds(data.rounds).active;
@@ -37,7 +37,7 @@ export function buildJuryView(data: JuryData): JuryViewModel {
   }
 
   return {
-    screen: screen,
+    screen,
     access: { status: "idle", errorMessage: null },
     jurorLabel: data.name,
     round: active ? { number: active.numero, startupName: active.startup_nombre } : null,

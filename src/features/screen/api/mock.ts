@@ -84,9 +84,9 @@ function buildSettlement(now: string): ScreenViewModel {
     updatedAt: now,
     round: MOCK_ROUND,
     votes: MOCK_VOTES,
-    backingFraction: backingFraction,
-    multiplier: multiplier,
-    amountInvested: amountInvested,
+    backingFraction,
+    multiplier,
+    amountInvested,
     roundReturn: Math.round(amountInvested * multiplier),
   };
 }
@@ -100,13 +100,13 @@ function buildClosing(now: string): ScreenViewModel {
     score:
       EVENT_CONFIG.winnerWeightJury * backingFraction +
       EVENT_CONFIG.winnerWeightTraction * investorPercentage,
-    backingFraction: backingFraction,
-    investorPercentage: investorPercentage,
+    backingFraction,
+    investorPercentage,
   };
   return {
     phase: "CLOSING",
     updatedAt: now,
-    winner: winner,
+    winner,
     top3: MOCK_INVESTORS.slice(0, 3),
     bestEye: { name: "Valeria Chavez", hits: 5 },
   };
@@ -120,29 +120,29 @@ export function simulateReading(phase: ScreenPhase, tick: number): ScreenViewMod
     case "MARKET": {
       const accumulated = 4_000 + tick * 500;
       return {
-        phase: phase,
+        phase,
         updatedAt: now,
         round: MOCK_ROUND,
         price: computePrice(accumulated),
-        accumulated: accumulated,
+        accumulated,
         uniqueInvestors: 18 + tick,
       };
     }
     case "LAST_CALL": {
       const accumulated = 9_500 + tick * 250;
       return {
-        phase: phase,
+        phase,
         updatedAt: now,
         round: MOCK_ROUND,
         price: computePrice(accumulated),
-        accumulated: accumulated,
+        accumulated,
         uniqueInvestors: 31,
         secondsRemaining: Math.max(0, EVENT_CONFIG.lastCallSeconds - tick * 2),
       };
     }
     case "VOTING":
       return {
-        phase: phase,
+        phase,
         updatedAt: now,
         round: MOCK_ROUND,
         votesCast: Math.min(MOCK_VOTES.length, 1 + Math.floor(tick / 2)),
@@ -152,7 +152,7 @@ export function simulateReading(phase: ScreenPhase, tick: number): ScreenViewMod
       return buildSettlement(now);
     case "BETWEEN_ROUNDS":
       return {
-        phase: phase,
+        phase,
         updatedAt: now,
         closedRound: MOCK_ROUND,
         investors: MOCK_INVESTORS,

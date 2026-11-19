@@ -21,8 +21,8 @@ import type {
 
 /**
  * Simulación del estado del inversionista. Devuelve la forma que tendrá la API real
- * (InvestorViewModel) con datos de ejemplo y transiciones de tiempo fijo. Se activa solo con
- * NEXT_PUBLIC_USE_MOCKS=true, mediante el despachador de investor.state.ts.
+ * (ParticipantViewModel) con datos de ejemplo y transiciones de tiempo fijo. Se activa solo con
+ * NEXT_PUBLIC_USE_MOCKS=true, mediante el despachador de hooks/useParticipantState.ts.
  */
 
 const TOTAL_ROUNDS = 5;
@@ -239,7 +239,7 @@ function simulateRoomInvestment(s: MockState): MockState {
   };
 }
 
-/** Hook de simulación con la misma forma que useInvestorState de la API real. */
+/** Hook de simulación con la misma forma que useParticipantState de la API real. */
 export function useParticipantMockState(): UseParticipantStateResult {
   const [state, setState] = useState<MockState>(INITIAL_STATE);
 

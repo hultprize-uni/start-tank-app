@@ -12,7 +12,7 @@ interface AccessGateProps {
 }
 
 /** Pantalla de acceso al portal del operador mediante código de acceso. */
-export function AccessGate({ onSubmit, notice: notice = null }: AccessGateProps) {
+export function AccessGate({ onSubmit, notice = null }: AccessGateProps) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);

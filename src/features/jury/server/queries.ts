@@ -54,8 +54,8 @@ export async function readJuryView(jurorId: string): Promise<JuryViewModel | nul
   return buildJuryView({
     jurorId: juror.id,
     name: juror.nombre,
-    rounds: rounds,
-    votes: votes,
+    rounds,
+    votes,
     totalJurors,
   });
 }

@@ -18,7 +18,7 @@ const SECRET = "s".repeat(40);
 function setCookies(values: Record<string, string>): void {
   vi.mocked(cookies).mockResolvedValue({
     get: (name: string) =>
-      name in values ? { name: name, value: values[name] } : undefined,
+      name in values ? { name, value: values[name] } : undefined,
   } as never);
 }
 
@@ -71,7 +71,7 @@ describe("code-session", () => {
     await expect(signSession("jury", "1")).rejects.toThrow(/SESSION_SECRET/);
   });
 
-  it("exige la cookie del rol y lanza SesionNoValidaError sin ella", async () => {
+  it("exige la cookie del rol y lanza InvalidSessionError sin ella", async () => {
     setCookies({});
     await expect(requireJury()).rejects.toBeInstanceOf(InvalidSessionError);
     await expect(requireOperator()).rejects.toBeInstanceOf(InvalidSessionError);
@@ -89,7 +89,7 @@ describe("code-session", () => {
     await expect(requireOperator()).resolves.toEqual({ role: "operator", id: "1" });
   });
 
-  it("traduce SesionNoValidaError en respuesta 401 y deja pasar otros errores", () => {
+  it("traduce InvalidSessionError en respuesta 401 y deja pasar otros errores", () => {
     const response = noSessionResponse(new InvalidSessionError("operator"));
     expect(response?.status).toBe(401);
     expect(noSessionResponse(new Error("otro"))).toBeNull();

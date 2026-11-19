@@ -20,7 +20,7 @@ const NETWORK_MESSAGE = "No fue posible conectar con el servidor. Intenta de nue
 const INVESTMENT_FAILED_MESSAGE = "No fue posible registrar la inversión. Intenta de nuevo.";
 
 /**
- * Obtiene el estado del inversionista. Devuelve SIN_SESION ante un 401 y lanza error ante cualquier
+ * Obtiene el estado del inversionista. Devuelve NO_SESSION ante un 401 y lanza error ante cualquier
  * otro estado de fallo, para que el llamador conserve el último view model válido.
  */
 export async function fetchParticipantState(

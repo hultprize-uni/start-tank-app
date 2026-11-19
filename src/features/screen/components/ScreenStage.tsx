@@ -8,7 +8,7 @@ interface ScreenStageProps {
 }
 
 /** Marco 16:9 de la pantalla. Solo presenta contenido; no contiene controles de escritura. */
-export function ScreenStage({ phaseLabel: phaseLabel, children }: ScreenStageProps) {
+export function ScreenStage({ phaseLabel, children }: ScreenStageProps) {
   return (
     <div className={styles.screen}>
       <div className={styles.stage}>

@@ -43,7 +43,7 @@ function mergeState(prev: JuryViewModel, view: JuryViewModel): JuryViewModel {
 
 /**
  * Estado del portal del jurado conectado a la API. Tras el acceso con código, sondea el estado
- * cada INTERVALO_SONDEO_JURADO_MS y devuelve al acceso cuando la sesión deja de ser válida.
+ * cada JURY_POLL_INTERVAL_MS y devuelve al acceso cuando la sesión deja de ser válida.
  */
 function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
   const [state, setState] = useState<JuryViewModel>(INITIAL_STATE);

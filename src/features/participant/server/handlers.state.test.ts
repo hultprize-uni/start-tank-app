@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ParticipantViewModel } from "@/features/participant/types";
+import type { ParticipantViewModel } from "../types";
 
 const mockSession = vi.hoisted(() => vi.fn());
 const mockState = vi.hoisted(() => vi.fn());
 
-vi.mock("@/features/participant/server/session", () => ({ getParticipantSession: mockSession }));
-vi.mock("@/features/participant/server/queries", () => ({ readParticipantState: mockState }));
+vi.mock("./session", () => ({ getParticipantSession: mockSession }));
+vi.mock("./queries", () => ({ readParticipantState: mockState }));
 
 import { handleParticipantState as GET } from "./handlers";
 

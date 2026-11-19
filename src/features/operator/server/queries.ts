@@ -27,7 +27,7 @@ import type { OperatorViewModel } from "../types";
  * base de datos.
  */
 
-/** Acciones del operador que la API acepta. REVELAR se resuelve con fn_revelar_veredicto. */
+/** Acciones del operador que la API acepta. REVEAL se resuelve con fn_revelar_veredicto. */
 export const API_OPERATOR_ACTIONS = [
   "OPEN",
   "LAST_CALL",
@@ -128,20 +128,20 @@ export async function readOperatorView(now: Date = new Date()): Promise<Operator
   ]);
 
   return buildOperatorView({
-    rounds: rounds,
-    votes: votes,
-    cancelAction: cancelAction,
-    activeUsers: activeUsers,
-    balances: balances,
-    positions: positions,
-    actions: actions,
-    now: now,
+    rounds,
+    votes,
+    cancelAction,
+    activeUsers,
+    balances,
+    positions,
+    actions,
+    now,
   });
 }
 
 /**
- * Ejecuta una acción del operador sobre la ronda que le corresponde. ABRIR actúa sobre la siguiente
- * ronda programada y el resto sobre la ronda activa. REVELAR llama a fn_revelar_veredicto y las
+ * Ejecuta una acción del operador sobre la ronda que le corresponde. OPEN actúa sobre la siguiente
+ * ronda programada y el resto sobre la ronda activa. REVEAL llama a fn_revelar_veredicto y las
  * demás acciones a fn_accion_operador.
  */
 export async function executeOperatorAction(

@@ -39,7 +39,7 @@ export function getParticipantSql(): ParticipantSql {
   if (!url) {
     throw new Error("Variable de entorno ausente: DATABASE_URL");
   }
-  // El tipo de filas del driver es genérico; la forma de InvestorRow se valida en provisionInvestor.
+  // El tipo de filas del driver es genérico; la forma de ParticipantRow se valida en provisionParticipant.
   const sql = neon(url) as unknown as ParticipantSql;
   client = sql;
   return sql;

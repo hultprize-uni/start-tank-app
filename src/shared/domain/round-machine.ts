@@ -8,7 +8,7 @@ export type TransitionResult =
 /**
  * Transiciones válidas de la ronda, indexadas por estado y acción del operador.
  * Un estado sin entradas es terminal. La expiración del temporizador de última
- * llamada se representa con la acción CERRAR, que el sistema invoca al vencer el plazo.
+ * llamada se representa con la acción CLOSE, que el sistema invoca al vencer el plazo.
  */
 export const ROUND_TRANSITIONS: Readonly<
   Record<RoundState, Readonly<Partial<Record<OperatorAction, RoundState>>>>
@@ -28,8 +28,8 @@ export const ROUND_TRANSITIONS: Readonly<
 
 /**
  * Aplica una acción del operador al estado vigente de la ronda. Rechaza las
- * acciones que no corresponden al estado. Las acciones SIGUIENTE, DESHACER y
- * MODO_MANUAL no modifican el estado de la ronda y se rechazan en esta función.
+ * acciones que no corresponden al estado. Las acciones NEXT, UNDO y
+ * MANUAL_MODE no modifican el estado de la ronda y se rechazan en esta función.
  */
 export function nextState(state: RoundState, action: OperatorAction): TransitionResult {
   const target = ROUND_TRANSITIONS[state][action];

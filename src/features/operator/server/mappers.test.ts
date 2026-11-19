@@ -40,7 +40,7 @@ describe("buildOperatorView", () => {
     extra: Partial<OperatorData> = {},
   ): OperatorData {
     return {
-      rounds: rounds,
+      rounds,
       votes: [],
       cancelAction: null,
       activeUsers: 0,

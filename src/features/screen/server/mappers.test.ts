@@ -38,7 +38,7 @@ function screen(
   rounds: RoundRow[],
   extra: Partial<ScreenData> = {},
 ): ScreenData {
-  return { rounds: rounds, votes: [], ranking: [], activeUsers: 0, ...extra };
+  return { rounds, votes: [], ranking: [], activeUsers: 0, ...extra };
 }
 
 describe("buildScreen", () => {
@@ -87,7 +87,7 @@ describe("buildScreen", () => {
       vote("3", "Jurado 3", null),
       vote("4", "Jurado 4", null),
     ];
-    const vm = buildScreen(screen([voting], { votes: votes }), NOW);
+    const vm = buildScreen(screen([voting], { votes }), NOW);
 
     expect(vm).toMatchObject({ phase: "VOTING", votesCast: 1, jurorsTotal: 4 });
     expect(JSON.stringify(vm)).not.toContain("BACK");

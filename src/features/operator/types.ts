@@ -4,7 +4,7 @@
  * (mock o API real) queda encapsulado en el hook de estado.
  */
 
-/** Estados que una ronda recorre en orden. El estado ANULADA puede alcanzarse desde varios puntos. */
+/** Estados que una ronda recorre en orden. El estado CANCELLED puede alcanzarse desde varios puntos. */
 export const ROUND_STATUS_SEQUENCE = [
   "SCHEDULED",
   "OPEN",

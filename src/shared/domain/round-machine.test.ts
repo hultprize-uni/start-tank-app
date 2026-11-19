@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { nextState, ROUND_TRANSITIONS } from "./round-machine";
 import type { OperatorAction, RoundState } from "./types";
 
-const ACCIONES: readonly OperatorAction[] = [
+const ACTIONS: readonly OperatorAction[] = [
   "OPEN",
   "LAST_CALL",
   "CLOSE",
@@ -25,8 +25,8 @@ describe("nextState", () => {
       ["VOTING", "REVEAL", "SETTLED"],
     ];
 
-    for (const [desde, action, expected] of steps) {
-      expect(nextState(desde, action)).toEqual({ ok: true, state: expected });
+    for (const [from, action, expected] of steps) {
+      expect(nextState(from, action)).toEqual({ ok: true, state: expected });
     }
   });
 
@@ -51,7 +51,7 @@ describe("nextState", () => {
 
   it("rechaza cualquier acción sobre estados terminales", () => {
     for (const state of ["SETTLED", "CANCELLED"] as const) {
-      for (const action of ACCIONES) {
+      for (const action of ACTIONS) {
         expect(nextState(state, action)).toEqual({
           ok: false,
           reason: "INVALID_TRANSITION",
@@ -73,7 +73,7 @@ describe("nextState", () => {
     const states = Object.keys(ROUND_TRANSITIONS) as RoundState[];
 
     for (const state of states) {
-      for (const action of ACCIONES) {
+      for (const action of ACTIONS) {
         const declared = ROUND_TRANSITIONS[state][action];
         const result = nextState(state, action);
 

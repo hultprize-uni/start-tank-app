@@ -28,7 +28,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("loginJurado", () => {
+describe("loginJury", () => {
   it("envía el código a la ruta de acceso del jurado y concede el acceso", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ ok: true, name: "Jurado 3" }));
 
@@ -63,7 +63,7 @@ describe("loginJurado", () => {
   });
 });
 
-describe("leerEstadoJurado", () => {
+describe("readJuryState", () => {
   it("devuelve el view model cuando la sesión es válida", async () => {
     const view = {
       screen: "voting",
@@ -95,7 +95,7 @@ describe("leerEstadoJurado", () => {
   });
 });
 
-describe("votarJurado", () => {
+describe("voteJury", () => {
   it("envía la decisión elegida al endpoint de voto", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
 

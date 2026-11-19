@@ -37,7 +37,7 @@ function renderPhase(vm: ScreenViewModel) {
 }
 
 /** Vista de solo lectura de la pantalla. Consulta el estado del evento y lo presenta por fase. */
-export function ScreenClient({ forcedPhase: forcedPhase, showSelector: showSelector }: ScreenClientProps) {
+export function ScreenClient({ forcedPhase, showSelector }: ScreenClientProps) {
   const { vm, offline } = useScreenState(forcedPhase);
 
   if (vm === null) {
