@@ -1,6 +1,6 @@
 # Contexto de desarrollo de Start Tank
 
-Resumen operativo para quienes implementan la aplicación. La especificación completa está en `docs/especificacion.md` y la lógica del prototipo en `docs/referencia/event-store.js`. Los prototipos visuales se encuentran en los artefactos de Claude (Start Tank Platform Requirements).
+Resumen operativo para quienes implementan la aplicación. La especificación completa está en `docs/especificacion.md`.
 
 ## Stack
 
