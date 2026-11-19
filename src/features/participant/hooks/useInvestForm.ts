@@ -17,7 +17,7 @@ import type { InvestmentResult, WalletInfo } from "../types";
  */
 
 /** Cantidad de jurados que sirve de base a la vista previa del retorno. */
-const JURY_SIZE = 4;
+export const JURY_SIZE = 4;
 /** Respaldos de jurado que se muestran en la vista previa. */
 const PREVIEW_BACKS = [0, 2, 4] as const;
 

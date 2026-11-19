@@ -1,5 +1,7 @@
 import { EVENT_CONFIG } from "@/shared/domain/config";
+import { formatCoins, formatSignedCoins } from "./format";
 import type { InvestmentIssue } from "./rules";
+import type { RoundSummary } from "./types";
 
 /*
  * Textos de interfaz del portal del participante que se comparten entre componentes y la simulación.
@@ -11,6 +13,21 @@ export const MARKET_CLOSED_MESSAGE = "El mercado ya cerró.";
 
 /** Mensaje mostrado cuando una actualización del estado no se completa. */
 export const UPDATE_FAILED_MESSAGE = "No fue posible actualizar la ronda. Reintentando.";
+
+/** Texto de estado de una ronda en el riel y en el historial: estado, o ganancia y pérdida neta. */
+export function describeRoundStatus(round: RoundSummary): string {
+  switch (round.state) {
+    case "annulled":
+      return "Anulada";
+    case "pending":
+      return "Pendiente";
+    case "current":
+      return "En escena";
+    case "settled":
+      if (round.invested === 0 || round.gain === null) return "Sin inversión";
+      return `${formatSignedCoins(round.gain)} coins`;
+  }
+}
 
 /** Texto del aviso que confirma una inversión, seguido del monto descontado. */
 export function investmentConfirmedMessage(formattedAmount: string): string {
@@ -24,7 +41,7 @@ export function investmentConfirmedMessage(formattedAmount: string): string {
 export function describeInvestmentIssue(issue: InvestmentIssue, formattedRemainingCap: string): string {
   switch (issue) {
     case "below-min":
-      return `El mínimo es ${EVENT_CONFIG.minInvestment.toLocaleString("en-US")} coins.`;
+      return `El mínimo es ${formatCoins(EVENT_CONFIG.minInvestment)} coins.`;
     case "above-cap":
       return `Tu tope en esta ronda es ${formattedRemainingCap}.`;
     case "above-balance":

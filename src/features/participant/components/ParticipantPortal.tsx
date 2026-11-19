@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParticipantState } from "../hooks/useParticipantState";
-import type { ParticipantViewModel } from "../types";
+import type { InvestmentResult, ParticipantViewModel } from "../types";
 import { FinalScreen } from "./FinalScreen";
 import { formatCoins } from "../format";
 import { InvestSheet } from "./InvestSheet";
@@ -78,10 +78,11 @@ export function ParticipantPortal() {
 
   const closeSheet = () => setSheetRound(null);
 
-  const confirmInvestment = async (amount: number) => {
+  const confirmInvestment = async (amount: number): Promise<InvestmentResult> => {
     setSheetRound(null);
     const result = await actions.invest(amount);
     setToast(result.ok ? `Inversión confirmada · −${formatCoins(amount)}` : result.message);
+    return result;
   };
 
   const statusMessage = status === "error" && errorMessage !== null ? errorMessage : "Cargando...";
@@ -102,6 +103,7 @@ export function ParticipantPortal() {
 
       {isSheetVisible && vm?.startup && vm.wallet && (
         <InvestSheet
+          open
           startupName={vm.startup.name}
           wallet={vm.wallet}
           onConfirm={confirmInvestment}

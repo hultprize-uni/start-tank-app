@@ -1,0 +1,33 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  border: 2px solid transparent;
+  border-radius: var(--r-card);
+  background:
+    linear-gradient(var(--st-ink-700), var(--st-ink-700)) padding-box,
+    var(--grad-hero) border-box;
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--fg-1);
+}
+
+.startup {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-3);
+}
