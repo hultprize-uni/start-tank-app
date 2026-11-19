@@ -1,0 +1,36 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 28px 28px 36px;
+  border-radius: 18px 18px 18px 96px;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.sdg {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--st-orchid);
+}
+
+.description {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--fg-2);
+}
+
+@media (min-width: 820px) {
+  .name {
+    font-size: 44px;
+  }
+}

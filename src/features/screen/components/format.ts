@@ -4,6 +4,10 @@
  */
 
 const integerFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const priceFormat = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 const decimalFormat = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -12,6 +16,11 @@ const decimalFormat = new Intl.NumberFormat("en-US", {
 /** Formatea una cantidad entera de Impact Coins o de personas. */
 export function formatInteger(value: number): string {
   return integerFormat.format(value);
+}
+
+/** Formatea el precio vivo de una startup con un decimal, por ejemplo "148.5". */
+export function formatPrice(value: number): string {
+  return priceFormat.format(value);
 }
 
 /** Formatea un multiplicador con dos decimales, por ejemplo "1.27 x". */

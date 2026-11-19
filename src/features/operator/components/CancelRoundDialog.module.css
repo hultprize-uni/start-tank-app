@@ -1,0 +1,50 @@
+/* Opciones y acciones del diálogo de anulación. Usa los tokens de src/styles. */
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-inner);
+  border: 1px solid var(--line-2);
+  background: var(--bg-page);
+  color: var(--fg-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover {
+  border-color: var(--fg-1);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--st-cyan-light);
+  outline-offset: 3px;
+}
+
+.optionTitle {
+  font-weight: 800;
+}
+
+.optionHint {
+  color: var(--fg-3);
+  font-size: var(--fs-small);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}

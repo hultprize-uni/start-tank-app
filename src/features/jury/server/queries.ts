@@ -2,8 +2,13 @@ import type { Decision } from "@/shared/domain/types";
 import { sql } from "@/server/db/client";
 import { classifyRounds, queryRoundVotes, queryRounds } from "@/server/db/rounds";
 import type { StaffMember } from "@/server/db/staff";
-import { normalizeFunctionResult, toDbDecision, type FunctionResult } from "@/server/db/values";
-import { buildJuryView } from "./mappers";
+import {
+  normalizeFunctionResult,
+  toDbDecision,
+  toDecision,
+  type FunctionResult,
+} from "@/server/db/values";
+import { buildJuryView, resolveCurrentRound, type OwnVoteRow } from "./mappers";
 import type { JuryViewModel } from "../types";
 
 /*
@@ -36,18 +41,40 @@ export async function findJurorById(id: string): Promise<StaffMember | null> {
   return row ?? null;
 }
 
+/** Descripción de la startup de una ronda. Nula cuando la ronda no existe o no tiene descripción. */
+async function queryRoundDescription(roundId: string): Promise<string | null> {
+  const [row] = await sql<{ descripcion: string | null }>`
+    select s.descripcion
+      from ronda r
+      join startup s on s.id_startup = r.id_startup
+     where r.id_ronda = ${roundId}::bigint`;
+  return row?.descripcion ?? null;
+}
+
+/** Votos registrados por el jurado en todas las rondas. */
+async function queryOwnVotes(jurorId: string): Promise<OwnVoteRow[]> {
+  const rows = await sql<{ id_ronda: string; decision: string }>`
+    select v.id_ronda::text as id_ronda,
+           v.decision
+      from veredicto v
+     where v.id_jurado = ${jurorId}::bigint`;
+  return rows.map((row) => ({ id_ronda: row.id_ronda, decision: toDecision(row.decision) }));
+}
+
 /**
  * Lee el view model del portal del jurado. Devuelve nulo cuando el jurado no existe.
- * Los votos de otros jurados se consultan, pero el view model solo expone conteos.
+ * Los votos de otros jurados se consultan, pero el view model solo los expone al liquidar la ronda.
  */
 export async function readJuryView(jurorId: string): Promise<JuryViewModel | null> {
   const juror = await findJurorById(jurorId);
   if (juror === null) return null;
 
   const rounds = await queryRounds();
-  const active = classifyRounds(rounds).active;
-  const [votes, totalJurors] = await Promise.all([
-    active ? queryRoundVotes(active.id_ronda) : Promise.resolve([]),
+  const current = resolveCurrentRound(rounds).row;
+  const [votes, ownVotes, description, totalJurors] = await Promise.all([
+    current ? queryRoundVotes(current.id_ronda) : Promise.resolve([]),
+    queryOwnVotes(juror.id),
+    current ? queryRoundDescription(current.id_ronda) : Promise.resolve(null),
     queryJurorCount(),
   ]);
 
@@ -56,6 +83,8 @@ export async function readJuryView(jurorId: string): Promise<JuryViewModel | nul
     name: juror.nombre,
     rounds,
     votes,
+    ownVotes,
+    description,
     totalJurors,
   });
 }

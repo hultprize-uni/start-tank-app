@@ -117,6 +117,8 @@ export function simulateReading(phase: ScreenPhase, tick: number): ScreenViewMod
   const now = new Date().toISOString();
 
   switch (phase) {
+    case "WAITING":
+      return { phase, updatedAt: now, nextRound: MOCK_ROUND };
     case "MARKET": {
       const accumulated = 4_000 + tick * 500;
       return {

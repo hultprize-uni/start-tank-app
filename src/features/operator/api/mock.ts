@@ -1,90 +1,61 @@
-import { useCallback, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 
+import { EVENT_CONFIG } from "@/shared/domain/config";
+import { livePrice } from "@/shared/domain/pricing";
+import { startupScore } from "@/shared/domain/scoring";
+import { calcVerdict } from "@/shared/domain/verdict";
+import type { Decision } from "@/shared/domain/types";
+
+import { OPERATOR_ACTION_LABELS } from "../labels";
 import type {
   BalanceRow,
   CancelMode,
   JurorSense,
   JurorVoteView,
   LogEntryView,
-  ManualSettlementInput,
   OperatorActionId,
   OperatorActionView,
   OperatorViewModel,
   PositionRow,
   RoundStatus,
+  RoundSummaryView,
+  StandingView,
 } from "../types";
 
-/**
- * Implementación mock del estado del operador.
- * Reemplazar el reductor por llamadas a Neon cuando exista la capa de datos; la interfaz
- * de OperatorStateApi se conserva.
+/*
+ * Implementación de muestra del estado del operador. Reproduce las fases del prototipo: abrir,
+ * última llamada con temporizador de 60 s y cierre automático, cierre con habilitación de la
+ * votación, veredicto y anulación. Reemplazar el reductor por la API cuando exista la capa de
+ * datos; la interfaz de OperatorStateApi se conserva.
  */
 
-/** Código de acceso de la maqueta. No corresponde a un código real. */
-export const MOCK_OPERATOR_CODE = "START-OPERADOR";
+/** Código de acceso de la muestra. Corresponde al código de demostración del prototipo. */
+export const MOCK_OPERATOR_CODE = "OP-2026";
+
+/** Intervalo del reloj de la muestra, usado para la cuenta regresiva y el cierre automático. */
+const MOCK_TICK_MS = 1_000;
 
 const TOTAL_ROUNDS = 5;
 const JURY_SIZE = 4;
 const ATTENDEE_COUNT = 74;
 const INVESTOR_COUNT = 60;
-const INITIAL_BALANCE = 10000;
+const INITIAL_BALANCE = 10_000;
 const OPERATOR_NAME = "op.1";
-const MIN_MULTIPLIER = 0.2;
-const MAX_MULTIPLIER = 1.8;
+const DEFAULT_MANUAL_BACKS = 2;
 
 interface RoundScript {
   startupName: string;
   senses: JurorSense[];
-  status: RoundStatus;
-  price: number;
 }
 
-/** Guion de las rondas de muestra. La ronda 2 reproduce la consola en votación del wireframe C1. */
+/** Guion de las rondas de muestra. La ronda 2 reproduce la consola en votación con tres votos emitidos. */
 const ROUND_SCRIPTS: RoundScript[] = [
-  {
-    startupName: "Aqua Ruta",
-    senses: ["backs", "backs", "rejects", "abstains"],
-    status: "SETTLED",
-    price: 100,
-  },
-  {
-    startupName: "Solar Nodo",
-    senses: ["backs", "backs", "rejects", "backs"],
-    status: "VOTING",
-    price: 118,
-  },
-  {
-    startupName: "Mercado Verde",
-    senses: ["backs", "abstains", "rejects", "backs"],
-    status: "SCHEDULED",
-    price: 100,
-  },
-  {
-    startupName: "Cosecha Lab",
-    senses: ["rejects", "rejects", "backs", "backs"],
-    status: "SCHEDULED",
-    price: 100,
-  },
-  {
-    startupName: "Red Mantis",
-    senses: ["backs", "backs", "backs", "backs"],
-    status: "SCHEDULED",
-    price: 100,
-  },
+  { startupName: "Aurora Agro", senses: ["backs", "backs", "rejects", "abstains"] },
+  { startupName: "Nodo Solar", senses: ["backs", "backs", "rejects", "backs"] },
+  { startupName: "Aqua Lima", senses: ["backs", "abstains", "rejects", "backs"] },
+  { startupName: "Tejido Vivo", senses: ["rejects", "rejects", "backs", "backs"] },
+  { startupName: "Ruta Verde", senses: ["backs", "backs", "backs", "backs"] },
 ];
-
-interface AttendeeSeed {
-  id: string;
-  name: string;
-}
-
-const ATTENDEES: AttendeeSeed[] = Array.from(
-  { length: ATTENDEE_COUNT },
-  (_, index) => ({
-    id: `asistente-${pad2(index + 1)}`,
-    name: `Asistente ${pad2(index + 1)}`,
-  }),
-);
 
 interface MockPosition {
   attendeeId: string;
@@ -101,22 +72,32 @@ interface JurorState {
   sense: JurorSense;
 }
 
+/** Resultado de una ronda terminada. Las rondas sin resultado siguen abiertas o programadas. */
+interface RoundResult {
+  status: "SETTLED" | "CANCELLED";
+  multiplier: number;
+  fraction: number;
+  cancelMode: CancelMode | null;
+}
+
 /** Instantánea previa a una acción de mercado, usada por Deshacer. */
 interface HistoryEntry {
   label: string;
   status: RoundStatus;
-  completed: OperatorActionId[];
+  lastCallStartedAt: number | null;
   log: LogEntryView[];
 }
 
 interface MockState {
   roundIndex: number;
   status: RoundStatus;
-  completed: OperatorActionId[];
   jurors: JurorState[];
-  multiplier: number | null;
-  result: ManualSettlementInput["result"] | null;
-  cancelMode: CancelMode | null;
+  /** Instante de inicio de la última llamada, en milisegundos. Es null fuera de esa fase. */
+  lastCallStartedAt: number | null;
+  manual: boolean;
+  manualBacks: number;
+  results: Record<number, RoundResult>;
+  /** Registro cronológico de todas las acciones del evento. */
   log: LogEntryView[];
   history: HistoryEntry[];
   balances: Record<string, number>;
@@ -125,47 +106,51 @@ interface MockState {
 }
 
 type MockCommand =
-  | { type: "runAction"; id: OperatorActionId }
-  | { type: "undo" }
-  | { type: "cancel"; mode: CancelMode }
-  | { type: "manual"; input: ManualSettlementInput }
-  | { type: "simulateVote"; jurorId: string };
+  | { type: "runAction"; id: OperatorActionId; now: number }
+  | { type: "undo"; now: number }
+  | { type: "cancel"; mode: CancelMode; now: number }
+  | { type: "setManual"; enabled: boolean }
+  | { type: "setManualBacks"; backs: number }
+  | { type: "simulateVote"; jurorId: string }
+  | { type: "tick"; now: number };
 
 export interface OperatorStateApi {
   viewModel: OperatorViewModel;
   runAction: (id: OperatorActionId) => void;
   undo: () => void;
   cancelRound: (mode: CancelMode) => void;
-  settleManually: (input: ManualSettlementInput) => void;
+  setManualMode: (enabled: boolean) => void;
+  setManualBacks: (backs: number) => void;
   simulateJurorVote: (jurorId: string) => void;
 }
 
-/** Valida el código de acceso de la maqueta. */
+/** Valida el código de acceso de la muestra. */
 export function verifyOperatorCode(code: string): boolean {
-  return code.trim() === MOCK_OPERATOR_CODE;
+  return code.trim().toUpperCase() === MOCK_OPERATOR_CODE;
 }
 
-/** Calcula el multiplicador: 0.2 + 1.6 x fracción de respaldo. Las abstenciones se excluyen. */
-function computeMultiplier(senses: JurorSense[]): number {
-  const supports = senses.filter((sense) => sense === "backs").length;
-  const valid = senses.filter((sense) => sense !== "abstains").length;
-  if (valid === 0) {
-    // Supuesto: sin votos válidos se liquida a 1.0x. Confirmar con el dominio.
-    return 1;
-  }
-  const fraction = supports / valid;
-  return round2(0.2 + 1.6 * fraction);
+/** Convierte un sentido de voto en la decisión del dominio. */
+function decisionOf(sense: JurorSense): Decision {
+  if (sense === "backs") return "BACK";
+  if (sense === "rejects") return "REJECT";
+  return "ABSTAIN";
+}
+
+/** Decisiones del modo manual: los jurados indicados respaldan y el resto rechaza. */
+function manualDecisions(backs: number): Decision[] {
+  return Array.from({ length: JURY_SIZE }, (_, index) => (index < backs ? "BACK" : "REJECT"));
 }
 
 function createInitialState(): MockState {
   const positions = seedPositions();
   const balances: Record<string, number> = {};
-  for (const attendee of ATTENDEES) {
-    balances[attendee.id] = INITIAL_BALANCE;
+  for (let index = 0; index < ATTENDEE_COUNT; index += 1) {
+    balances[attendeeId(index)] = INITIAL_BALANCE;
   }
 
   // Liquidar la ronda 1 de muestra y descontar la inversión de la ronda 2 en curso.
-  const round1Multiplier = computeMultiplier(ROUND_SCRIPTS[0].senses);
+  const round1 = calcVerdict(ROUND_SCRIPTS[0].senses.map(decisionOf));
+  const round1Multiplier = round2(round1.multiplier);
   for (const position of positions) {
     if (position.round === 1) {
       position.returnAmount = Math.round(position.amount * round1Multiplier);
@@ -175,40 +160,49 @@ function createInitialState(): MockState {
     }
   }
 
-  const script = ROUND_SCRIPTS[1];
   return {
     roundIndex: 1,
-    status: script.status,
-    completed: ["open", "last_call", "close"],
-    jurors: buildJurors(script.senses, 3),
-    multiplier: null,
-    result: null,
-    cancelMode: null,
+    status: "VOTING",
+    jurors: buildJurors(ROUND_SCRIPTS[1].senses, 3),
+    lastCallStartedAt: null,
+    manual: false,
+    manualBacks: DEFAULT_MANUAL_BACKS,
+    results: {
+      0: { status: "SETTLED", multiplier: round1Multiplier, fraction: round1.fraction, cancelMode: null },
+    },
     log: [
-      seedLog(1, "15:00", "OPEN"),
-      seedLog(2, "15:08", "LAST_CALL"),
-      seedLog(3, "15:09", "CLOSE"),
-      seedLog(4, "15:10", "ENABLE_VOTING"),
+      seedLog(1, "15:00:00", "OPEN", 1),
+      seedLog(2, "15:06:00", "LAST_CALL", 1),
+      seedLog(3, "15:07:00", "CLOSE", 1),
+      seedLog(4, "15:08:00", "ENABLE_VOTING", 1),
+      seedLog(5, "15:09:00", "REVEAL", 1),
+      seedLog(6, "15:10:00", "OPEN", 2),
+      seedLog(7, "15:18:00", "LAST_CALL", 2),
+      seedLog(8, "15:19:00", "CLOSE", 2),
+      seedLog(9, "15:19:30", "ENABLE_VOTING", 2),
     ],
     history: [],
     balances,
     positions,
-    nextLogId: 5,
+    nextLogId: 10,
   };
+}
+
+function attendeeId(index: number): string {
+  return `asistente-${pad2(index + 1)}`;
 }
 
 function seedPositions(): MockPosition[] {
   const positions: MockPosition[] = [];
   for (let index = 0; index < INVESTOR_COUNT; index += 1) {
-    const attendeeId = ATTENDEES[index].id;
     positions.push({
-      attendeeId,
+      attendeeId: attendeeId(index),
       round: 1,
       amount: 250 + (index % 15) * 200,
       returnAmount: null,
     });
     positions.push({
-      attendeeId,
+      attendeeId: attendeeId(index),
       round: 2,
       amount: 250 + ((index * 7) % 15) * 200,
       returnAmount: null,
@@ -217,13 +211,13 @@ function seedPositions(): MockPosition[] {
   return positions;
 }
 
-function seedLog(index: number, time: string, label: string): LogEntryView {
+function seedLog(index: number, time: string, action: string, roundNumber: number): LogEntryView {
   return {
     id: `log-${index}`,
     time,
-    label,
+    roundNumber,
+    label: OPERATOR_ACTION_LABELS[action] ?? action,
     operator: OPERATOR_NAME,
-    detail: null,
   };
 }
 
@@ -236,29 +230,25 @@ function buildJurors(senses: JurorSense[], emittedCount: number): JurorState[] {
   }));
 }
 
+/** Agrega una entrada al registro con la hora indicada. */
 function appendLog(
   state: MockState,
-  label: string,
-  detail: string | null = null,
-): { log: LogEntryView[]; nextLogId: number } {
+  action: string,
+  now: number,
+): Pick<MockState, "log" | "nextLogId"> {
   const entry: LogEntryView = {
     id: `log-${state.nextLogId}`,
-    time: currentTime(),
-    label,
+    time: timeOf(now),
+    roundNumber: state.roundIndex + 1,
+    label: OPERATOR_ACTION_LABELS[action] ?? action,
     operator: OPERATOR_NAME,
-    detail,
   };
   return { log: [...state.log, entry], nextLogId: state.nextLogId + 1 };
 }
 
 /** Liquida las posiciones de la ronda actual con el factor indicado y actualiza los saldos. */
-function settleRound(
-  state: MockState,
-  status: "SETTLED" | "CANCELLED",
-  multiplier: number | null,
-): MockState {
+function settlePositions(state: MockState, factor: number): Pick<MockState, "balances" | "positions"> {
   const roundNumber = state.roundIndex + 1;
-  const factor = multiplier ?? 1;
   const balances = { ...state.balances };
   const positions = state.positions.map((position) => {
     if (position.round !== roundNumber || position.returnAmount !== null) {
@@ -268,106 +258,126 @@ function settleRound(
     balances[position.attendeeId] += returnAmount;
     return { ...position, returnAmount };
   });
-  return { ...state, status, multiplier, balances, positions, history: [] };
+  return { balances, positions };
 }
 
 function reduce(state: MockState, command: MockCommand): MockState {
   switch (command.type) {
     case "runAction":
-      return runAction(state, command.id);
+      return runAction(state, command.id, command.now);
     case "undo":
-      return undo(state);
+      return undo(state, command.now);
     case "cancel":
-      return cancelRound(state, command.mode);
-    case "manual":
-      return manualSettle(state, command.input);
+      return cancelRound(state, command.mode, command.now);
+    case "setManual":
+      return setManual(state, command.enabled);
+    case "setManualBacks":
+      return setManualBacks(state, command.backs);
     case "simulateVote":
       return simulateVote(state, command.jurorId);
+    case "tick":
+      return tick(state, command.now);
   }
 }
 
-function runAction(state: MockState, id: OperatorActionId): MockState {
+function runAction(state: MockState, id: OperatorActionId, now: number): MockState {
   switch (id) {
     case "open":
-      return marketStep(state, id, "SCHEDULED", "OPEN", ["OPEN"]);
+      if (state.status !== "SCHEDULED") return state;
+      return withHistory(state, "OPEN", ["OPEN"], { status: "OPEN" }, now);
     case "last_call":
-      return marketStep(state, id, "OPEN", "LAST_CALL", [
+      if (state.status !== "OPEN") return state;
+      return withHistory(
+        state,
         "LAST_CALL",
-      ]);
+        ["LAST_CALL"],
+        { status: "LAST_CALL", lastCallStartedAt: now },
+        now,
+      );
     case "close":
-      return closeMarket(state);
+      return closeMarket(state, now, true);
     case "reveal":
-      return reveal(state);
+      return reveal(state, now);
     case "next":
       return nextRound(state);
   }
-}
-
-/** Avanza un estado de mercado y registra la acción para poder deshacerla. */
-function marketStep(
-  state: MockState,
-  id: OperatorActionId,
-  from: RoundStatus,
-  to: RoundStatus,
-  logLabels: string[],
-): MockState {
-  if (state.status !== from) {
-    return state;
-  }
-  return withHistory(state, logLabels[0], logLabels, {
-    status: to,
-    completed: [...state.completed, id],
-  });
-}
-
-/** Cierra el mercado y habilita la votación del jurado en un solo paso. */
-function closeMarket(state: MockState): MockState {
-  if (state.status !== "OPEN" && state.status !== "LAST_CALL") {
-    return state;
-  }
-  return withHistory(state, "CLOSE", ["CLOSE", "ENABLE_VOTING"], {
-    status: "VOTING",
-    completed: [...state.completed, "close"],
-  });
 }
 
 /** Guarda una instantánea para Deshacer, aplica el cambio y añade las entradas del registro. */
 function withHistory(
   state: MockState,
   label: string,
-  logLabels: string[],
-  change: Pick<MockState, "status" | "completed">,
+  actions: string[],
+  change: Partial<Pick<MockState, "status" | "lastCallStartedAt">>,
+  now: number,
 ): MockState {
   const snapshot: HistoryEntry = {
     label,
     status: state.status,
-    completed: state.completed,
+    lastCallStartedAt: state.lastCallStartedAt,
     log: state.log,
   };
   let next: MockState = { ...state, ...change };
-  for (const logLabel of logLabels) {
-    const logged = appendLog(next, logLabel);
+  for (const action of actions) {
+    const logged = appendLog(next, action, now);
     next = { ...next, log: logged.log, nextLogId: logged.nextLogId };
   }
   return { ...next, history: [...state.history, snapshot] };
 }
 
-function reveal(state: MockState): MockState {
+/** Cierra el mercado y habilita la votación. El cierre automático no se registra en Deshacer. */
+function closeMarket(state: MockState, now: number, recordHistory: boolean): MockState {
+  if (state.status !== "OPEN" && state.status !== "LAST_CALL") {
+    return state;
+  }
+  const actions = recordHistory ? ["CLOSE", "ENABLE_VOTING"] : ["AUTO_CLOSE", "ENABLE_VOTING"];
+  const change = { status: "VOTING" as const, lastCallStartedAt: null };
+  if (recordHistory) {
+    return withHistory(state, "CLOSE", actions, change, now);
+  }
+  let next: MockState = { ...state, ...change };
+  for (const action of actions) {
+    const logged = appendLog(next, action, now);
+    next = { ...next, log: logged.log, nextLogId: logged.nextLogId };
+  }
+  return next;
+}
+
+/** Revela el veredicto cuando votaron todos los jurados o cuando el modo manual está activo. */
+function reveal(state: MockState, now: number): MockState {
   if (state.status !== "VOTING") {
     return state;
   }
   const missing = state.jurors.filter((juror) => !juror.emitted).length;
-  if (missing > 0) {
+  if (missing > 0 && !state.manual) {
     return state;
   }
-  const multiplier = computeMultiplier(state.jurors.map((juror) => juror.sense));
-  const logged = appendLog(state, "REVEAL", `x${multiplier.toFixed(2)}`);
-  const settled = settleRound(state, "SETTLED", multiplier);
+
+  const verdict = calcVerdict(
+    state.manual
+      ? manualDecisions(state.manualBacks)
+      : state.jurors.map((juror) => decisionOf(juror.sense)),
+  );
+  const multiplier = round2(verdict.multiplier);
+  const logged = appendLog(state, state.manual ? "MANUAL_SETTLE" : "REVEAL", now);
+  const settled = settlePositions({ ...state, ...logged }, multiplier);
+
   return {
+    ...state,
+    ...logged,
     ...settled,
-    completed: [...state.completed, "reveal"],
-    log: logged.log,
-    nextLogId: logged.nextLogId,
+    status: "SETTLED",
+    manual: false,
+    history: [],
+    results: {
+      ...state.results,
+      [state.roundIndex]: {
+        status: "SETTLED",
+        multiplier,
+        fraction: verdict.fraction,
+        cancelMode: null,
+      },
+    },
   };
 }
 
@@ -377,65 +387,50 @@ function nextRound(state: MockState): MockState {
     return state;
   }
   const roundIndex = state.roundIndex + 1;
-  const script = ROUND_SCRIPTS[roundIndex];
   return {
     ...state,
     roundIndex,
     status: "SCHEDULED",
-    completed: [],
-    jurors: buildJurors(script.senses, 0),
-    multiplier: null,
-    result: null,
-    cancelMode: null,
-    log: [],
+    jurors: buildJurors(ROUND_SCRIPTS[roundIndex].senses, 0),
+    lastCallStartedAt: null,
+    manual: false,
     history: [],
   };
 }
 
-function cancelRound(state: MockState, mode: CancelMode): MockState {
-  const cancellable =
-    state.status === "OPEN" ||
-    state.status === "LAST_CALL" ||
-    state.status === "VOTING";
-  if (!cancellable) {
+/** Anula la ronda en votación: el factor es 1.0x y el modo queda registrado. */
+function cancelRound(state: MockState, mode: CancelMode, now: number): MockState {
+  if (state.status !== "VOTING") {
     return state;
   }
-  const logged = appendLog(
-    state,
-    "ANULAR",
-    mode === "refund" ? "devolver lo invertido" : "liquidar a 1.0x",
-  );
-  const settled = settleRound(
-    { ...state, log: logged.log, nextLogId: logged.nextLogId },
-    "CANCELLED",
-    mode === "settle_1x" ? 1 : null,
-  );
-  return { ...settled, cancelMode: mode };
+  const logged = appendLog(state, mode === "refund" ? "CANCEL_REFUND" : "CANCEL_SETTLE_1X", now);
+  const settled = settlePositions({ ...state, ...logged }, 1);
+  return {
+    ...state,
+    ...logged,
+    ...settled,
+    status: "CANCELLED",
+    manual: false,
+    history: [],
+    results: {
+      ...state.results,
+      [state.roundIndex]: { status: "CANCELLED", multiplier: 1, fraction: 0, cancelMode: mode },
+    },
+  };
 }
 
-function manualSettle(
-  state: MockState,
-  input: ManualSettlementInput,
-): MockState {
-  const validMultiplier =
-    Number.isFinite(input.multiplier) &&
-    input.multiplier >= MIN_MULTIPLIER &&
-    input.multiplier <= MAX_MULTIPLIER;
-  if (state.status !== "VOTING" || !validMultiplier) {
+function setManual(state: MockState, enabled: boolean): MockState {
+  if (state.status !== "VOTING") {
     return state;
   }
-  const multiplier = round2(input.multiplier);
-  const logged = appendLog(
-    state,
-    "LIQUIDAR_MANUAL",
-    `x${multiplier.toFixed(2)} · ${input.result === "approved" ? "approved" : "no aprobada"}`,
-  );
-  const settled = settleRound(
-    { ...state, log: logged.log, nextLogId: logged.nextLogId },
-    "SETTLED",
-    multiplier,
-  );
-  return { ...settled, result: input.result };
+  return { ...state, manual: enabled };
+}
+
+function setManualBacks(state: MockState, backs: number): MockState {
+  if (!Number.isInteger(backs) || backs < 0 || backs > JURY_SIZE) {
+    return state;
+  }
+  return { ...state, manualBacks: backs };
 }
 
 function simulateVote(state: MockState, jurorId: string): MockState {
@@ -450,20 +445,27 @@ function simulateVote(state: MockState, jurorId: string): MockState {
   };
 }
 
-function undo(state: MockState): MockState {
+/** Cierre automático de la última llamada cuando el temporizador llega a cero. */
+function tick(state: MockState, now: number): MockState {
+  if (state.status !== "LAST_CALL" || state.lastCallStartedAt === null) {
+    return state;
+  }
+  if (remainingSeconds(state.lastCallStartedAt, now) > 0) {
+    return state;
+  }
+  return closeMarket(state, now, false);
+}
+
+function undo(state: MockState, now: number): MockState {
   if (!canUndo(state)) {
     return state;
   }
   const previous = state.history[state.history.length - 1];
-  const logged = appendLog(
-    { ...state, log: previous.log },
-    "UNDO",
-    previous.label,
-  );
+  const logged = appendLog({ ...state, log: previous.log }, "UNDO", now);
   return {
     ...state,
     status: previous.status,
-    completed: previous.completed,
+    lastCallStartedAt: previous.lastCallStartedAt,
     log: logged.log,
     nextLogId: logged.nextLogId,
     history: state.history.slice(0, -1),
@@ -479,19 +481,39 @@ function canUndo(state: MockState): boolean {
   return !(state.status === "VOTING" && anyEmitted);
 }
 
-function toViewModel(state: MockState): OperatorViewModel {
+/** Segundos restantes de la última llamada a partir de su instante de inicio. */
+function remainingSeconds(startedAt: number, now: number): number {
+  const elapsed = Math.floor((now - startedAt) / 1000);
+  return Math.max(0, EVENT_CONFIG.lastCallSeconds - elapsed);
+}
+
+/** Puntajes de las rondas liquidadas, de mayor a menor. */
+function standingsOf(state: MockState): StandingView[] {
+  const views: StandingView[] = [];
+  for (const [key, result] of Object.entries(state.results)) {
+    if (result.status !== "SETTLED") continue;
+    const roundIndex = Number(key);
+    const roundNumber = roundIndex + 1;
+    const investors = state.positions.filter((position) => position.round === roundNumber).length;
+    views.push({
+      roundNumber,
+      startupName: ROUND_SCRIPTS[roundIndex].startupName,
+      score: round2(startupScore(result.fraction, investors / ATTENDEE_COUNT)),
+      fraction: result.fraction,
+    });
+  }
+  return views.sort((a, b) => b.score - a.score || (b.fraction ?? 0) - (a.fraction ?? 0));
+}
+
+function toViewModel(state: MockState, now: number): OperatorViewModel {
   const roundNumber = state.roundIndex + 1;
   const script = ROUND_SCRIPTS[state.roundIndex];
+  const result = state.results[state.roundIndex];
   const revealed = state.status === "SETTLED" || state.status === "CANCELLED";
   const missing = state.jurors.filter((juror) => !juror.emitted).length;
 
-  const roundPositions = state.positions.filter(
-    (position) => position.round === roundNumber,
-  );
-  const accumulated = roundPositions.reduce(
-    (sum, position) => sum + position.amount,
-    0,
-  );
+  const roundPositions = state.positions.filter((position) => position.round === roundNumber);
+  const accumulated = roundPositions.reduce((sum, position) => sum + position.amount, 0);
 
   const jurors: JurorVoteView[] = state.jurors.map((juror) => ({
     id: juror.id,
@@ -500,38 +522,44 @@ function toViewModel(state: MockState): OperatorViewModel {
     sense: revealed ? juror.sense : null,
   }));
 
+  const revealEnabled = state.status === "VOTING" && (missing === 0 || state.manual);
   const actions: OperatorActionView[] = [
     {
       id: "open",
       label: "Abrir mercado",
-      done: state.completed.includes("open"),
+      done: state.status !== "SCHEDULED",
       enabled: state.status === "SCHEDULED",
       blockedReason: null,
     },
     {
       id: "last_call",
-      label: "Última llamada",
-      done: state.completed.includes("last_call"),
+      label: "Declarar última llamada",
+      done: ["LAST_CALL", "CLOSED", "VOTING", "SETTLED"].includes(state.status),
       enabled: state.status === "OPEN",
-      blockedReason: null,
+      blockedReason: state.status === "OPEN" ? null : "Requiere la ronda abierta.",
     },
     {
       id: "close",
       label: "Cerrar mercado",
-      done: state.completed.includes("close"),
-      enabled:
-        state.status === "OPEN" || state.status === "LAST_CALL",
-      blockedReason: null,
+      done: ["CLOSED", "VOTING", "SETTLED"].includes(state.status),
+      enabled: state.status === "OPEN" || state.status === "LAST_CALL",
+      blockedReason:
+        state.status === "OPEN" || state.status === "LAST_CALL"
+          ? null
+          : "Requiere el mercado abierto.",
     },
     {
       id: "reveal",
       label: "Revelar veredicto",
       done: state.status === "SETTLED",
-      enabled: state.status === "VOTING" && missing === 0,
-      blockedReason:
-        state.status === "VOTING" && missing > 0
-          ? `Bloqueado: falta ${missing} ${missing === 1 ? "voto" : "votos"}`
-          : null,
+      enabled: revealEnabled,
+      blockedReason: revealEnabled
+        ? null
+        : state.status === "VOTING"
+          ? missing === 1
+            ? "Bloqueado: falta 1 voto"
+            : `Bloqueado: faltan ${missing} votos`
+          : "Requiere votación habilitada.",
     },
     {
       id: "next",
@@ -539,30 +567,44 @@ function toViewModel(state: MockState): OperatorViewModel {
       done: false,
       enabled: revealed && state.roundIndex < TOTAL_ROUNDS - 1,
       blockedReason: !revealed
-        ? "Se habilita al liquidar o anular la ronda"
+        ? "Avanza al abrir la siguiente ronda."
         : state.roundIndex >= TOTAL_ROUNDS - 1
           ? "Es la última startup del evento"
           : null,
     },
   ];
 
-  const balances: BalanceRow[] = ATTENDEES.map((attendee) => ({
-    attendeeId: attendee.id,
-    attendeeName: attendee.name,
-    balance: state.balances[attendee.id],
+  const balances: BalanceRow[] = Array.from({ length: ATTENDEE_COUNT }, (_, index) => ({
+    attendeeId: attendeeId(index),
+    attendeeName: `Asistente ${pad2(index + 1)}`,
+    balance: state.balances[attendeeId(index)],
   }));
 
-  const attendeeNames = new Map(
-    ATTENDEES.map((attendee) => [attendee.id, attendee.name]),
-  );
   const positions: PositionRow[] = state.positions.map((position) => ({
     attendeeId: position.attendeeId,
-    attendeeName: attendeeNames.get(position.attendeeId) ?? position.attendeeId,
+    attendeeName: `Asistente ${pad2(Number(position.attendeeId.slice(-2)))}`,
     round: position.round,
     startupName: ROUND_SCRIPTS[position.round - 1].startupName,
     amount: position.amount,
     returnAmount: position.returnAmount,
   }));
+
+  const rounds: RoundSummaryView[] = ROUND_SCRIPTS.map((item, index) => {
+    const past = state.results[index];
+    const status: RoundStatus =
+      index === state.roundIndex ? state.status : past?.status ?? "SCHEDULED";
+    return {
+      number: index + 1,
+      startupName: item.startupName,
+      status,
+      multiplier: past?.status === "SETTLED" ? past.multiplier : null,
+    };
+  });
+
+  const lastCallRemaining =
+    state.status === "LAST_CALL" && state.lastCallStartedAt !== null
+      ? remainingSeconds(state.lastCallStartedAt, now)
+      : null;
 
   return {
     round: {
@@ -570,51 +612,64 @@ function toViewModel(state: MockState): OperatorViewModel {
       total: TOTAL_ROUNDS,
       startupName: script.startupName,
       status: state.status,
-      multiplier: state.multiplier,
-      result: state.result,
-      cancelMode: state.cancelMode,
+      multiplier: result?.status === "SETTLED" ? result.multiplier : null,
+      cancelMode: result?.cancelMode ?? null,
     },
-    screenSynced: true,
+    rounds,
     actions,
     jurors,
     market: {
       accumulated,
       uniqueInvestors: roundPositions.length,
       connectedAttendees: ATTENDEE_COUNT,
-      price: script.price,
+      price: livePrice(accumulated),
+      lastCallRemaining,
     },
-    log: state.log,
+    standings: standingsOf(state),
+    log: [...state.log].reverse(),
     canUndo: canUndo(state),
-    canCancel:
-      state.status === "OPEN" ||
-      state.status === "LAST_CALL" ||
-      state.status === "VOTING",
+    canCancel: state.status === "VOTING",
     canManualSettle: state.status === "VOTING",
+    manualMode: { enabled: state.manual, backs: state.manualBacks },
     balances,
     positions,
   };
 }
 
 /**
- * Estado de la consola del operador con datos de muestra.
- * Devuelve el view model y las acciones que el operador puede disparar.
+ * Estado de la consola del operador con datos de muestra. Un reloj de MOCK_TICK_MS actualiza la
+ * cuenta regresiva y cierra la última llamada cuando el temporizador llega a cero.
  */
 export function useOperatorState(): OperatorStateApi {
   const [state, dispatch] = useReducer(reduce, undefined, createInitialState);
+  const [now, setNow] = useState(() => Date.now());
 
-  const viewModel = useMemo(() => toViewModel(state), [state]);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      dispatch({ type: "tick", now: current });
+    }, MOCK_TICK_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const viewModel = useMemo(() => toViewModel(state, now), [state, now]);
 
   const runAction = useCallback(
-    (id: OperatorActionId) => dispatch({ type: "runAction", id }),
+    (id: OperatorActionId) => dispatch({ type: "runAction", id, now: Date.now() }),
     [],
   );
-  const undo = useCallback(() => dispatch({ type: "undo" }), []);
+  const undo = useCallback(() => dispatch({ type: "undo", now: Date.now() }), []);
   const cancelRound = useCallback(
-    (mode: CancelMode) => dispatch({ type: "cancel", mode }),
+    (mode: CancelMode) => dispatch({ type: "cancel", mode, now: Date.now() }),
     [],
   );
-  const settleManually = useCallback(
-    (input: ManualSettlementInput) => dispatch({ type: "manual", input }),
+  const setManualMode = useCallback(
+    (enabled: boolean) => dispatch({ type: "setManual", enabled }),
+    [],
+  );
+  const setManualBacks = useCallback(
+    (backs: number) => dispatch({ type: "setManualBacks", backs }),
     [],
   );
   const simulateJurorVote = useCallback(
@@ -628,10 +683,11 @@ export function useOperatorState(): OperatorStateApi {
       runAction,
       undo,
       cancelRound,
-      settleManually,
+      setManualMode,
+      setManualBacks,
       simulateJurorVote,
     }),
-    [viewModel, runAction, undo, cancelRound, settleManually, simulateJurorVote],
+    [viewModel, runAction, undo, cancelRound, setManualMode, setManualBacks, simulateJurorVote],
   );
 }
 
@@ -639,9 +695,10 @@ function pad2(value: number): string {
   return value.toString().padStart(2, "0");
 }
 
-function currentTime(): string {
-  const now = new Date();
-  return `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+/** Hora local en formato HH:MM:SS. */
+function timeOf(now: number): string {
+  const date = new Date(now);
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
 function round2(value: number): number {

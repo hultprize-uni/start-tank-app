@@ -1,118 +1,158 @@
-.panel {
+.layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  max-width: 440px;
+  min-height: calc(100vh - 32px);
+  margin: 0 auto;
   width: 100%;
-  max-width: 420px;
-  padding: var(--sp-6);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-card);
-  background: var(--bg-card);
+  box-sizing: border-box;
+}
+
+.hero {
+  display: none;
+}
+
+.mobileLogo {
+  height: 44px;
+  width: auto;
+  align-self: flex-start;
+}
+
+.float {
+  width: min(100%, 520px);
+  height: auto;
+  animation: float 6s ease-in-out infinite;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-pink-light);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.lead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg-2);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: 12px;
 }
 
-.eyebrow {
-  margin: 0;
-  color: var(--accent-2);
-  font-size: var(--fs-eyebrow);
-  font-weight: 800;
-  letter-spacing: var(--ls-eyebrow);
-  text-transform: uppercase;
-}
-
-.title {
-  font-size: 32px;
-  line-height: 1.05;
-}
-
-.lead {
-  margin: 0;
-  color: var(--fg-2);
-  font-size: var(--fs-body);
-  line-height: 1.5;
-}
-
-.fieldset {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-}
-
-.fieldset:disabled {
-  opacity: 0.6;
-}
-
-.legend {
-  padding: 0;
-  margin-bottom: var(--sp-2);
-  color: var(--fg-3);
-  font-size: var(--fs-small);
-  font-weight: 600;
-}
-
-.digits {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-2);
-}
-
-.digit {
-  width: 100%;
+.input {
   height: 56px;
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  box-sizing: border-box;
+  padding: 0 20px;
+  border: 2px solid var(--line-2);
+  border-radius: 18px;
   background: var(--bg-band);
   color: var(--fg-1);
   font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 900;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.digit:focus-visible {
-  outline: 2px solid var(--accent-2);
-  outline-offset: 2px;
+.input::placeholder {
+  color: var(--fg-3);
+  letter-spacing: normal;
+  text-transform: none;
+  font-weight: 600;
+  font-size: 16px;
 }
 
-.digit[aria-invalid="true"] {
-  border-color: var(--negative);
+.input[aria-invalid="true"] {
+  border-color: var(--warning);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--st-cyan-light);
+  outline-offset: 3px;
 }
 
 .error {
   margin: 0;
-  color: var(--negative);
-  font-size: var(--fs-small);
-  font-weight: 600;
-}
-
-.submit {
-  height: 44px;
-  padding: 0 var(--sp-5);
-  border: 0;
-  border-radius: var(--r-pill);
-  background: var(--accent);
-  color: var(--fg-1);
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
+  min-height: 16px;
+  font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
+  color: var(--warning);
 }
 
-.submit:hover {
-  background: var(--st-pink-hot);
+.hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg-3);
 }
 
-.submit:disabled {
-  background: var(--st-ink-700);
-  color: var(--fg-4);
-  cursor: not-allowed;
+@media (min-width: 820px) {
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 56px;
+    align-items: center;
+    max-width: 1120px;
+    min-height: calc(100vh - 150px);
+  }
+
+  .hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobileLogo {
+    display: none;
+  }
+
+  .panel {
+    max-width: 440px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .title {
+    font-size: 60px;
+  }
 }
 
-.submit:focus-visible {
-  outline: 2px solid var(--accent-2);
-  outline-offset: 2px;
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(-8px) scale(1);
+  }
+  50% {
+    transform: translateY(10px) scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float {
+    animation: none;
+  }
 }

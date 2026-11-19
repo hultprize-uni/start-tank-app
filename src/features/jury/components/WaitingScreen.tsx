@@ -1,33 +1,21 @@
-import type { JuryCriterion, JuryRoundView } from "../types";
-import { CriteriaReminder } from "./CriteriaReminder";
+import type { JuryPhase } from "../types";
+import { PHASE_COPY } from "./copy";
 import styles from "./WaitingScreen.module.css";
 
 interface WaitingScreenProps {
-  round: JuryRoundView;
-  criteria: readonly JuryCriterion[];
+  phase: JuryPhase;
 }
 
-/** Espera de la votación: la ronda aún no está abierta para votar. */
-export function WaitingScreen({ round, criteria }: WaitingScreenProps) {
+/** Espera de la votación: la ronda aún no está abierta para votar o el evento ha terminado. */
+export function WaitingScreen({ phase }: WaitingScreenProps) {
+  const copy = PHASE_COPY[phase];
+
   return (
-    <section className={styles.panel} aria-labelledby="espera-titulo">
-      <div className={styles.top}>
-        <p className={styles.eyebrow}>Ronda {round.number}</p>
-        <CriteriaReminder criteria={criteria} />
-      </div>
-
-      <div className={styles.status}>
-        <span className={styles.dot} aria-hidden="true" />
-        <span className={styles.statusText}>En espera</span>
-      </div>
-
-      <h1 id="espera-titulo" className={styles.title}>
-        Esperando la votación
-      </h1>
-      <p className={styles.lead}>
-        La votación se abrirá cuando el operador la habilite. Mantén tu
-        atención en la presentación de {round.startupName}.
-      </p>
+    <section className={styles.panel} aria-labelledby="espera-titulo" aria-live="polite">
+      <h2 id="espera-titulo" className={styles.title}>
+        {copy.waitTitle}
+      </h2>
+      <p className={styles.text}>{copy.waitText}</p>
     </section>
   );
 }
