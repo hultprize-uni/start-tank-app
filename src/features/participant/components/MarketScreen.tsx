@@ -1,9 +1,7 @@
+import { Badge, Button, MarketCard, ProgressBar } from "@/shared/ui";
+import { formatCoins, formatPriceChange } from "../format";
 import type { MarketInfo, RoundInfo, StartupInfo, WalletInfo } from "../types";
-import { ActionButton } from "./ActionButton";
-import { formatCoins } from "../format";
 import { LastCallCountdown } from "./LastCallCountdown";
-import { MarketCard } from "./MarketCard";
-import { StatusBadge } from "./StatusBadge";
 import styles from "./MarketScreen.module.css";
 
 interface MarketScreenProps {
@@ -13,10 +11,11 @@ interface MarketScreenProps {
   wallet: WalletInfo;
   /** Segundos de la última llamada. Nulo mientras el mercado está abierto. */
   countdownSeconds: number | null;
-  onInvest: () => void;
+  /** Abre la hoja de inversión. Solo se pasa en el móvil; en el escritorio el formulario va en línea. */
+  onInvest?: () => void;
 }
 
-/** Mercado abierto y última llamada: precio en vivo, tope de la ronda y acceso a Invertir. */
+/** Mercado abierto y última llamada: precio en vivo, tope de la ronda y acceso a la inversión. */
 export function MarketScreen({
   round,
   startup,
@@ -25,30 +24,40 @@ export function MarketScreen({
   countdownSeconds,
   onInvest,
 }: MarketScreenProps) {
-  const capRatio = wallet.roundCap > 0 ? wallet.investedInRound / wallet.roundCap : 0;
-  const fillPercent = Math.min(100, capRatio * 100);
   const isLastCall = countdownSeconds !== null;
+  const roundLabel = `Ronda ${round.number} de ${round.total}`;
 
   return (
     <section className={styles.screen}>
+      <h1 className="visually-hidden">Mercado de la {roundLabel.toLowerCase()}</h1>
+
       <div className={styles.status}>
         {isLastCall ? (
-          <StatusBadge tone="yellow" live>
+          <Badge tone="yellow" live>
             Última llamada
-          </StatusBadge>
+          </Badge>
         ) : (
-          <StatusBadge tone="cyan" live>
+          <Badge tone="cyan" live>
             Mercado abierto
-          </StatusBadge>
+          </Badge>
         )}
-        <span className={styles.round}>
-          Ronda {round.number} de {round.total}
-        </span>
       </div>
 
-      {isLastCall && <LastCallCountdown seconds={countdownSeconds} />}
+      {isLastCall ? <LastCallCountdown seconds={countdownSeconds} /> : null}
 
-      <MarketCard startup={startup} market={market} />
+      <MarketCard
+        name={startup.name}
+        ods={startup.sdg}
+        price={market.price}
+        delta={formatPriceChange(market.priceChange)}
+        deltaTone={market.priceChange < 0 ? "negative" : "positive"}
+        total={formatCoins(market.totalRaised)}
+        totalLabel="Monto de la sala"
+        investors={market.investorCount}
+        investorsLabel="Inversionistas"
+        roundLabel={roundLabel}
+        headingLevel={2}
+      />
 
       <div className={styles.cap}>
         <div className={styles.capHeader}>
@@ -58,14 +67,20 @@ export function MarketScreen({
         <p className={styles.invested}>
           {formatCoins(wallet.investedInRound)} <span className={styles.unit}>coins</span>
         </p>
-        <div className={styles.track} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fillPercent)}>
-          <div className={styles.fill} style={{ width: `${fillPercent}%` }} />
-        </div>
+        <ProgressBar
+          value={wallet.investedInRound}
+          max={Math.max(1, wallet.roundCap)}
+          label="Uso del tope de la ronda"
+          valueText={`${formatCoins(wallet.investedInRound)} de ${formatCoins(wallet.roundCap)} coins`}
+        />
       </div>
 
-      <ActionButton variant="primary" size="lg" onClick={onInvest}>
-        Invertir
-      </ActionButton>
+      {onInvest ? (
+        <Button variant="primary" size="lg" fullWidth onClick={onInvest}>
+          Invertir
+        </Button>
+      ) : null}
+
       <p className={styles.note}>
         El precio mide el interés de la sala. Tu retorno depende solo del jurado.
       </p>
