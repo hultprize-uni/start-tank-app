@@ -13,7 +13,7 @@ test.describe("consola del operador", () => {
     await runOperatorAction(page, "Abrir mercado");
     await expect(currentRoundStep(page)).toContainText("Abierta");
 
-    await runOperatorAction(page, "Última llamada");
+    await runOperatorAction(page, "Declarar última llamada");
     await expect(currentRoundStep(page)).toContainText("Última llamada");
 
     // Cerrar el mercado envía también la habilitación de la votación.
@@ -25,11 +25,11 @@ test.describe("consola del operador", () => {
   test("keeps the reveal action locked until the four jurors vote", async ({ page }) => {
     await signInOperator(page);
     await runOperatorAction(page, "Abrir mercado");
-    await runOperatorAction(page, "Última llamada");
+    await runOperatorAction(page, "Declarar última llamada");
     await runOperatorAction(page, "Cerrar mercado");
 
     const reveal = page.getByRole("button", { name: "Revelar veredicto", exact: true });
     await expect(reveal).toBeDisabled();
-    await expect(page.getByText("Faltan 4 voto(s)", { exact: true })).toBeVisible();
+    await expect(page.getByText("Bloqueado: faltan 4 votos", { exact: true })).toBeVisible();
   });
 });
