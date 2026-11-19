@@ -1,0 +1,26 @@
+.frame {
+  padding: 24px;
+  border-radius: var(--r-frame);
+  background: var(--grad-hero);
+}
+
+.glow {
+  box-shadow: var(--shadow-glow);
+}
+
+.panel {
+  padding: 28px;
+  border-radius: var(--r-panel);
+  background: var(--bg-card);
+  color: var(--fg-1);
+}
+
+@media (max-width: 480px) {
+  .frame {
+    padding: 16px;
+  }
+
+  .panel {
+    padding: 20px;
+  }
+}
