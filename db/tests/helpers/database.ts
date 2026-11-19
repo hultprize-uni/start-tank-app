@@ -129,10 +129,10 @@ export function registerTestDatabase(): TestDatabase {
     }
     const name = randomName("st_test");
     await admin.query(`CREATE DATABASE "${name}" TEMPLATE "${template}"`);
-    current = {
-      name,
-      pool: new Pool({ connectionString: buildDatabaseUrl(adminUrl, name), max: 10 }),
-    };
+    const pool = new Pool({ connectionString: buildDatabaseUrl(adminUrl, name), max: 10 });
+    // Las conexiones inactivas que el servidor cierra al eliminar la base no deben abortar la ejecución.
+    pool.on("error", () => undefined);
+    current = { name, pool };
   }, HOOK_TIMEOUT_MS);
 
   afterEach(async () => {
