@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_CONFIG } from "@/shared/domain/config";
 import { investAmount, fetchParticipantState, NO_SESSION } from "../api/client";
 import { useParticipantMockState } from "../api/mock";
+import { UPDATE_FAILED_MESSAGE } from "../messages";
 import type {
   ParticipantActions,
   ParticipantLoadStatus,
@@ -14,9 +15,6 @@ import type {
  * Estado del portal del inversionista. Por defecto consulta la API real; la simulación solo se
  * activa con NEXT_PUBLIC_USE_MOCKS=true, valor que Next.js fija en tiempo de compilación.
  */
-
-/** Mensaje mostrado cuando una actualización del estado no se completa. */
-const UPDATE_FAILED_MESSAGE = "No fue posible actualizar la ronda. Reintentando.";
 
 /** View model de la fase de ingreso, usado cuando la API responde sin sesión. */
 const LOGIN_VIEW: ParticipantViewModel = {
