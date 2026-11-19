@@ -1,4 +1,4 @@
-import { readScreen } from "@/lib/db/queries";
+import { readScreen } from "@/features/operator/server/queries";
 import { errorResponse, jsonResponse } from "@/server/http/responses";
 
 /*

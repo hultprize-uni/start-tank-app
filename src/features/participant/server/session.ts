@@ -1,4 +1,4 @@
-import { getParticipantSql, provisionParticipant } from "@/lib/db/investor-db";
+import { getParticipantSql, provisionParticipant } from "@/features/participant/server/provisioning";
 import { getNeonAuth } from "@/server/auth/neon-auth";
 
 /**

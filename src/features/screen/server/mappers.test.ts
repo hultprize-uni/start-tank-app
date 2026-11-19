@@ -10,7 +10,7 @@ import {
   type ScreenData,
   type RoundRow,
   type RoundVoteRow,
-} from "./mapeo";
+} from "./mappers";
 
 const NOW = new Date("2026-11-08T15:00:00.000Z");
 

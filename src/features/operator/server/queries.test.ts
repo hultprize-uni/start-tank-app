@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sqlMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../../server/db/client", () => ({ sql: sqlMock }));
+vi.mock("../../../server/db/client", () => ({ sql: sqlMock }));
 
 import {
   findJurorByCode,

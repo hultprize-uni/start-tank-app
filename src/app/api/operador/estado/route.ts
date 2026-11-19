@@ -1,5 +1,5 @@
 import { requireOperator, noSessionResponse } from "@/server/auth/code-session";
-import { readOperatorView } from "@/lib/db/queries";
+import { readOperatorView } from "@/features/operator/server/queries";
 import { errorResponse, jsonResponse } from "@/server/http/responses";
 
 /** Devuelve el view model de la consola del operador para la sesión vigente. */

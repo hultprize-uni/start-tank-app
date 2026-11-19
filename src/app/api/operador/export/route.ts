@@ -1,6 +1,6 @@
 import { requireOperator, noSessionResponse } from "@/server/auth/code-session";
 import { buildSettlementCsv } from "@/features/operator/api/export";
-import { readOperatorView } from "@/lib/db/queries";
+import { readOperatorView } from "@/features/operator/server/queries";
 import { NO_CACHE_HEADERS, errorResponse } from "@/server/http/responses";
 
 /** Marca de orden de bytes para que Excel reconozca la codificación UTF-8. */

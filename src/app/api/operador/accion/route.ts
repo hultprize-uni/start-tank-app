@@ -1,5 +1,5 @@
 import { requireOperator, noSessionResponse } from "@/server/auth/code-session";
-import { API_OPERATOR_ACTIONS, executeOperatorAction, type ApiOperatorAction } from "@/lib/db/queries";
+import { API_OPERATOR_ACTIONS, executeOperatorAction, type ApiOperatorAction } from "@/features/operator/server/queries";
 import { readJsonBody, errorResponse, jsonResponse } from "@/server/http/responses";
 
 function isAction(value: unknown): value is ApiOperatorAction {

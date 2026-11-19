@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type ParticipantRow, type ParticipantSql, provisionParticipant } from "./investor-db";
+import { type ParticipantRow, type ParticipantSql, provisionParticipant } from "./provisioning";
 
 /**
  * Crea una consulta simulada que reproduce el comportamiento de la tabla usuario:

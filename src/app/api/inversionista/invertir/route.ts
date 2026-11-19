@@ -1,6 +1,6 @@
-import { participantError } from "@/lib/api/investor.errors";
-import { getParticipantSession } from "@/lib/auth/investor";
-import { registerInvestment } from "@/lib/db/investor-queries";
+import { participantError } from "@/features/participant/server/errors";
+import { getParticipantSession } from "@/features/participant/server/session";
+import { registerInvestment } from "@/features/participant/server/queries";
 import { readJsonBody, jsonResponse } from "@/server/http/responses";
 
 export const dynamic = "force-dynamic";

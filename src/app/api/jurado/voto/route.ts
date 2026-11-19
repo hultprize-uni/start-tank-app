@@ -1,6 +1,6 @@
 import type { Decision } from "@/shared/domain/types";
 import { requireJury, noSessionResponse } from "@/server/auth/code-session";
-import { registerVote } from "@/lib/db/queries";
+import { registerVote } from "@/features/operator/server/queries";
 import { readJsonBody, errorResponse, jsonResponse } from "@/server/http/responses";
 
 /** Decisiones admitidas para el voto del jurado. */

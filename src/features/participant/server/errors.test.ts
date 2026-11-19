@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { participantError } from "./investor.errors";
+import { participantError } from "./errors";
 
 describe("errorInversionista", () => {
   it.each([

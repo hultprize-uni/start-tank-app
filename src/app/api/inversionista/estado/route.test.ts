@@ -4,8 +4,8 @@ import type { ParticipantViewModel } from "@/features/participant/types";
 const mockSession = vi.hoisted(() => vi.fn());
 const mockState = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/auth/investor", () => ({ getParticipantSession: mockSession }));
-vi.mock("@/lib/db/investor-queries", () => ({ readParticipantState: mockState }));
+vi.mock("@/features/participant/server/session", () => ({ getParticipantSession: mockSession }));
+vi.mock("@/features/participant/server/queries", () => ({ readParticipantState: mockState }));
 
 import { GET } from "./route";
 

@@ -2,7 +2,7 @@ import type { Decision } from "@/shared/domain/types";
 import type { JuryViewModel } from "@/features/jury/types";
 import type { OperatorViewModel } from "@/features/operator/types";
 import type { ScreenViewModel } from "@/features/screen/types";
-import { sql } from "../../server/db/client";
+import { sql } from "../../../server/db/client";
 import {
   classifyRounds,
   buildScreen,
@@ -16,7 +16,7 @@ import {
   type RoundRow,
   type BalanceSnapshotRow,
   type RoundVoteRow,
-} from "./mapeo";
+} from "../../screen/server/mappers";
 
 /*
  * Consultas tipadas de la capa de datos. Cada función de lectura obtiene las filas necesarias y
