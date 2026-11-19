@@ -7,6 +7,10 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  // tsconfig usa "jsx": "preserve" (Next.js); las pruebas de componentes requieren JSX transformado.
+  oxc: {
+    jsx: { runtime: "automatic" },
+  },
   test: {
     environment: "node",
     include: ["src/**/*.test.{ts,tsx}"],
