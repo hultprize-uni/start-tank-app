@@ -1,4 +1,4 @@
-import { EVENT_CONFIG } from "@/lib/domain/config";
+import { EVENT_CONFIG } from "@/shared/domain/config";
 
 /** Motivo por el que un monto de inversión no puede confirmarse. */
 export type InvestmentIssue = "below-min" | "above-cap" | "above-balance";

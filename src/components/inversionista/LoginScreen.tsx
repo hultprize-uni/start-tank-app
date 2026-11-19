@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth/neon-auth-client";
-import { EVENT_CONFIG } from "@/lib/domain/config";
+import { EVENT_CONFIG } from "@/shared/domain/config";
 import { ActionButton } from "./ActionButton";
 import { BrandMark } from "./BrandMark";
 import { formatCoins } from "./format";

@@ -1,4 +1,4 @@
-import type { Decision } from "@/lib/domain/types";
+import type { Decision } from "@/shared/domain/types";
 import type { Settlement } from "@/lib/api/screen.types";
 import { RoundHeader } from "./CabeceraRonda";
 import { formatInteger, formatMultiplier, formatPercentage } from "./formato";

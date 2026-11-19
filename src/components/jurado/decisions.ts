@@ -1,4 +1,4 @@
-import type { Decision } from "@/lib/domain/types";
+import type { Decision } from "@/shared/domain/types";
 
 /** Textos de cada decisión de voto, usados en la votación y en su confirmación. */
 export const DECISION_LABELS: Record<

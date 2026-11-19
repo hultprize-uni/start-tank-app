@@ -1,4 +1,4 @@
-import type { Decision } from "@/lib/domain/types";
+import type { Decision } from "@/shared/domain/types";
 import type { JuryViewModel } from "@/lib/api/jury.types";
 import type { OperatorViewModel } from "@/lib/api/operator.types";
 import type { ScreenViewModel } from "@/lib/api/screen.types";

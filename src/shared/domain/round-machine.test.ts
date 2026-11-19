@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextState, ROUND_TRANSITIONS } from "./roundMachine";
+import { nextState, ROUND_TRANSITIONS } from "./round-machine";
 import type { OperatorAction, RoundState } from "./types";
 
 const ACCIONES: readonly OperatorAction[] = [

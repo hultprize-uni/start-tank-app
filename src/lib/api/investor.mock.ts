@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { EVENT_CONFIG } from "@/lib/domain/config";
-import type { Decision } from "@/lib/domain/types";
+import { EVENT_CONFIG } from "@/shared/domain/config";
+import type { Decision } from "@/shared/domain/types";
 import {
   getInvestmentIssue,
   getMarketPrice,

@@ -1,4 +1,4 @@
-import type { Decision } from "@/lib/domain/types";
+import type { Decision } from "@/shared/domain/types";
 import { requireJury, noSessionResponse } from "@/lib/auth/code-session";
 import { registerVote } from "@/lib/db/queries";
 import { readJsonBody, errorResponse, jsonResponse } from "@/lib/http/respuestas";

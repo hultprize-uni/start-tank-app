@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { EVENT_CONFIG } from "@/lib/domain/config";
+import { EVENT_CONFIG } from "@/shared/domain/config";
 import { investAmount, fetchParticipantState, NO_SESSION } from "./investor.client";
 import { useInvestorMockState } from "./investor.mock";
 import type {

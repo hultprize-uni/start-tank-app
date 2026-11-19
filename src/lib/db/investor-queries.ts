@@ -10,8 +10,8 @@ import type {
   VerdictInfo,
   WalletInfo,
 } from "@/lib/api/investor.types";
-import { EVENT_CONFIG } from "@/lib/domain/config";
-import type { Decision, RoundState } from "@/lib/domain/types";
+import { EVENT_CONFIG } from "@/shared/domain/config";
+import type { Decision, RoundState } from "@/shared/domain/types";
 import { parseSdg } from "./mapeo";
 import type { SqlFunctionResult } from "./queries";
 import { sql } from "./client";

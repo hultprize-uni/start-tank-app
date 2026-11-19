@@ -1,4 +1,4 @@
-import { EVENT_CONFIG } from "@/lib/domain/config";
+import { EVENT_CONFIG } from "@/shared/domain/config";
 import styles from "./LastCallCountdown.module.css";
 
 interface LastCallCountdownProps {

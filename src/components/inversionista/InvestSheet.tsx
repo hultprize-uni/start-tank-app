@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { EVENT_CONFIG } from "@/lib/domain/config";
+import { EVENT_CONFIG } from "@/shared/domain/config";
 import {
   getInvestmentIssue,
   getMultiplier,

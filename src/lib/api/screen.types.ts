@@ -1,4 +1,4 @@
-import type { Decision } from "@/lib/domain/types";
+import type { Decision } from "@/shared/domain/types";
 
 /** Fases de la pantalla del evento. Cada una corresponde a una fila del cuadro de la especificacion (seccion 2.6). */
 export type ScreenPhase =

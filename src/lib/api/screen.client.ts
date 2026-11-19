@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
-import { EVENT_CONFIG } from "@/lib/domain/config";
+import { EVENT_CONFIG } from "@/shared/domain/config";
 import { MOCK_PHASE, simulateReading } from "./screen.mock";
 import type { ScreenPhase, ScreenViewModel } from "./screen.types";
 

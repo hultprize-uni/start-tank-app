@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { Decision } from "@/lib/domain/types";
+import type { Decision } from "@/shared/domain/types";
 import type {
   JuryAccessView,
   JuryActions,

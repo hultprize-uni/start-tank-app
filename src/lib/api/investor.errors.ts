@@ -1,4 +1,4 @@
-import { EVENT_CONFIG } from "@/lib/domain/config";
+import { EVENT_CONFIG } from "@/shared/domain/config";
 
 /*
  * Traducción de los códigos de error de la API del inversionista a estados HTTP y mensajes en

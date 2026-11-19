@@ -1,4 +1,4 @@
-import type { Decision } from "@/lib/domain/types";
+import type { Decision } from "@/shared/domain/types";
 
 /** Fases de la pantalla del inversionista, en orden de la ronda. */
 export type InvestorPhase =
