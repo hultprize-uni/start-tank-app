@@ -1,4 +1,4 @@
-import { BrandLogo } from "@/shared/ui";
+import { BrandLogo, Button } from "@/shared/ui";
 import type { JuryRailItem } from "../types";
 import { railStatusText } from "./copy";
 import styles from "./JuryRail.module.css";
@@ -6,10 +6,11 @@ import styles from "./JuryRail.module.css";
 interface JuryRailProps {
   jurorLabel: string;
   rail: readonly JuryRailItem[];
+  onLogout: () => void;
 }
 
-/** Columna lateral de laptop: identidad del evento, sesión y recorrido de rondas. */
-export function JuryRail({ jurorLabel, rail }: JuryRailProps) {
+/** Columna lateral de laptop: identidad del evento, sesión, salida y recorrido de rondas. */
+export function JuryRail({ jurorLabel, rail, onLogout }: JuryRailProps) {
   return (
     <aside className={styles.rail} aria-label="Recorrido del evento">
       <BrandLogo variant="horizontal" alt="Start Tank" className={styles.logo} />
@@ -23,6 +24,10 @@ export function JuryRail({ jurorLabel, rail }: JuryRailProps) {
         <p className={styles.caption}>Sesión</p>
         <p className={styles.juror}>{jurorLabel}</p>
       </div>
+
+      <Button variant="ghost" size="md" fullWidth onClick={onLogout}>
+        Salir
+      </Button>
 
       <p className={styles.caption}>Rondas</p>
       <ol className={styles.rounds}>

@@ -75,3 +75,18 @@ export async function voteJury(decision: Decision): Promise<JuryResult> {
     (response.code !== null ? VOTE_MESSAGES[response.code] : undefined) ?? SERVER_ERROR_MESSAGE;
   return { ok: false, sessionExpired: false, message };
 }
+
+/**
+ * Cierra la sesión del jurado y expira la cookie. El portal vuelve al acceso con independencia del
+ * resultado, por lo que un fallo de red no impide salir.
+ */
+export async function logoutJury(): Promise<JuryResult> {
+  const response = await requestJson<{ ok: boolean }>(API_ROUTES.jury.logout, { method: "POST" });
+  if (response.ok) {
+    return { ok: true, value: null };
+  }
+  if (response.offline) {
+    return { ok: false, sessionExpired: false, message: OFFLINE_MESSAGE };
+  }
+  return { ok: false, sessionExpired: false, message: SERVER_ERROR_MESSAGE };
+}

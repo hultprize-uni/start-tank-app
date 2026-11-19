@@ -332,8 +332,12 @@ export function useJuryStateMock(): { state: JuryViewModel; actions: JuryActions
     }, MOCK_SUBMIT_DELAY_MS);
   }, [schedule]);
 
+  const logout = useCallback(() => {
+    setWorld((prev) => ({ ...prev, juror: null, access: IDLE_ACCESS, vote: IDLE_VOTE }));
+  }, []);
+
   return {
     state: buildMockView(world),
-    actions: { submitCode, selectDecision, requestConfirm, cancelConfirm, confirmVote },
+    actions: { submitCode, selectDecision, requestConfirm, cancelConfirm, confirmVote, logout },
   };
 }

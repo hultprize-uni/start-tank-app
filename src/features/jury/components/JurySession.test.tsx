@@ -16,6 +16,7 @@ function makeActions(): JuryActions {
     requestConfirm: vi.fn(),
     cancelConfirm: vi.fn(),
     confirmVote: vi.fn(),
+    logout: vi.fn(),
   };
 }
 

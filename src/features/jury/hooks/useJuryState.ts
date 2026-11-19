@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { USE_MOCKS } from "@/shared/lib/env";
 import type { Decision } from "@/shared/domain/types";
 import { JURY_CRITERIA } from "../criteria";
-import { readJuryState, loginJury, voteJury } from "../api/client";
+import { readJuryState, loginJury, logoutJury, voteJury } from "../api/client";
 import { useJuryStateMock } from "../api/mock";
 import type { JuryAccessView, JuryActions, JuryViewModel, JuryVoteView } from "../types";
 
@@ -169,6 +169,14 @@ export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions 
     })();
   }, [refresh, endSession]);
 
+  const logout = useCallback(() => {
+    setSessionActive(false);
+    void (async () => {
+      await logoutJury();
+      setState({ ...INITIAL_JURY_STATE });
+    })();
+  }, []);
+
   return useMemo(
     () => ({
       state,
@@ -178,9 +186,10 @@ export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions 
         requestConfirm,
         cancelConfirm,
         confirmVote,
+        logout,
       },
     }),
-    [state, submitCode, selectDecision, requestConfirm, cancelConfirm, confirmVote],
+    [state, submitCode, selectDecision, requestConfirm, cancelConfirm, confirmVote, logout],
   );
 }
 

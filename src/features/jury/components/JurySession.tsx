@@ -23,10 +23,10 @@ export function JurySession({ jurorLabel, state, actions }: JurySessionProps) {
 
   return (
     <div className={styles.session}>
-      <JuryRail jurorLabel={jurorLabel} rail={state.rail} />
+      <JuryRail jurorLabel={jurorLabel} rail={state.rail} onLogout={actions.logout} />
 
       <div className={styles.main}>
-        <JuryMobileHeader jurorLabel={jurorLabel} />
+        <JuryMobileHeader jurorLabel={jurorLabel} onLogout={actions.logout} />
         <h1 className="visually-hidden">Portal del jurado</h1>
 
         <div className={styles.grid}>

@@ -111,4 +111,5 @@ export interface JuryActions {
   requestConfirm: () => void;
   cancelConfirm: () => void;
   confirmVote: () => void;
+  logout: () => void;
 }
