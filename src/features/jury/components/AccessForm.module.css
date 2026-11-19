@@ -1,0 +1,158 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  max-width: 440px;
+  min-height: calc(100vh - 32px);
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hero {
+  display: none;
+}
+
+.mobileLogo {
+  height: 44px;
+  width: auto;
+  align-self: flex-start;
+}
+
+.float {
+  width: min(100%, 520px);
+  height: auto;
+  animation: float 6s ease-in-out infinite;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-pink-light);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.lead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg-2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input {
+  height: 56px;
+  box-sizing: border-box;
+  padding: 0 20px;
+  border: 2px solid var(--line-2);
+  border-radius: 18px;
+  background: var(--bg-band);
+  color: var(--fg-1);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.input::placeholder {
+  color: var(--fg-3);
+  letter-spacing: normal;
+  text-transform: none;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--warning);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--st-cyan-light);
+  outline-offset: 3px;
+}
+
+.error {
+  margin: 0;
+  min-height: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warning);
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg-3);
+}
+
+@media (min-width: 820px) {
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 56px;
+    align-items: center;
+    max-width: 1120px;
+    min-height: calc(100vh - 150px);
+  }
+
+  .hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobileLogo {
+    display: none;
+  }
+
+  .panel {
+    max-width: 440px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .title {
+    font-size: 60px;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(-8px) scale(1);
+  }
+  50% {
+    transform: translateY(10px) scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float {
+    animation: none;
+  }
+}

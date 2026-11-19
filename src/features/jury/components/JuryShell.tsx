@@ -1,26 +1,17 @@
 import type { ReactNode } from "react";
+import { AnimatedBackground } from "@/shared/ui";
 import styles from "./JuryShell.module.css";
 
 interface JuryShellProps {
-  jurorLabel: string | null;
   children: ReactNode;
 }
 
-/** Marco de la laptop del jurado: encabezado con identidad y área de contenido centrada. */
-export function JuryShell({ jurorLabel, children }: JuryShellProps) {
+/** Marco del portal del jurado: fondo animado de marca y área de contenido sobre él. */
+export function JuryShell({ children }: JuryShellProps) {
   return (
     <div className={styles.shell}>
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          <span className={styles.mark} aria-hidden="true" />
-          <span className={styles.wordmark}>Start Tank</span>
-          <span className={styles.section}>Portal del jurado</span>
-        </div>
-        {jurorLabel !== null && (
-          <span className={styles.juror}>{jurorLabel}</span>
-        )}
-      </header>
-      <main className={styles.main}>{children}</main>
+      <AnimatedBackground />
+      <div className={styles.content}>{children}</div>
     </div>
   );
 }
