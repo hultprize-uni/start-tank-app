@@ -1,112 +1,90 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-
-import type {
-  ManualResult,
-  ManualSettlementInput,
-} from "../types";
-
-import styles from "./OperatorConsole.module.css";
+import { PENDING_API_NOTE } from "../labels";
+import panel from "./Panel.module.css";
 
 interface ManualSettlementPanelProps {
-  onSubmit: (input: ManualSettlementInput) => void;
-  onClose: () => void;
+  enabled: boolean;
+  /** Jurados que respaldan la startup en el modo manual. */
+  backs: number;
+  jurySize: number;
+  /** Indica si el modo manual puede activarse en el estado actual de la ronda. */
+  available: boolean;
+  apiPending: boolean;
+  onToggle: (enabled: boolean) => void;
+  onSetBacks: (backs: number) => void;
 }
 
-const MIN_MULTIPLIER = 0.2;
-const MAX_MULTIPLIER = 1.8;
-
 /**
- * Formulario de liquidación manual. Reemplaza el cálculo por votos
- * con el multiplicador y el resultado que captura el operador.
+ * Modo manual: interruptor y selección de los jurados que respaldan. Con el modo activo, el
+ * veredicto se desbloquea y se calcula con la cantidad indicada.
  */
 export function ManualSettlementPanel({
-  onSubmit,
-  onClose,
+  enabled,
+  backs,
+  jurySize,
+  available,
+  apiPending,
+  onToggle,
+  onSetBacks,
 }: ManualSettlementPanelProps) {
-  const [multiplierText, setMultiplierText] = useState("1.00");
-  const [result, setResult] = useState<ManualResult>("approved");
-  const [error, setError] = useState<string | null>(null);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const multiplier = Number(multiplierText.replace(",", "."));
-    if (
-      !Number.isFinite(multiplier) ||
-      multiplier < MIN_MULTIPLIER ||
-      multiplier > MAX_MULTIPLIER
-    ) {
-      setError(
-        `El multiplicador debe estar entre ${MIN_MULTIPLIER.toFixed(2)} y ${MAX_MULTIPLIER.toFixed(2)}.`,
-      );
-      return;
-    }
-    setError(null);
-    onSubmit({ multiplier, result });
-  }
+  const options = Array.from({ length: jurySize + 1 }, (_, index) => index);
 
   return (
-    <section
-      className={`${styles.panel} ${styles.manualPanel}`}
-      aria-labelledby="modo-manual"
-    >
-      <div className={styles.panelHeader}>
-        <h3 id="modo-manual" className={styles.panelTitle}>
-          Modo manual
-        </h3>
-        <span className={styles.muted}>
-          Reemplaza el cálculo por votos para esta ronda.
-        </span>
-      </div>
-      <form className={styles.form} onSubmit={handleSubmit} noValidate>
-        <div className={styles.field}>
-          <label htmlFor="manual-multiplicador" className={styles.label}>
-            Multiplicador
-          </label>
-          <input
-            id="manual-multiplicador"
-            name="multiplicador"
-            type="text"
-            inputMode="decimal"
-            autoComplete="off"
-            className={styles.input}
-            value={multiplierText}
-            onChange={(event) => setMultiplierText(event.target.value)}
-          />
-        </div>
-        <div className={styles.field}>
-          <label htmlFor="manual-resultado" className={styles.label}>
-            Resultado de la ronda
-          </label>
-          <select
-            id="manual-resultado"
-            name="resultado"
-            className={styles.input}
-            value={result}
-            onChange={(event) => setResult(event.target.value as ManualResult)}
-          >
-            <option value="approved">Aprobada</option>
-            <option value="not_approved">No aprobada</option>
-          </select>
-        </div>
-        {error ? (
-          <p className={styles.errorText} role="alert">
-            {error}
+    <div className={panel.controlItem}>
+      <div className={panel.toggleRow}>
+        <div>
+          <p id="modo-manual-titulo" className={panel.title}>
+            Modo manual
           </p>
-        ) : null}
-        <div className={styles.formActions}>
-          <button type="button" className={styles.button} onClick={onClose}>
-            Cerrar
-          </button>
-          <button
-            type="submit"
-            className={`${styles.button} ${styles.buttonPrimary}`}
-          >
-            Aplicar liquidación manual
-          </button>
+          <p id="modo-manual-ayuda" className={panel.note}>
+            Ingresa el resultado a mano si falla el voto digital.
+          </p>
+          {apiPending ? (
+            <p id="modo-manual-pendiente" className={panel.note}>
+              {PENDING_API_NOTE}
+            </p>
+          ) : null}
         </div>
-      </form>
-    </section>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-labelledby="modo-manual-titulo"
+          aria-describedby={apiPending ? "modo-manual-pendiente" : "modo-manual-ayuda"}
+          disabled={!available}
+          onClick={() => onToggle(!enabled)}
+          className={enabled ? `${panel.switch} ${panel.switchOn}` : panel.switch}
+        >
+          <span className={panel.switchThumb} aria-hidden="true" />
+        </button>
+      </div>
+
+      {enabled ? (
+        <fieldset className={panel.backsGroup}>
+          <legend className={panel.backsLegend}>Jurados que respaldan</legend>
+          <div className={panel.backsOptions}>
+            {options.map((option) => {
+              const selected = option === backs;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={selected}
+                  className={
+                    selected
+                      ? `${panel.backsOption} ${panel.backsOptionSelected}`
+                      : panel.backsOption
+                  }
+                  onClick={() => onSetBacks(option)}
+                >
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      ) : null}
+    </div>
   );
 }

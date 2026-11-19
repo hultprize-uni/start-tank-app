@@ -2,21 +2,20 @@
 
 import { useState } from "react";
 
-import type {
-  CancelMode,
-  ManualSettlementInput,
-  OperatorActionId,
-  OperatorViewModel,
-} from "../types";
+import { AnimatedBackground, Toast } from "@/shared/ui";
+
+import type { CancelMode, OperatorActionId, OperatorViewModel } from "../types";
 
 import { ActionLogPanel } from "./ActionLogPanel";
 import { ActionsPanel } from "./ActionsPanel";
 import { CancelRoundDialog } from "./CancelRoundDialog";
+import { ControlsPanel } from "./ControlsPanel";
 import { JurorVotesPanel } from "./JurorVotesPanel";
-import { ManualSettlementPanel } from "./ManualSettlementPanel";
 import { MarketPanel } from "./MarketPanel";
+import { OperatorSidebar } from "./OperatorSidebar";
 import { RoundHeader } from "./RoundHeader";
-import { StatusLine } from "./StatusLine";
+import { StandingsPanel } from "./StandingsPanel";
+import { WinnerBanner } from "./WinnerBanner";
 import styles from "./OperatorConsole.module.css";
 
 interface OperatorConsoleProps {
@@ -28,12 +27,14 @@ interface OperatorConsoleProps {
   onRunAction: (id: OperatorActionId) => void;
   onUndo: () => void;
   onCancelRound: (mode: CancelMode) => void;
-  onManualSettlement: (input: ManualSettlementInput) => void;
+  onToggleManual: (enabled: boolean) => void;
+  onSetManualBacks: (backs: number) => void;
   onSimulateJurorVote: (jurorId: string) => void;
   onExport: () => void;
+  onLogout: () => void;
 }
 
-/** Consola de la ronda del operador en laptop. Compone los paneles y la barra de herramientas. */
+/** Consola de la ronda del operador en laptop. Compone la barra lateral, los paneles y el diálogo de anulación. */
 export function OperatorConsole({
   viewModel,
   notice,
@@ -41,125 +42,90 @@ export function OperatorConsole({
   onRunAction,
   onUndo,
   onCancelRound,
-  onManualSettlement,
+  onToggleManual,
+  onSetManualBacks,
   onSimulateJurorVote,
   onExport,
+  onLogout,
 }: OperatorConsoleProps) {
-  const [manualOpen, setManualOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
-  const { round } = viewModel;
-  const votingOpen = round.status === "VOTING";
-  const showManual = manualOpen && viewModel.canManualSettle;
-  const showCancel = cancelOpen && viewModel.canCancel;
+  const { round, rounds, actions, jurors, market, standings, log } = viewModel;
+  const winner =
+    round.number === round.total && round.status === "SETTLED" ? standings[0] : undefined;
 
   return (
     <div className={styles.page}>
-      <header className={styles.topbar}>
-        <div className={styles.brand}>
-          <p className="st-eyebrow">Start Tank</p>
-          <h1 className={styles.brandTitle}>Portal del operador</h1>
-          <span className={styles.operatorTag}>Laptop de operación</span>
-        </div>
-      </header>
-
-      <RoundHeader
-        round={round}
-        connectedAttendees={viewModel.market.connectedAttendees}
-        screenSynced={viewModel.screenSynced}
-      />
-
-      {notice !== null ? (
-        <p className={styles.errorText} role="alert">
-          {notice}
-        </p>
-      ) : null}
-
-      <div className={styles.layout}>
-        <div className={styles.column}>
-          <section className={styles.panel} aria-labelledby="estado-ronda">
-            <div className={styles.panelHeader}>
-              <h3 id="estado-ronda" className={styles.panelTitle}>
-                Estado de la ronda
-              </h3>
-            </div>
-            <StatusLine status={round.status} />
-          </section>
-          <ActionsPanel actions={viewModel.actions} onRunAction={onRunAction} />
-          <JurorVotesPanel
-            jurors={viewModel.jurors}
-            canSimulateVote={votingOpen && sampleMode}
-            onSimulateVote={onSimulateJurorVote}
-          />
-        </div>
-
-        <div className={styles.column}>
-          <MarketPanel market={viewModel.market} />
-          <ActionLogPanel entries={viewModel.log} />
-        </div>
-      </div>
-
-      <div className={styles.toolbar} role="toolbar" aria-label="Controles del operador">
-        <button
-          type="button"
-          className={styles.button}
-          onClick={onUndo}
-          disabled={!viewModel.canUndo}
-        >
-          Deshacer última acción
-        </button>
-        <button
-          type="button"
-          className={`${styles.button} ${styles.buttonDanger}`}
-          onClick={() => setCancelOpen(true)}
-          disabled={!viewModel.canCancel}
-        >
-          Anular ronda…
-        </button>
-        <button
-          type="button"
-          className={styles.button}
-          onClick={() => setManualOpen((open) => !open)}
-          disabled={!viewModel.canManualSettle}
-          aria-expanded={showManual}
-          aria-controls="modo-manual"
-        >
-          Modo manual
-        </button>
-        <span className={styles.toolbarSpacer} />
-        <button
-          type="button"
-          className={`${styles.button} ${styles.buttonPrimary}`}
-          onClick={onExport}
-        >
-          Exportar saldos y posiciones
-        </button>
-      </div>
-
-      {sampleMode ? null : (
-        <p className={styles.muted}>
-          Pendiente de API: deshacer la última acción y el modo manual.
-        </p>
-      )}
-
-      {showManual ? (
-        <ManualSettlementPanel
-          onSubmit={(input) => {
-            onManualSettlement(input);
-            setManualOpen(false);
-          }}
-          onClose={() => setManualOpen(false)}
+      <AnimatedBackground />
+      <div className={styles.shell}>
+        <OperatorSidebar
+          rounds={rounds}
+          currentRound={round.number}
+          connectedAttendees={market.connectedAttendees}
+          onLogout={onLogout}
         />
-      ) : null}
 
-      {showCancel ? (
+        <main className={styles.main}>
+          <RoundHeader
+            round={round}
+            lastCallRemaining={market.lastCallRemaining}
+            connectedAttendees={market.connectedAttendees}
+          />
+
+          {notice !== null ? (
+            <Toast tone="warning" role="alert">
+              {notice}
+            </Toast>
+          ) : null}
+
+          {winner !== undefined ? (
+            <WinnerBanner name={winner.startupName} score={winner.score} />
+          ) : null}
+
+          <div className={styles.grid}>
+            <div className={styles.column}>
+              <ActionsPanel
+                actions={actions}
+                roundStatus={round.status}
+                onRunAction={onRunAction}
+              />
+              <ControlsPanel
+                canUndo={viewModel.canUndo}
+                canCancel={viewModel.canCancel}
+                canManualSettle={viewModel.canManualSettle}
+                manualMode={viewModel.manualMode}
+                jurySize={jurors.length}
+                apiPending={!sampleMode}
+                onUndo={onUndo}
+                onOpenCancel={() => setCancelOpen(true)}
+                onExport={onExport}
+                onToggleManual={onToggleManual}
+                onSetManualBacks={onSetManualBacks}
+              />
+            </div>
+
+            <div className={styles.column}>
+              <JurorVotesPanel
+                jurors={jurors}
+                canSimulateVote={round.status === "VOTING" && sampleMode}
+                onSimulateVote={onSimulateJurorVote}
+              />
+              <MarketPanel market={market} multiplier={round.multiplier} />
+              <StandingsPanel standings={standings} />
+              <ActionLogPanel entries={log} />
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {cancelOpen && viewModel.canCancel ? (
         <CancelRoundDialog
           roundNumber={round.number}
           startupName={round.startupName}
           onClose={() => setCancelOpen(false)}
           onConfirm={(mode) => {
-            onCancelRound(mode);
             setCancelOpen(false);
+            onCancelRound(mode);
           }}
         />
       ) : null}

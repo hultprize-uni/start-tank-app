@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Button, Dialog } from "@/shared/ui";
 
+import { useCancelRoundDialog } from "../hooks/useCancelRoundDialog";
 import type { CancelMode } from "../types";
 
-import styles from "./OperatorConsole.module.css";
+import styles from "./CancelRoundDialog.module.css";
 
 interface CancelRoundDialogProps {
   roundNumber: number;
@@ -13,24 +14,21 @@ interface CancelRoundDialogProps {
   onConfirm: (mode: CancelMode) => void;
 }
 
-type Step = "elegir" | "confirmar";
+/** Títulos visibles de cada modo de anulación. */
+const MODE_TITLES: Record<CancelMode, string> = {
+  refund: "Devolver lo invertido",
+  settle_1x: "Liquidar a 1.0x",
+};
 
-const MODE_OPTIONS: { mode: CancelMode; title: string; hint: string }[] = [
-  {
-    mode: "refund",
-    title: "Devolver lo invertido",
-    hint: "Cada asistente recupera el monto invertido en la ronda.",
-  },
-  {
-    mode: "settle_1x",
-    title: "Liquidar a 1.0x",
-    hint: "La ronda se liquida con multiplicador 1.0x, lo que equivale a devolver lo invertido.",
-  },
-];
+/** Descripciones visibles de cada modo de anulación. */
+const MODE_HINTS: Record<CancelMode, string> = {
+  refund: "Cada monto regresa íntegro al saldo.",
+  settle_1x: "Se registra como liquidación neutra.",
+};
 
 /**
- * Diálogo de anulación en dos pasos: elegir el modo y confirmar la acción.
- * Se monta solo cuando está abierto, por lo que su estado interno se reinicia en cada apertura.
+ * Diálogo de anulación en dos pasos. El primer paso elige el modo; el segundo pide confirmación
+ * antes de anular. Escape y el botón Cancelar cierran el diálogo sin anular.
  */
 export function CancelRoundDialog({
   roundNumber,
@@ -38,104 +36,54 @@ export function CancelRoundDialog({
   onClose,
   onConfirm,
 }: CancelRoundDialogProps) {
-  const [step, setStep] = useState<Step>("elegir");
-  const [mode, setMode] = useState<CancelMode>("refund");
+  const dialog = useCancelRoundDialog();
+  const { mode } = dialog;
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  const selected = MODE_OPTIONS.find((option) => option.mode === mode);
+  if (dialog.step === "choose" || mode === null) {
+    return (
+      <Dialog
+        open
+        onClose={onClose}
+        title={`¿Anular la ronda ${roundNumber}?`}
+        description="Los asistentes no pierden ni ganan por esta startup. Elige cómo se resuelve lo invertido."
+      >
+        <div className={styles.options}>
+          {(Object.keys(MODE_TITLES) as CancelMode[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={styles.option}
+              onClick={() => dialog.choose(mode)}
+            >
+              <span className={styles.optionTitle}>{MODE_TITLES[mode]}</span>
+              <span className={styles.optionHint}>{MODE_HINTS[mode]}</span>
+            </button>
+          ))}
+        </div>
+        <div className={styles.actions}>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+        </div>
+      </Dialog>
+    );
+  }
 
   return (
-    <div className={styles.overlay}>
-      <div
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="anular-titulo"
-      >
-        {step === "elegir" ? (
-          <>
-            <h3 id="anular-titulo" className={styles.dialogTitle}>
-              Anular ronda {roundNumber}
-            </h3>
-            <p className={styles.dialogText}>
-              Elige cómo se resuelve la ronda de {startupName}. El paso siguiente
-              pide confirmación.
-            </p>
-            <fieldset className={styles.radioGroup}>
-              <legend className={styles.muted}>Modo de anulación</legend>
-              {MODE_OPTIONS.map((option) => (
-                <label
-                  key={option.mode}
-                  className={`${styles.radioOption} ${
-                    option.mode === mode ? styles.radioOptionSelected : ""
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="modo-anulacion"
-                    value={option.mode}
-                    checked={option.mode === mode}
-                    onChange={() => setMode(option.mode)}
-                    className={styles.radio}
-                  />
-                  <span>
-                    <span className={styles.radioTitle}>{option.title}</span>
-                    <span className={styles.radioHint}>{option.hint}</span>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-            <div className={styles.dialogActions}>
-              <button type="button" className={styles.button} onClick={onClose}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={`${styles.button} ${styles.buttonDanger}`}
-                onClick={() => setStep("confirmar")}
-              >
-                Continuar
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <h3 id="anular-titulo" className={styles.dialogTitle}>
-              Confirmar anulación
-            </h3>
-            <p className={styles.dialogText}>
-              Se anulará la ronda {roundNumber} ({startupName}) con la opción
-              &quot;{selected?.title}&quot;. Esta acción queda en el registro y no
-              se puede deshacer desde esta pantalla.
-            </p>
-            <div className={styles.dialogActions}>
-              <button
-                type="button"
-                className={styles.button}
-                onClick={() => setStep("elegir")}
-              >
-                Volver
-              </button>
-              <button
-                type="button"
-                className={`${styles.button} ${styles.buttonDanger}`}
-                onClick={() => onConfirm(mode)}
-              >
-                Anular ronda
-              </button>
-            </div>
-          </>
-        )}
+    <Dialog
+      open
+      onClose={onClose}
+      title="Confirmar anulación"
+      description={`Se anulará la ronda ${roundNumber} (${startupName}) con la opción «${MODE_TITLES[mode]}». Esta acción queda en el registro.`}
+    >
+      <div className={styles.actions}>
+        <Button variant="ghost" onClick={dialog.back}>
+          Volver
+        </Button>
+        <Button variant="danger" onClick={() => onConfirm(mode)}>
+          Anular ronda
+        </Button>
       </div>
-    </div>
+    </Dialog>
   );
 }
