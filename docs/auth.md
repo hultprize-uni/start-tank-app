@@ -1,16 +1,16 @@
-# Autenticación del inversionista
+# Autenticación del participante
 
-Este documento describe la integración de Neon Auth en el portal del inversionista. El acceso se realiza únicamente con Google mediante OAuth. El sistema no almacena contraseñas.
+Este documento describe la integración de Neon Auth en el portal del participante. El acceso se realiza únicamente con Google mediante OAuth. El sistema no almacena contraseñas.
 
 ## Componentes
 
 | Archivo | Función |
 |---|---|
-| `src/lib/auth/neon-auth.ts` | Instancia del servidor de Neon Auth, creada de forma perezosa. |
-| `src/lib/auth/neon-auth-client.ts` | Cliente de Neon Auth para componentes de cliente. |
+| `src/server/auth/neon-auth.ts` | Instancia del servidor de Neon Auth, creada de forma perezosa. |
+| `src/features/participant/api/auth-client.ts` | Cliente de Neon Auth para componentes de cliente. |
 | `src/app/api/auth/[...path]/route.ts` | Ruta que reenvía las solicitudes de autenticación al servicio. |
-| `src/lib/auth/investor.ts` | Función `getInvestorSession`, que lee la sesión y aprovisiona la billetera. |
-| `src/lib/db/investor-db.ts` | Consulta de aprovisionamiento sobre la tabla `usuario`. |
+| `src/features/participant/server/session.ts` | Función `getParticipantSession`, que lee la sesión y aprovisiona la billetera. |
+| `src/features/participant/server/provisioning.ts` | Consulta de aprovisionamiento sobre la tabla `usuario`. |
 
 ## Variables de entorno
 
@@ -46,13 +46,13 @@ Neon Auth solo redirige a los orígenes registrados como confiables. Para el ent
 ## Flujo de ingreso
 
 1. El botón Ingresar con mi cuenta invoca `authClient.signIn.social({ provider: "google" })`.
-2. Neon Auth redirige al proveedor Google y devuelve el control a la ruta `/`.
-3. `getInvestorSession` lee la sesión y obtiene el identificador externo y el correo.
-4. `provisionInvestor` ejecuta una inserción con `ON CONFLICT (proveedor_oauth, id_externo)`. El primer ingreso crea la fila con saldo inicial de 10,000 Impact Coins. Los ingresos posteriores reanudan la misma fila sin duplicarla y reactivan su estado a `ACTIVO`.
+2. Neon Auth redirige al proveedor Google y devuelve el control a la ruta `/participant`.
+3. `getParticipantSession` lee la sesión y obtiene el identificador externo y el correo.
+4. `provisionParticipant` ejecuta una inserción con `ON CONFLICT (proveedor_oauth, id_externo)`. El primer ingreso crea la fila con saldo inicial de 10,000 Impact Coins. Los ingresos posteriores reanudan la misma fila sin duplicarla y reactivan su estado a `ACTIVO`.
 
 ## Cierre de sesión
 
-El encabezado del portal incluye el botón Cerrar sesión, que invoca `authClient.signOut()` y redirige a la ruta `/`.
+El encabezado del portal incluye el botón Cerrar sesión, que invoca `authClient.signOut()` y redirige a la ruta `/participant`.
 
 ## Pruebas
 

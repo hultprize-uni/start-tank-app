@@ -1,0 +1,256 @@
+/* Escenario 16:9 de la pantalla del evento. Las medidas usan unidades cqw para escalar con el proyector. */
+
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-page);
+  overflow: hidden;
+}
+
+.stage {
+  container-type: size;
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  gap: 3cqh;
+  padding: 4cqh 4.5cqw;
+  background: var(--bg-page);
+  color: var(--fg-1);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  font-size: 1.3cqw;
+}
+
+.brand {
+  color: var(--accent);
+  font-size: 1.3cqw;
+}
+
+.phaseLabel {
+  color: var(--accent-2);
+  font-size: 1.3cqw;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3cqh;
+  animation: stRise .6s var(--ease-out) both;
+}
+
+.eyebrow {
+  color: var(--fg-3);
+  font-size: 1.4cqw;
+  font-weight: 800;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 6.4cqw;
+  line-height: 1;
+  letter-spacing: var(--ls-display);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--fg-2);
+  font-size: 1.8cqw;
+  margin: 0;
+}
+
+.figureLarge {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.04em;
+  font-size: 15cqw;
+  line-height: .9;
+  color: var(--accent);
+  margin: 0;
+}
+
+.figureAccent {
+  color: var(--accent-3);
+}
+
+.figureCyan {
+  color: var(--accent-2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2cqw;
+}
+
+.card {
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-card);
+  background: var(--bg-card);
+  padding: 2.4cqh 2cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 1cqh;
+}
+
+.cardValue {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  font-size: 4.2cqw;
+  line-height: 1;
+  margin: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--accent-2);
+  color: var(--accent-2);
+  padding: .6cqh 1.2cqw;
+  font-size: 1.4cqw;
+  font-weight: 800;
+}
+
+.pulse {
+  animation: stPulse 1s ease-in-out infinite;
+}
+
+.dot {
+  width: 2.2cqw;
+  height: 2.2cqw;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+}
+
+.dotCast {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 2cqw;
+  border-bottom: 1px solid var(--line-1);
+  padding: .8cqh 0;
+  font-size: 1.6cqw;
+}
+
+.listTable {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.footer {
+  color: var(--fg-4);
+  font-size: 1.3cqw;
+}
+
+.winner {
+  border: 1px solid var(--accent-3);
+  border-radius: var(--r-card);
+  padding: 3cqh 3cqw;
+  box-shadow: var(--shadow-glow);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5cqh;
+}
+
+.accentYellow {
+  color: var(--accent-3);
+}
+
+.accentCyan {
+  color: var(--accent-2);
+}
+
+.gridFour {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2cqw;
+}
+
+.dotRow {
+  display: flex;
+  gap: 2cqw;
+}
+
+.decisionBack {
+  color: var(--positive);
+}
+
+.decisionReject {
+  color: var(--negative);
+}
+
+.decisionAbstain {
+  color: var(--fg-3);
+}
+
+.gridTwo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3cqw;
+  min-height: 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rowValue {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.winnerTitle {
+  color: var(--accent-3);
+  font-size: 7cqw;
+}
+
+.devSelector {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+}
+
+.devSelector select {
+  background: var(--bg-card);
+  color: var(--fg-1);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-inner);
+  padding: 6px 10px;
+  font: inherit;
+}

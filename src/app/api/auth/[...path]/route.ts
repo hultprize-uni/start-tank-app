@@ -1,4 +1,4 @@
-import { getNeonAuth } from "@/lib/auth/neon-auth";
+import { getNeonAuth } from "@/server/auth/neon-auth";
 
 /** Contexto de la ruta catch-all con los segmentos de la ruta de autenticación. */
 interface AuthRouteContext {
