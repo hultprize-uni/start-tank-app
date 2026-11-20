@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ControlsPanel } from "./ControlsPanel";
+
+vi.mock("../api/client", () => ({ submitManualSettlement: vi.fn() }));
 
 afterEach(cleanup);
 
@@ -12,19 +13,15 @@ const handlers = () => ({
   onUndo: vi.fn(),
   onOpenCancel: vi.fn(),
   onExport: vi.fn(),
-  onToggleManual: vi.fn(),
-  onSetManualBacks: vi.fn(),
 });
 
 describe("ControlsPanel", () => {
-  it("deshabilita deshacer y modo manual con la nota Pendiente de API cuando la API no los soporta", () => {
+  it("deshabilita deshacer con la nota Pendiente de API cuando la API no lo soporta", () => {
     render(
       <ControlsPanel
         canUndo={false}
         canCancel
         canManualSettle={false}
-        manualMode={{ enabled: false, backs: 2 }}
-        jurySize={4}
         apiPending
         {...handlers()}
       />,
@@ -33,34 +30,18 @@ describe("ControlsPanel", () => {
     const deshacer = screen.getByRole("button", { name: "Deshacer última acción" });
     expect(deshacer).toBeDisabled();
     expect(deshacer).toHaveAccessibleDescription("Pendiente de API");
-
-    const manual = screen.getByRole("switch", { name: "Modo manual" });
-    expect(manual).toBeDisabled();
-    expect(manual).toHaveAccessibleDescription("Pendiente de API");
   });
 
-  it("muestra las opciones de respaldo cuando el modo manual está activo", async () => {
-    const user = userEvent.setup();
-    const props = handlers();
-    render(
-      <ControlsPanel
-        canUndo
-        canCancel
-        canManualSettle
-        manualMode={{ enabled: true, backs: 2 }}
-        jurySize={4}
-        apiPending={false}
-        {...props}
-      />,
+  it("muestra la liquidación manual solo cuando la ronda está cerrada o en votación", () => {
+    const { rerender } = render(
+      <ControlsPanel canUndo canCancel canManualSettle={false} apiPending={false} {...handlers()} />,
     );
+    expect(screen.queryByRole("button", { name: "Liquidar a mano" })).toBeNull();
 
-    expect(screen.queryByText("Pendiente de API")).toBeNull();
-    expect(screen.getByRole("switch", { name: "Modo manual" })).toBeChecked();
-    expect(screen.getByRole("button", { name: "2" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getAllByRole("button", { pressed: false })).toHaveLength(4);
-
-    await user.click(screen.getByRole("button", { name: "4" }));
-    expect(props.onSetManualBacks).toHaveBeenCalledWith(4);
+    rerender(
+      <ControlsPanel canUndo canCancel canManualSettle apiPending={false} {...handlers()} />,
+    );
+    expect(screen.getByRole("button", { name: "Liquidar a mano" })).toBeInTheDocument();
   });
 
   it("deshabilita Anular ronda cuando no es posible anular", () => {
@@ -69,8 +50,6 @@ describe("ControlsPanel", () => {
         canUndo={false}
         canCancel={false}
         canManualSettle={false}
-        manualMode={{ enabled: false, backs: 2 }}
-        jurySize={4}
         apiPending={false}
         {...handlers()}
       />,

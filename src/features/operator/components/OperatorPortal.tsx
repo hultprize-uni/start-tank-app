@@ -112,8 +112,6 @@ function OperatorWorkspace({ onExpired, onLogout }: OperatorWorkspaceProps) {
       onRunAction={operator.runAction}
       onUndo={operator.undo}
       onCancelRound={operator.cancelRound}
-      onToggleManual={operator.setManualMode}
-      onSetManualBacks={operator.setManualBacks}
       onSimulateJurorVote={operator.simulateJurorVote}
       onExport={operator.exportCsv}
       onLogout={onLogout}
