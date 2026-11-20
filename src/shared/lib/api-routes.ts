@@ -19,6 +19,7 @@ export const API_ROUTES = {
     login: "/api/operator/login",
     state: "/api/operator/state",
     action: "/api/operator/action",
+    manualSettlement: "/api/operator/manual-settlement",
     export: "/api/operator/export",
     logout: "/api/operator/logout",
   },

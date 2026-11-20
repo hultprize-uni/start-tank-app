@@ -4,6 +4,7 @@ export {
   handleOperatorAction,
   handleOperatorExport,
   handleOperatorLogin,
+  handleOperatorManualSettlement,
   handleOperatorState,
 } from "./server/handlers";
 export type { OperatorViewModel } from "./types";

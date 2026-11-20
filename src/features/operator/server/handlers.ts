@@ -9,6 +9,7 @@ import {
 import { buildSettlementCsv } from "../api/export";
 import {
   API_OPERATOR_ACTIONS,
+  executeManualSettlement,
   executeOperatorAction,
   findOperatorByCode,
   readOperatorView,
@@ -78,6 +79,43 @@ export async function handleOperatorAction(request: Request): Promise<Response> 
       return errorResponse(409, result.error ?? "ACTION_REJECTED");
     }
     return jsonResponse({ ok: true, state: result.state ?? null });
+  } catch (error) {
+    const noSession = noSessionResponse(error);
+    if (noSession !== null) return noSession;
+    throw error;
+  }
+}
+
+/** Valor mínimo y máximo de respaldos aceptados por la liquidación manual (jurado de cuatro miembros). */
+const MIN_MANUAL_BACKS = 0;
+const MAX_MANUAL_BACKS = 4;
+
+/**
+ * Liquida la ronda activa en modo manual. Solo la sesión del rol operador puede invocar esta ruta.
+ * Los códigos de negocio de fn_liquidar_manual se devuelven con estado 409; una respuesta correcta
+ * devuelve 200 con el jsonb de la función.
+ */
+export async function handleOperatorManualSettlement(request: Request): Promise<Response> {
+  try {
+    const session = await requireOperator();
+
+    const body = await readJsonBody(request);
+    const respaldos = body?.respaldos;
+    if (
+      typeof respaldos !== "number" ||
+      !Number.isInteger(respaldos) ||
+      respaldos < MIN_MANUAL_BACKS ||
+      respaldos > MAX_MANUAL_BACKS
+    ) {
+      return errorResponse(400, "RESPALDOS_INVALIDOS");
+    }
+
+    const result = await executeManualSettlement(session.id, respaldos);
+    if (result.ok !== true) {
+      const code = typeof result.error === "string" ? result.error : "ACCION_RECHAZADA";
+      return errorResponse(409, code);
+    }
+    return jsonResponse(result);
   } catch (error) {
     const noSession = noSessionResponse(error);
     if (noSession !== null) return noSession;

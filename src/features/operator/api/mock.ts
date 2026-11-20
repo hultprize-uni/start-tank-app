@@ -629,7 +629,7 @@ function toViewModel(state: MockState, now: number): OperatorViewModel {
     log: [...state.log].reverse(),
     canUndo: canUndo(state),
     canCancel: state.status === "VOTING",
-    canManualSettle: state.status === "VOTING",
+    canManualSettle: state.status === "CLOSED" || state.status === "VOTING",
     manualMode: { enabled: state.manual, backs: state.manualBacks },
     balances,
     positions,

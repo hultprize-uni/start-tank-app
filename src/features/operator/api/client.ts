@@ -176,6 +176,63 @@ export async function logoutOperator(): Promise<void> {
   await requestJson<{ ok: boolean }>(API_ROUTES.operator.logout, { method: "POST" });
 }
 
+/** Mensaje de la liquidación manual con datos de muestra, donde no existe una ronda en el servidor. */
+const MANUAL_SAMPLE_MESSAGE = "La liquidación manual no está disponible con datos de muestra.";
+
+/** Traducción de los códigos de negocio de fn_liquidar_manual a mensajes en español. */
+const MANUAL_SETTLEMENT_MESSAGES: Readonly<Record<string, string>> = {
+  RESPALDOS_INVALIDOS: "La cantidad de respaldos no es válida. Elige un valor entre 0 y 4.",
+  RONDA_YA_LIQUIDADA: "La ronda ya fue liquidada. No es posible liquidarla de nuevo.",
+  RONDA_NO_DISPONIBLE: "La ronda no está disponible para liquidación en su estado actual.",
+  RONDA_NO_EXISTE: "No hay una ronda disponible para liquidar.",
+  OPERADOR_NO_EXISTE: "Tu acceso ya no es válido. Verifica el código de acceso del operador.",
+};
+
+/** Resultado de una liquidación manual: multiplicador aplicado a las inversiones de la ronda. */
+export interface ManualSettlementResult {
+  multiplicador: number;
+  fraccionRespaldo: number;
+}
+
+/**
+ * Liquida la ronda activa en modo manual con la cantidad de respaldos indicada (0 a 4). Devuelve el
+ * multiplicador aplicado o el motivo del rechazo en español.
+ */
+export async function submitManualSettlement(
+  respaldos: number,
+): Promise<OperatorResult<ManualSettlementResult>> {
+  if (USE_MOCKS) {
+    return { ok: false, sessionExpired: false, message: MANUAL_SAMPLE_MESSAGE };
+  }
+  const response = await requestJson<{
+    ok: boolean;
+    multiplicador?: number;
+    fraccion_respaldo?: number;
+  }>(API_ROUTES.operator.manualSettlement, {
+    method: "POST",
+    body: { respaldos },
+  });
+  if (response.ok) {
+    return {
+      ok: true,
+      value: {
+        multiplicador: response.data.multiplicador ?? 0,
+        fraccionRespaldo: response.data.fraccion_respaldo ?? 0,
+      },
+    };
+  }
+  if (response.offline) {
+    return { ok: false, sessionExpired: false, message: OFFLINE_MESSAGE };
+  }
+  if (response.status === 401) {
+    return { ok: false, sessionExpired: true, message: OPERATOR_SESSION_EXPIRED_MESSAGE };
+  }
+  const message =
+    (response.code !== null ? MANUAL_SETTLEMENT_MESSAGES[response.code] : undefined) ??
+    SERVER_ERROR_MESSAGE;
+  return { ok: false, sessionExpired: false, message };
+}
+
 /** Descarga el CSV de saldos y posiciones desde la ruta de exportación. */
 export async function downloadExport(): Promise<OperatorResult> {
   let response: Response;

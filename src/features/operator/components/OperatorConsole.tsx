@@ -27,8 +27,6 @@ interface OperatorConsoleProps {
   onRunAction: (id: OperatorActionId) => void;
   onUndo: () => void;
   onCancelRound: (mode: CancelMode) => void;
-  onToggleManual: (enabled: boolean) => void;
-  onSetManualBacks: (backs: number) => void;
   onSimulateJurorVote: (jurorId: string) => void;
   onExport: () => void;
   onLogout: () => void;
@@ -42,8 +40,6 @@ export function OperatorConsole({
   onRunAction,
   onUndo,
   onCancelRound,
-  onToggleManual,
-  onSetManualBacks,
   onSimulateJurorVote,
   onExport,
   onLogout,
@@ -93,14 +89,10 @@ export function OperatorConsole({
                 canUndo={viewModel.canUndo}
                 canCancel={viewModel.canCancel}
                 canManualSettle={viewModel.canManualSettle}
-                manualMode={viewModel.manualMode}
-                jurySize={jurors.length}
                 apiPending={!sampleMode}
                 onUndo={onUndo}
                 onOpenCancel={() => setCancelOpen(true)}
                 onExport={onExport}
-                onToggleManual={onToggleManual}
-                onSetManualBacks={onSetManualBacks}
               />
             </div>
 
