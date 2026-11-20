@@ -165,3 +165,23 @@ export async function executeOperatorAction(
     select fn_accion_operador(${operatorId}::bigint, ${round.id_ronda}::bigint, ${toDbAction(action)}::varchar) as resultado`;
   return normalizeFunctionResult(row.resultado);
 }
+
+/**
+ * Liquida la ronda activa en modo manual con la cantidad de respaldos indicada. Devuelve el jsonb
+ * de fn_liquidar_manual sin traducir: los códigos de negocio llegan tal como los define la base de
+ * datos y el cliente los presenta en español.
+ */
+export async function executeManualSettlement(
+  operatorId: string,
+  respaldos: number,
+): Promise<Record<string, unknown>> {
+  const rounds = await queryRounds();
+  const c = classifyRounds(rounds);
+  if (c.active === undefined) {
+    return { ok: false, error: "RONDA_NO_DISPONIBLE" };
+  }
+
+  const [row] = await sql<{ resultado: Record<string, unknown> }>`
+    select fn_liquidar_manual(${operatorId}::bigint, ${c.active.id_ronda}::bigint, ${respaldos}::integer) as resultado`;
+  return row.resultado;
+}
