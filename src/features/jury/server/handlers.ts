@@ -1,8 +1,56 @@
 import type { Decision } from "@/shared/domain/types";
 import { readAccessCode } from "@/server/auth/access-code";
 import { noSessionResponse, requireJury, startSession } from "@/server/auth/code-session";
-import { errorResponse, jsonResponse, readJsonBody } from "@/server/http/responses";
+import { sql } from "@/server/db/client";
+import { normalizeFunctionResult } from "@/server/db/values";
+import {
+  errorResponse,
+  jsonResponse,
+  readJsonBody,
+  stateResponse,
+} from "@/server/http/responses";
 import { findJurorByCode, readJuryView, registerVote } from "./queries";
+
+/**
+ * Guarda en el borrador la nota de un criterio de la ronda en curso (RF-15). Cuerpo:
+ * { criterionId: string, value: 1..5 }. Responde { ok: true } o un error 409 con el código.
+ */
+export async function handleJuryDraft(request: Request): Promise<Response> {
+  try {
+    const session = await requireJury();
+    const body = await readJsonBody(request);
+    const criterionId = body?.criterionId;
+    const value = body?.value;
+    if (
+      typeof criterionId !== "string" ||
+      !/^\d+$/.test(criterionId) ||
+      typeof value !== "number" ||
+      !Number.isInteger(value)
+    ) {
+      return errorResponse(400, "INVALID_NOTE");
+    }
+
+    const [round] = await sql<{ id_ronda: string }>`
+      select id_ronda::text as id_ronda
+        from ronda
+       where estado in ('ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')
+       order by numero
+       limit 1`;
+    if (round === undefined) {
+      return errorResponse(409, "ROUND_NOT_GRADABLE");
+    }
+
+    const [row] = await sql<{ resultado: Record<string, unknown> }>`
+      select fn_guardar_borrador(${session.id}::bigint, ${round.id_ronda}::bigint,
+                                 ${criterionId}::bigint, ${value}::int) as resultado`;
+    const result = normalizeFunctionResult(row?.resultado ?? {});
+    return result.ok ? jsonResponse({ ok: true }) : errorResponse(409, result.error ?? "DRAFT_REJECTED");
+  } catch (error) {
+    const noSession = noSessionResponse(error);
+    if (noSession !== null) return noSession;
+    throw error;
+  }
+}
 
 /** Decisiones admitidas para el voto del jurado. */
 const DECISIONS: readonly Decision[] = ["BACK", "REJECT", "ABSTAIN"];
@@ -35,11 +83,15 @@ export async function handleJuryLogin(request: Request): Promise<Response> {
 export async function handleJuryState(): Promise<Response> {
   try {
     const session = await requireJury();
-    const view = await readJuryView(session.id);
+    // Latido de conexión (RF-26): la función escribe como máximo una vez cada 15 segundos.
+    const [view] = await Promise.all([
+      readJuryView(session.id),
+      sql`select fn_latido_jurado(${session.id}::bigint)`,
+    ]);
     if (view === null) {
       return errorResponse(401, "INVALID_SESSION");
     }
-    return jsonResponse(view);
+    return stateResponse(view);
   } catch (error) {
     const noSession = noSessionResponse(error);
     if (noSession !== null) return noSession;

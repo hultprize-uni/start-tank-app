@@ -56,7 +56,8 @@ export async function provisionParticipant(
   const rows = await sql`
     insert into usuario (proveedor_oauth, id_externo, correo, nombre)
     values ('google', ${identity.externalId}, ${identity.email}, ${identity.name})
-    on conflict (proveedor_oauth, id_externo) do update set estado = 'ACTIVO'
+    on conflict (proveedor_oauth, id_externo)
+      do update set nombre = coalesce(excluded.nombre, usuario.nombre)
     returning id_usuario, saldo_actual, nombre
   `;
   const row = rows[0];

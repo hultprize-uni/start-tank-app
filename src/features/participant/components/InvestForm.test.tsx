@@ -1,85 +1,58 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { InvestmentResult, WalletInfo } from "../types";
 import { InvestForm } from "./InvestForm";
 
 afterEach(cleanup);
 
-const wallet: WalletInfo = { balance: 9_000, investedInRound: 0, roundCap: 2_700 };
+const wallet: WalletInfo = { balance: 9_000, investedInRound: 0, roundCap: 2_700, alreadyInvested: false };
+
+function renderForm(onConfirm = vi.fn(async (): Promise<InvestmentResult> => ({ ok: true }))) {
+  render(<InvestForm startupName="Nodo Solar" wallet={wallet} onConfirm={onConfirm} />);
+  return onConfirm;
+}
 
 describe("InvestForm", () => {
-  it("muestra el campo con atajos y la vista previa del retorno", () => {
-    render(<InvestForm wallet={wallet} onConfirm={vi.fn()} />);
+  it("ofrece los atajos 250, 25 % y Máx, y la vista previa de 1 a 5", async () => {
+    renderForm();
 
-    expect(screen.getByRole("spinbutton", { name: "Monto a invertir" })).toBeInTheDocument();
-    const shortcuts = screen.getByRole("group", { name: "Atajos de monto" });
-    expect(screen.getByRole("button", { name: "Mín 250" })).toBeInTheDocument();
-    expect(shortcuts).toContainElement(screen.getByRole("button", { name: "Tope 2,700" }));
-    const preview = screen.getByRole("group", { name: "Retorno según el jurado" });
-    expect(preview).toHaveTextContent("0 de 4 respaldan · 0.2x");
-    expect(preview).toHaveTextContent("4 de 4 respaldan · 1.8x");
+    expect(screen.getByRole("button", { name: "250" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "25%" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Máx" })).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Máx" }));
+    const preview = screen.getByRole("group", { name: "Lo que recibirías según el jurado" });
+    expect(preview).toHaveTextContent("1 de 5 0.2x540");
+    expect(preview).toHaveTextContent("5 de 5 1.8x4,860");
   });
 
-  it("deshabilita la confirmación hasta que el monto cumple las reglas", async () => {
+  it("no deja revisar un monto fuera de las reglas", async () => {
     const user = userEvent.setup();
-    render(<InvestForm wallet={wallet} onConfirm={vi.fn()} />);
-    const confirm = screen.getByRole("button", { name: "Confirmar inversión" });
+    renderForm();
+    const review = screen.getByRole("button", { name: "Revisar inversión" });
+    expect(review).toBeDisabled();
 
-    expect(confirm).toBeDisabled();
-
-    await user.type(screen.getByRole("spinbutton", { name: "Monto a invertir" }), "100");
-
-    expect(confirm).toBeDisabled();
-    expect(screen.getByText("El mínimo es 250 coins.")).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", { name: "Monto a invertir" })).toHaveAttribute("aria-invalid", "true");
+    await user.type(screen.getByRole("spinbutton", { name: "Monto a invertir" }), "3000");
+    expect(screen.getByText("Tu tope en esta ronda es 2,700.")).toBeInTheDocument();
+    expect(review).toBeDisabled();
   });
 
-  it("asigna el monto del atajo y envía la inversión confirmada", async () => {
+  it("confirma en dos pasos y permite volver a cambiar el monto", async () => {
     const user = userEvent.setup();
-    const onConfirm = vi.fn<(amount: number) => Promise<InvestmentResult>>(async () => ({ ok: true }));
-    render(<InvestForm wallet={wallet} onConfirm={onConfirm} />);
+    const onConfirm = renderForm();
 
-    await user.click(screen.getByRole("button", { name: "Mín 250" }));
+    await user.click(screen.getByRole("button", { name: "250" }));
+    await user.click(screen.getByRole("button", { name: "Revisar inversión" }));
+    expect(screen.getByText(/Es tu única inversión de esta ronda/)).toBeInTheDocument();
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Cambiar monto" }));
+    await user.click(screen.getByRole("button", { name: "Revisar inversión" }));
     await user.click(screen.getByRole("button", { name: "Confirmar inversión" }));
 
-    expect(onConfirm).toHaveBeenCalledWith(250);
-    await waitFor(() => expect(screen.getByRole("spinbutton", { name: "Monto a invertir" })).toHaveValue(null));
-  });
-
-  it("conserva el monto cuando el servidor rechaza la inversión", async () => {
-    const user = userEvent.setup();
-    const onConfirm = vi.fn<(amount: number) => Promise<InvestmentResult>>(async () => ({
-      ok: false,
-      message: "El mercado ya cerró.",
-    }));
-    render(<InvestForm wallet={wallet} onConfirm={onConfirm} />);
-
-    await user.click(screen.getByRole("button", { name: "Mín 250" }));
-    await user.click(screen.getByRole("button", { name: "Confirmar inversión" }));
-
-    await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("spinbutton", { name: "Monto a invertir" })).toHaveValue(250);
-  });
-
-  it("indica el envío pendiente y bloquea una segunda confirmación", async () => {
-    const user = userEvent.setup();
-    let resolve: (result: InvestmentResult) => void = () => undefined;
-    const onConfirm = vi.fn<(amount: number) => Promise<InvestmentResult>>(
-      () => new Promise((done) => (resolve = done)),
-    );
-    render(<InvestForm wallet={wallet} onConfirm={onConfirm} />);
-
-    await user.click(screen.getByRole("button", { name: "Mín 250" }));
-    await user.click(screen.getByRole("button", { name: "Confirmar inversión" }));
-
-    const pending = screen.getByRole("button", { name: /Confirmar inversión|Enviando inversión/ });
-    expect(pending).toHaveAttribute("aria-busy", "true");
-    expect(pending).toBeDisabled();
-
-    resolve({ ok: true });
-    await waitFor(() => expect(pending).not.toHaveAttribute("aria-busy"));
+    await waitFor(() => expect(onConfirm).toHaveBeenCalledWith(250));
   });
 });

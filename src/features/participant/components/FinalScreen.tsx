@@ -7,10 +7,12 @@ interface FinalScreenProps {
   /** Saldo final del inversionista. */
   balance: number;
   standing: StandingInfo;
+  /** Startup ganadora, si el cierre del evento ya la calculó. */
+  winnerStartup: string | null;
 }
 
-/** Cierre del evento: saldo final, posición y aciertos. La clasificación completa va en el panel lateral. */
-export function FinalScreen({ balance, standing }: FinalScreenProps) {
+/** Cierre del evento (RF-30): saldo final, posición, aciertos y startup ganadora. */
+export function FinalScreen({ balance, standing, winnerStartup }: FinalScreenProps) {
   return (
     <section className={styles.screen}>
       <Badge tone="yellow">Fin del evento</Badge>
@@ -35,9 +37,15 @@ export function FinalScreen({ balance, standing }: FinalScreenProps) {
         </dl>
       </GradientCard>
 
-      <p className={styles.note}>
-        El ganador y el premio al mejor ojo se anuncian en la pantalla del auditorio.
-      </p>
+      {winnerStartup !== null ? (
+        <p className={styles.note}>
+          Startup ganadora: <strong>{winnerStartup}</strong>
+        </p>
+      ) : (
+        <p className={styles.note}>
+          La startup ganadora y el premio al mejor ojo se anuncian en la pantalla del auditorio.
+        </p>
+      )}
     </section>
   );
 }

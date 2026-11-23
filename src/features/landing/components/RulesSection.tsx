@@ -1,70 +1,52 @@
-import { PAYOFF_LEVELS, ROUND_PHASES, RULE_CARDS } from "../content";
-import { toneClass } from "./tone";
+import { HOW_TO_PLAY, MULTIPLIER_BARS } from "../content";
 import styles from "./landing.module.css";
 
-/** Clase de cada segmento de la barra de la ronda, en el orden de las fases. El ancho proporcional va en la clase. */
-const SEGMENT_CLASS = [styles.segCyan, styles.segCyanLight, styles.segYellow, styles.segPink, styles.segPurple];
+/** Clase de color de cada barra del multiplicador, de puntaje 1 a 5. */
+const BAR_TONE = [styles.barLoss, styles.barLoss, styles.barNeutral, styles.barGain, styles.barTop];
 
-/** Altura de cada barra del gráfico de retorno, de menor a mayor. */
-const PAYOFF_BAR_CLASS = [styles.payoffBar1, styles.payoffBar2, styles.payoffBar3, styles.payoffBar4, styles.payoffBar5];
-
-/* Reglas del juego: duración de la ronda, fases, escenarios de retorno y reglas de inversión. */
+/* Cómo se juega: los cuatro pasos en orden y el gráfico del multiplicador según el puntaje. */
 export function RulesSection() {
   return (
-    <section id="reglas" className={styles.sectionAlt} aria-labelledby="rules-title">
+    <section id="como-se-juega" className={styles.section} aria-labelledby="rules-title">
       <div className={styles.container}>
+        <p className={styles.pillPink}>Cómo se juega</p>
         <h2 id="rules-title" className={styles.sectionTitle}>
-          Una ronda dura trece minutos
+          Inviertes una vez por ronda. El jurado mueve tu dinero.
         </h2>
-        <p className={styles.sectionLead}>
-          La secuencia se repite cinco veces. El mercado abre con el pitch y cierra en la última
-          llamada.
-        </p>
 
-        <div className={styles.roundBar} aria-hidden="true">
-          {ROUND_PHASES.map((phase, index) => (
-            <span key={phase.title} className={SEGMENT_CLASS[index]} />
-          ))}
-        </div>
-        <ol className={styles.phaseList}>
-          {ROUND_PHASES.map((phase) => (
-            <li key={phase.title} className={styles.phaseItem}>
-              <p className={`${styles.phaseDuration} ${toneClass(phase.tone)}`}>
-                {phase.duration}
-              </p>
-              <p className={styles.phaseTitle}>{phase.title}</p>
-              <p className={styles.phaseText}>{phase.text}</p>
+        <ol className={styles.steps}>
+          {HOW_TO_PLAY.map((step, index) => (
+            <li key={step.title} className={styles.step}>
+              <span className={styles.stepNumber} aria-hidden="true">
+                {index + 1}
+              </span>
+              <h3 className={styles.stepTitle}>{step.title}</h3>
+              <p className={styles.stepText}>{step.text}</p>
             </li>
           ))}
         </ol>
 
-        <h3 className={styles.subTitle}>Ganas solo si el jurado te da la razón</h3>
-        <p className={styles.sectionLead}>
-          El retorno depende del respaldo del jurado, no del precio. Con el jurado dividido recuperas
-          lo invertido y nada más.
-        </p>
-
-        <ul className={styles.payoff} aria-label="Retorno según los respaldos del jurado">
-          {PAYOFF_LEVELS.map((level, index) => (
-            <li key={level.votes} className={styles.payoffItem}>
-              <p className={`${styles.payoffMultiplier} ${toneClass(level.tone)}`}>
-                {level.multiplier}
-              </p>
-              <div className={`${styles.payoffBar} ${PAYOFF_BAR_CLASS[index]}`} aria-hidden="true" />
-              <p className={styles.payoffVotes}>{level.votes}</p>
-              <p className={styles.payoffNote}>{level.note}</p>
-            </li>
-          ))}
-        </ul>
-
-        <ul className={styles.ruleCards}>
-          {RULE_CARDS.map((card) => (
-            <li key={card.title} className={styles.ruleCard}>
-              <p className={styles.ruleTitle}>{card.title}</p>
-              <p className={styles.ruleText}>{card.text}</p>
-            </li>
-          ))}
-        </ul>
+        <figure className={styles.multiplier}>
+          <figcaption className={styles.multiplierCopy}>
+            <h3 className={styles.multiplierTitle}>Así se calcula tu retorno</h3>
+            <p className={styles.multiplierText}>
+              Multiplicador = 0.2 + 1.6 × (puntaje − 1) / 4. Un 3 es punto neutro: ni ganas ni pierdes.
+            </p>
+          </figcaption>
+          <ul className={styles.bars} aria-label="Multiplicador según el puntaje del jurado">
+            {MULTIPLIER_BARS.map((bar, index) => (
+              <li key={bar.score} className={styles.barItem}>
+                <span className={styles.barValue}>{bar.multiplier}</span>
+                <span
+                  className={`${styles.bar} ${BAR_TONE[index]}`}
+                  style={{ "--bar-height": `${20 + index * 20}%` } as React.CSSProperties}
+                  aria-hidden="true"
+                />
+                <span className={styles.barLabel}>Puntaje {bar.score}</span>
+              </li>
+            ))}
+          </ul>
+        </figure>
       </div>
     </section>
   );

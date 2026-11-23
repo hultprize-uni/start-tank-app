@@ -11,6 +11,10 @@ function round(
     id_ronda: String(partial.numero),
     multiplicador: null,
     segundos_ultima_llamada: null,
+    fase_termina_en: null,
+    segundos_restantes_pausa: null,
+    liquidada_en: null,
+    puntaje_jurado: null,
     startup_nombre: `Startup ${partial.numero}`,
     ods: "ODS 6",
     monto_acumulado: "0",
@@ -30,7 +34,14 @@ function event(states: readonly RoundState[]): RoundRow[] {
 }
 
 function vote(id: string, name: string, decision: RoundVoteRow["decision"]): RoundVoteRow {
-  return { id_jurado: id, nombre: name, decision };
+  return {
+    id_jurado: id,
+    nombre: name,
+    enviado: decision !== null,
+    se_abstiene: decision === "ABSTAIN",
+    puntaje: null,
+    decision,
+  };
 }
 
 describe("resolveCurrentRound", () => {

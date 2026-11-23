@@ -57,7 +57,7 @@ describe("POST /api/participant/invest", () => {
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toEqual({
       error: "BELOW_MINIMUM",
-      message: "El monto mínimo de compra es 250 coins.",
+      message: "El monto mínimo es 250 coins.",
     });
   });
 
@@ -66,7 +66,7 @@ describe("POST /api/participant/invest", () => {
     ["INSUFFICIENT_BALANCE", 422],
     ["ROUND_NOT_OPEN", 409],
     ["ROUND_NOT_FOUND", 409],
-    ["USER_INACTIVE", 403],
+    ["ALREADY_INVESTED", 409],
     ["USER_NOT_FOUND", 404],
   ])("mapea %s al estado %i con mensaje en español", async (code, state) => {
     registerMock.mockResolvedValue({ ok: false, error: code, balance: 9_000 });

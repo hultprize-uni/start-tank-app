@@ -1,5 +1,6 @@
 import { formatCoins } from "../format";
 import type { StandingInfo } from "../types";
+import { RankingWindow } from "./RankingWindow";
 import styles from "./RankingPanel.module.css";
 
 interface RankingPanelProps {
@@ -8,7 +9,6 @@ interface RankingPanelProps {
   showDelta: boolean;
 }
 
-/** Variación de la posición: texto con flecha y tono de color. */
 function describePositionChange(standing: StandingInfo): { text: string; tone: "up" | "down" | "flat" } {
   const delta = standing.previousPosition - standing.position;
   if (delta > 0) return { text: `▲ ${delta}`, tone: "up" };
@@ -16,12 +16,25 @@ function describePositionChange(standing: StandingInfo): { text: string; tone: "
   return { text: "= igual", tone: "flat" };
 }
 
-/** Clasificación parcial: posición del asistente y las tres primeras posiciones del evento. */
+/** Distancia al primero y al podio, en una frase. */
+function describeDistance(standing: StandingInfo): string {
+  if (standing.position === 1) return "Vas primero.";
+  const first = `A ${formatCoins(standing.distanceToFirst)} coins del primero`;
+  return standing.distanceToPodium > 0
+    ? `${first} y a ${formatCoins(standing.distanceToPodium)} del podio.`
+    : `${first}. Estás en el podio.`;
+}
+
+/**
+ * Clasificación (RF-23): tu posición, la distancia al primero y al podio, el top 3 y tus vecinos,
+ * 2 por arriba y 2 por abajo, con su movimiento respecto de la ronda anterior.
+ */
 export function RankingPanel({ standing, showDelta }: RankingPanelProps) {
   const change = describePositionChange(standing);
+  const inTopThree = standing.position <= 3;
 
   return (
-    <section className={styles.panel} aria-label="Clasificación parcial">
+    <section className={styles.panel} aria-label="Clasificación">
       <div className={styles.position}>
         <div>
           <p className={styles.label}>Tu posición</p>
@@ -33,21 +46,17 @@ export function RankingPanel({ standing, showDelta }: RankingPanelProps) {
           <span className={`${styles.delta} ${styles[change.tone]}`}>{change.text}</span>
         ) : null}
       </div>
+      <p className={styles.distance}>{describeDistance(standing)}</p>
 
-      <p className={styles.label}>Top 3</p>
-      <ol className={styles.list}>
-        {standing.topThree.map((entry) => (
-          <li
-            key={entry.position}
-            className={entry.isCurrent ? `${styles.row} ${styles.current}` : styles.row}
-          >
-            <span>
-              {entry.position} · {entry.name}
-            </span>
-            <span className={styles.balance}>{formatCoins(entry.balance)}</span>
-          </li>
-        ))}
-      </ol>
+      <p className={styles.label}>Podio</p>
+      <RankingWindow entries={standing.topThree} label="Podio" />
+
+      {!inTopThree && standing.window.length > 0 ? (
+        <>
+          <p className={styles.label}>A tu alrededor</p>
+          <RankingWindow entries={standing.window} label="Tus vecinos en la clasificación" />
+        </>
+      ) : null}
     </section>
   );
 }

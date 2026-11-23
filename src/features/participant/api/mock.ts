@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_CONFIG } from "@/shared/domain/config";
-import type { Decision } from "@/shared/domain/types";
+import { isHit as isHitMultiplier } from "@/shared/domain/scoring";
+import { juryFraction, multiplierForScore } from "@/shared/domain/verdict";
 import { MARKET_CLOSED_MESSAGE, describeInvestmentIssue } from "../messages";
 import { formatCoins } from "../format";
-import {
-  getInvestmentIssue,
-  getMarketPrice,
-  getMultiplier,
-  getRoundCap,
-} from "../rules";
+import { getInvestmentIssue, getMarketPrice, getRoundCap } from "../rules";
 import type {
   AnnulmentMode,
   ParticipantActions,
@@ -47,22 +43,19 @@ const ROOM_MIN_COINS = 250;
 const ROOM_RANGE_COINS = 1_800;
 const MAX_INVESTORS = 70;
 
+const DEMO_DESCRIPTION = "Startup de ejemplo para la demostración.";
 const STARTUPS: StartupInfo[] = [
-  { name: "Aurora Agro", sdg: "ODS 2 · Hambre cero", description: "Startup de ejemplo para la demostración." },
-  { name: "Nodo Solar", sdg: "ODS 7 · Energía asequible", description: "Startup de ejemplo para la demostración." },
-  { name: "Aqua Lima", sdg: "ODS 6 · Agua limpia", description: "Startup de ejemplo para la demostración." },
-  { name: "Tejido Vivo", sdg: "ODS 12 · Producción responsable", description: "Startup de ejemplo para la demostración." },
-  { name: "Ruta Verde", sdg: "ODS 11 · Ciudades sostenibles", description: "Startup de ejemplo para la demostración." },
+  { name: "Aurora Agro", sdg: "ODS 2 · Hambre cero", description: DEMO_DESCRIPTION, logoUrl: null },
+  { name: "Nodo Solar", sdg: "ODS 7 · Energía asequible", description: DEMO_DESCRIPTION, logoUrl: null },
+  { name: "Aqua Lima", sdg: "ODS 6 · Agua limpia", description: DEMO_DESCRIPTION, logoUrl: null },
+  { name: "Tejido Vivo", sdg: "ODS 12 · Producción responsable", description: DEMO_DESCRIPTION, logoUrl: null },
+  { name: "Ruta Verde", sdg: "ODS 11 · Ciudades sostenibles", description: DEMO_DESCRIPTION, logoUrl: null },
 ];
 
-/** Votos simulados de los cuatro jurados por ronda. */
-const ROUND_DECISIONS: Decision[][] = [
-  ["BACK", "BACK", "BACK", "REJECT"],
-  ["BACK", "BACK", "REJECT", "ABSTAIN"],
-  ["BACK", "BACK", "BACK", "BACK"],
-  ["BACK", "REJECT", "REJECT", "REJECT"],
-  ["BACK", "BACK", "BACK", "REJECT"],
-];
+/** Puntaje promedio simulado del jurado por ronda, de 1 a 5. */
+const ROUND_SCORES = [4, 3.75, 5, 1.75, 4.25];
+/** Startup ganadora de la demostración: la de mejor puntaje. */
+const DEMO_WINNER = STARTUPS[2].name;
 
 /**
  * Anulaciones simuladas por índice de ronda. La ronda 4 se anula con devolución para mostrar el
@@ -76,7 +69,9 @@ const TOP_NAMES = ["Sofía Mendoza", "Carlos Ruiz", "Lucía Paredes"];
 interface SettledRound {
   invested: number;
   payout: number;
+  multiplier: number;
   annulment: AnnulmentMode | null;
+  settledAt: string;
 }
 
 interface MockState {
@@ -90,6 +85,8 @@ interface MockState {
   raised: number;
   investors: number;
   countdown: number;
+  /** Hora en que cierra el mercado abierto, en milisegundos. */
+  openEndsAt: number;
   position: number;
   previousPosition: number;
   hits: number;
@@ -113,6 +110,7 @@ const INITIAL_STATE: MockState = {
   raised: 0,
   investors: 0,
   countdown: EVENT_CONFIG.lastCallSeconds,
+  openEndsAt: 0,
   position: REFERENCE_POSITION,
   previousPosition: REFERENCE_POSITION,
   hits: 0,
@@ -129,13 +127,33 @@ function balanceForPosition(position: number): number {
 }
 
 /** Veredicto simulado. Con anulación, el multiplicador es 1.0x y el retorno iguala lo invertido. */
-function computeVerdict(roundIndex: number, invested: number, annulment: AnnulmentMode | null): VerdictInfo {
-  const decisions = ROUND_DECISIONS[roundIndex];
-  const backs = decisions.filter((d) => d === "BACK").length;
-  const voters = decisions.filter((d) => d !== "ABSTAIN").length;
-  const multiplier = annulment !== null ? 1 : getMultiplier(backs, voters);
-  const payout = Math.round(invested * multiplier);
-  return { decisions, backs, voters, multiplier, invested, payout, gain: payout - invested, annulment };
+function computeVerdict(roundIndex: number, settled: SettledRound): VerdictInfo {
+  const score = settled.annulment === null ? ROUND_SCORES[roundIndex] : null;
+  return {
+    juryScore: score,
+    scorePct: score === null ? null : Math.round(juryFraction(score) * 100),
+    multiplier: settled.multiplier,
+    invested: settled.invested,
+    payout: settled.payout,
+    gain: settled.payout - settled.invested,
+    annulment: settled.annulment,
+    settledAt: settled.settledAt,
+  };
+}
+
+/** Aciertos seguidos en las últimas rondas en que invirtió. */
+function streakOf(settled: readonly SettledRound[]): number {
+  let streak = 0;
+  for (const round of [...settled].reverse()) {
+    if (round.invested === 0) continue;
+    if (round.annulment !== null || !isHitMultiplier(round.multiplier)) break;
+    streak += 1;
+  }
+  return streak;
+}
+
+function entry(position: number, name: string, previousPosition: number | null): StandingEntry {
+  return { position, name, balance: balanceForPosition(position), isCurrent: false, previousPosition };
 }
 
 function buildStanding(s: MockState): StandingInfo {
@@ -144,20 +162,24 @@ function buildStanding(s: MockState): StandingInfo {
     name: "Tú",
     balance: s.balance,
     isCurrent: true,
+    previousPosition: s.previousPosition,
   };
-  const topThree: StandingEntry[] = TOP_NAMES.map((name, index) => ({
-    position: index + 1,
-    name,
-    balance: balanceForPosition(index + 1),
-    isCurrent: false,
-  }));
+  const topThree = TOP_NAMES.map((name, index) => entry(index + 1, name, index + 1));
+  const window: StandingEntry[] = [];
+  for (let position = Math.max(1, s.position - 2); position <= Math.min(PARTICIPANTS, s.position + 2); position += 1) {
+    window.push(position === s.position ? me : entry(position, `Asistente ${position}`, position));
+  }
   return {
     position: s.position,
     previousPosition: s.previousPosition,
     participants: PARTICIPANTS,
     hits: s.hits,
     hitsTotal: s.settled.length,
+    streak: streakOf(s.settled),
     topThree,
+    window,
+    distanceToFirst: Math.max(0, balanceForPosition(1) - s.balance),
+    distanceToPodium: s.position <= 3 ? 0 : Math.max(0, balanceForPosition(3) - s.balance),
     me,
   };
 }
@@ -194,10 +216,11 @@ function deriveViewModel(s: MockState): ParticipantViewModel {
       startup: null,
       wallet: null,
       market: null,
-      countdownSeconds: null,
+      clock: null,
       verdict: null,
       standing: null,
       rounds: [],
+      winnerStartup: null,
     };
   }
 
@@ -213,6 +236,7 @@ function deriveViewModel(s: MockState): ParticipantViewModel {
       balance: s.balance,
       investedInRound: s.invested,
       roundCap: getRoundCap(s.roundStartBalance),
+      alreadyInvested: (isMarketOpen || s.phase === "voting") && s.invested > 0,
     },
     market: isMarketOpen
       ? {
@@ -222,12 +246,20 @@ function deriveViewModel(s: MockState): ParticipantViewModel {
           investorCount: s.investors,
         }
       : null,
-    countdownSeconds: s.phase === "lastCall" ? s.countdown : null,
-    verdict: isRevealed && lastSettled
-      ? computeVerdict(s.roundIndex, lastSettled.invested, lastSettled.annulment)
+    clock: isMarketOpen
+      ? {
+          serverTime: new Date().toISOString(),
+          phaseEndsAt: new Date(
+            s.phase === "lastCall" ? Date.now() + s.countdown * 1000 : s.openEndsAt,
+          ).toISOString(),
+          paused: false,
+          pausedSeconds: null,
+        }
       : null,
+    verdict: isRevealed && lastSettled ? computeVerdict(s.settled.length - 1, lastSettled) : null,
     standing: s.settled.length > 0 ? buildStanding(s) : null,
     rounds: buildRounds(s),
+    winnerStartup: s.phase === "final" ? DEMO_WINNER : null,
   };
 }
 
@@ -240,22 +272,26 @@ function startRound(s: MockState): MockState {
     raised: 0,
     investors: 0,
     countdown: EVENT_CONFIG.lastCallSeconds,
+    openEndsAt: Date.now() + (PHASE_DURATION_MS.open ?? 0),
   };
 }
 
 function revealVerdict(s: MockState): MockState {
   const annulment = ROUND_ANNULMENTS[s.roundIndex] ?? null;
-  const verdict = computeVerdict(s.roundIndex, s.invested, annulment);
-  const isHit = annulment === null && verdict.invested > 0 && verdict.backs >= 3;
-  const position = positionFor(s.balance + verdict.payout);
+  const multiplier = annulment !== null ? 1 : multiplierForScore(ROUND_SCORES[s.roundIndex]);
+  const payout = Math.round(s.invested * multiplier);
+  const hit = annulment === null && s.invested > 0 && isHitMultiplier(multiplier);
   return {
     ...s,
     phase: "result",
-    balance: s.balance + verdict.payout,
+    balance: s.balance + payout,
     previousPosition: s.position,
-    position,
-    hits: s.hits + (isHit ? 1 : 0),
-    settled: [...s.settled, { invested: s.invested, payout: verdict.payout, annulment }],
+    position: positionFor(s.balance + payout),
+    hits: s.hits + (hit ? 1 : 0),
+    settled: [
+      ...s.settled,
+      { invested: s.invested, payout, multiplier, annulment, settledAt: new Date().toISOString() },
+    ],
   };
 }
 
@@ -343,7 +379,10 @@ export function useParticipantMockState(): UseParticipantStateResult {
     if (current.phase !== "open" && current.phase !== "lastCall") {
       return { ok: false, message: MARKET_CLOSED_MESSAGE };
     }
-    const remainingCap = Math.max(0, getRoundCap(current.roundStartBalance) - current.invested);
+    if (current.invested > 0) {
+      return { ok: false, message: "Ya invertiste en esta ronda." };
+    }
+    const remainingCap = getRoundCap(current.roundStartBalance);
     const issue = getInvestmentIssue({ amount, balance: current.balance, remainingCap });
     if (issue !== null) {
       return { ok: false, message: describeInvestmentIssue(issue, formatCoins(remainingCap)) };

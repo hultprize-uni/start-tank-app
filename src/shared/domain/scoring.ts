@@ -1,36 +1,30 @@
 import { EVENT_CONFIG } from "./config";
 
-/** Número mínimo de respaldos para que una inversión cuente como acierto. */
-const HIT_MIN_BACKS = 3;
-
 /** Tolerancia para comparar puntajes con aritmética de punto flotante. */
 const SCORE_EPSILON = 1e-9;
 
-/** Situación de una startup al liquidar la última ronda. */
+/** Situación de una startup al cerrar el evento. */
 export interface StartupStanding {
   id: string;
-  /** Fracción de respaldo del jurado, entre 0 y 1. */
+  /** Fracción del jurado, entre 0 y 1: (puntaje - 1) / 4. Ver juryFraction. */
   fraction: number;
-  /** Porcentaje de asistentes que invirtieron en la startup, expresado entre 0 y 1. */
+  /** Porcentaje de asistentes que invirtieron en la startup, entre 0 y 1. */
   investorPct: number;
 }
 
-/** Registro de un asistente con los respaldos obtenidos por cada una de sus inversiones. */
+/** Registro de un asistente con el multiplicador de cada ronda en que invirtió. */
 export interface ParticipantRecord {
   id: string;
-  investmentBacks: readonly number[];
+  investmentMultipliers: readonly number[];
 }
 
-/** Asistente con mejor criterio de inversión. */
+/** Asistente con mejor ojo: el que más veces invirtió en startups con multiplicador mayor que 1. */
 export interface BestEye {
   id: string;
   hits: number;
 }
 
-/**
- * Calcula el puntaje de una startup: peso del jurado por la fracción de respaldo
- * más peso de la tracción por el porcentaje de asistentes que invirtieron.
- */
+/** Puntaje final de una startup: 60 % jurado y 40 % de asistentes que invirtieron en ella (RF-30). */
 export function startupScore(fraction: number, investorPct: number): number {
   return (
     EVENT_CONFIG.winnerWeightJury * fraction + EVENT_CONFIG.winnerWeightTraction * investorPct
@@ -38,9 +32,8 @@ export function startupScore(fraction: number, investorPct: number): number {
 }
 
 /**
- * Determina la startup ganadora por puntaje más alto. Ante empate se elige la de
- * mayor fracción de respaldo. Si ambos criterios coinciden, prevalece la primera
- * startup en el orden de entrada. Devuelve undefined cuando la lista está vacía.
+ * Startup ganadora por puntaje final. Ante empate gana la de mejor fracción del jurado; si también
+ * coincide, la primera en el orden de entrada. Devuelve undefined con la lista vacía.
  */
 export function pickWinner<T extends StartupStanding>(startups: readonly T[]): T | undefined {
   let winner: T | undefined;
@@ -48,17 +41,14 @@ export function pickWinner<T extends StartupStanding>(startups: readonly T[]): T
 
   for (const startup of startups) {
     const score = startupScore(startup.fraction, startup.investorPct);
-
     if (winner === undefined) {
       winner = startup;
       winnerScore = score;
       continue;
     }
-
-    const tie = Math.abs(score - winnerScore) <= SCORE_EPSILON;
     const better = score > winnerScore + SCORE_EPSILON;
-    const breaksTie = tie && startup.fraction > winner.fraction;
-
+    const breaksTie =
+      Math.abs(score - winnerScore) <= SCORE_EPSILON && startup.fraction > winner.fraction;
     if (better || breaksTie) {
       winner = startup;
       winnerScore = score;
@@ -68,28 +58,23 @@ export function pickWinner<T extends StartupStanding>(startups: readonly T[]): T
   return winner;
 }
 
-/**
- * Cuenta los aciertos a partir de los respaldos de cada inversión. Una inversión
- * es acierto cuando su startup obtuvo al menos 3 respaldos.
- */
-export function countHits(investmentBacks: readonly number[]): number {
-  return investmentBacks.filter((backs) => backs >= HIT_MIN_BACKS).length;
+/** Una inversión es acierto cuando su ronda se liquidó con multiplicador mayor que 1.0. */
+export function isHit(multiplier: number): boolean {
+  return multiplier > 1 + SCORE_EPSILON;
 }
 
-/**
- * Identifica al asistente con mejor ojo, es decir, con mayor número de aciertos.
- * Ante empate se devuelve el primero en el orden de entrada. Devuelve undefined
- * cuando la lista está vacía.
- */
+export function countHits(investmentMultipliers: readonly number[]): number {
+  return investmentMultipliers.filter(isHit).length;
+}
+
+/** Asistente con más aciertos; ante empate, el primero en el orden de entrada. */
 export function bestEye(investors: readonly ParticipantRecord[]): BestEye | undefined {
   let best: BestEye | undefined;
-
   for (const investor of investors) {
-    const hits = countHits(investor.investmentBacks);
+    const hits = countHits(investor.investmentMultipliers);
     if (best === undefined || hits > best.hits) {
       best = { id: investor.id, hits };
     }
   }
-
   return best;
 }

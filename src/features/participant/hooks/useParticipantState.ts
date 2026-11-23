@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
 import { EVENT_CONFIG } from "@/shared/domain/config";
+import { usePolling } from "@/shared/lib/use-polling";
 import { investAmount, fetchParticipantState, NO_SESSION } from "../api/client";
 import { useParticipantMockState } from "../api/mock";
 import { UPDATE_FAILED_MESSAGE } from "../messages";
@@ -10,6 +13,7 @@ import type {
   InvestmentResult,
   UseParticipantStateResult,
 } from "../types";
+import { useOptimisticBalance } from "./useOptimisticBalance";
 
 /*
  * Estado del portal del inversionista. Por defecto consulta la API real; la simulación solo se
@@ -17,71 +21,62 @@ import type {
  */
 
 /** View model de la fase de ingreso, usado cuando la API responde sin sesión. */
-const LOGIN_VIEW: ParticipantViewModel = {
+export const LOGIN_VIEW: ParticipantViewModel = {
   phase: "login",
   round: null,
   startup: null,
   wallet: null,
   market: null,
-  countdownSeconds: null,
+  clock: null,
   verdict: null,
   standing: null,
   rounds: [],
+  winnerStartup: null,
 };
 
 /**
- * Hook del estado real. Consulta la ruta de estado del participante al montar y cada
- * EVENT_CONFIG.investorPollMs. Al recargar la página, el estado se reanuda desde el servidor.
+ * Hook del estado real. Consulta cada 3 segundos (se detiene con la pestaña oculta). Al invertir
+ * descuenta el saldo en el acto y lo revierte si el servidor rechaza.
  */
 export function useParticipantRemoteState(): UseParticipantStateResult {
-  const [vm, setVm] = useState<ParticipantViewModel | null>(null);
+  const [serverVm, setServerVm] = useState<ParticipantViewModel | null>(null);
   const [status, setStatus] = useState<ParticipantLoadStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const refreshRef = useRef<(() => Promise<void>) | null>(null);
+  const optimistic = useOptimisticBalance(serverVm);
 
-  useEffect(() => {
-    let active = true;
-    let inFlight = false;
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetchParticipantState();
+      setServerVm(response === NO_SESSION ? LOGIN_VIEW : response);
+      setStatus("ready");
+      setErrorMessage(null);
+    } catch {
+      setStatus("error");
+      setErrorMessage(UPDATE_FAILED_MESSAGE);
+    }
+  }, []);
 
-    const refresh = async () => {
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        const response = await fetchParticipantState();
-        if (!active) return;
-        setVm(response === NO_SESSION ? LOGIN_VIEW : response);
-        setStatus("ready");
-        setErrorMessage(null);
-      } catch {
-        if (!active) return;
-        setStatus("error");
-        setErrorMessage(UPDATE_FAILED_MESSAGE);
-      } finally {
-        inFlight = false;
+  usePolling(refresh, EVENT_CONFIG.investorPollMs);
+
+  const { apply, revert, settle } = optimistic;
+  const invest = useCallback(
+    async (amount: number): Promise<InvestmentResult> => {
+      apply(amount);
+      const result = await investAmount(amount);
+      if (!result.ok) {
+        revert();
+        return result;
       }
-    };
-
-    refreshRef.current = refresh;
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), EVENT_CONFIG.investorPollMs);
-
-    return () => {
-      active = false;
-      refreshRef.current = null;
-      window.clearInterval(timer);
-    };
-  }, []);
-
-  /** Envía la inversión y actualiza el estado, con el resultado del servidor o con su rechazo. */
-  const invest = useCallback(async (amount: number): Promise<InvestmentResult> => {
-    const result = await investAmount(amount);
-    await refreshRef.current?.();
-    return result;
-  }, []);
+      await refresh();
+      settle();
+      return result;
+    },
+    [apply, revert, settle, refresh],
+  );
 
   const actions = useMemo<ParticipantActions>(() => ({ invest }), [invest]);
 
-  return { vm, status, errorMessage, actions };
+  return { vm: optimistic.vm, status, errorMessage, actions };
 }
 
 /** Estado del portal: API real, o simulación cuando NEXT_PUBLIC_USE_MOCKS vale "true". */

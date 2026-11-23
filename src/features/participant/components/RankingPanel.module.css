@@ -84,3 +84,22 @@
 .balance {
   font-variant-numeric: tabular-nums;
 }
+
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.move {
+  width: 1em;
+  font-size: 11px;
+  text-align: center;
+}
+
+.distance {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg-2);
+}

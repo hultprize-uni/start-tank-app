@@ -1,37 +1,35 @@
-import { SIGNUP_HREF } from "../content";
+import { LiveDot } from "@/shared/ui";
+import { LOGIN_HREF } from "../content";
 import { CtaLink } from "./CtaLink";
 import { HeroMarketCard } from "./HeroMarketCard";
 import styles from "./landing.module.css";
 
-/* Presentación del evento: titular, propuesta de valor, CTA y tarjeta de mercado. */
+/* Portada: titular con entrada escalonada, propuesta de valor, CTA y demo de mercado en vivo. */
 export function HeroSection() {
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
       <div className={styles.heroCopy}>
-        <h1 id="hero-title" className={styles.heroTitle}>
-          El público invierte.
-          <br />
-          <span className={styles.accentPink}>El jurado decide.</span>
-        </h1>
-        <p className={styles.lead}>
-          Cada asistente recibe 10,000 Impact Coins y los invierte en vivo, desde su teléfono,
-          mientras las cinco startups presentan.
+        <p className={`${styles.pill} ${styles.enter}`}>
+          <LiveDot tone="cyan" />
+          Jueves 26 de noviembre, 2:00 p. m.
         </p>
-        <div className={styles.ctaRow}>
-          <CtaLink href={SIGNUP_HREF}>Inscríbete en Luma</CtaLink>
-          <CtaLink href="#plataforma" variant="ghost">
-            Conoce la plataforma
+        <h1 id="hero-title" className={styles.heroTitle}>
+          <span className={styles.enter}>Cinco startups.</span>{" "}
+          <span className={styles.enter}>Tu capital.</span>{" "}
+          <span className={styles.enter}>El jurado decide.</span>
+        </h1>
+        <p className={`${styles.lead} ${styles.enter}`}>
+          El Shark Tank de Hult Prize at UNI. Invierte en vivo desde tu teléfono y gana si eliges
+          como el jurado.
+        </p>
+        <div className={`${styles.ctaRow} ${styles.enter}`}>
+          <CtaLink href={LOGIN_HREF}>Entrar a invertir</CtaLink>
+          <CtaLink href="#como-se-juega" variant="ghost">
+            Ver cómo se juega
           </CtaLink>
         </div>
-        <p className={styles.eventLine}>
-          Shark Tank Universitario, Edición Impacto ODS. Jueves 26 de noviembre, 2:00 p. m.,
-          Auditorio CTIC.
-        </p>
-        <p className={styles.credit}>
-          EF Hult Prize junto a la Universidad Nacional de Ingeniería
-        </p>
       </div>
-      <div className={styles.heroCard}>
+      <div className={`${styles.heroCard} ${styles.enterCard}`}>
         <HeroMarketCard />
       </div>
     </section>

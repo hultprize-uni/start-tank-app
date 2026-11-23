@@ -1,4 +1,5 @@
 import { EVENT_CONFIG } from "@/shared/domain/config";
+import { formatCoins } from "../format";
 
 /*
  * Traducción de los códigos de error de la API del inversionista a estados HTTP y mensajes en
@@ -23,24 +24,28 @@ const ERRORS: Readonly<Record<string, Omit<ParticipantError, "code">>> = {
   INVALID_AMOUNT: { status: 400, message: "El monto debe ser un número entero mayor que cero." },
   BELOW_MINIMUM: {
     status: 422,
-    message: `El monto mínimo de compra es ${EVENT_CONFIG.minInvestment} coins.`,
+    message: `El monto mínimo es ${formatCoins(EVENT_CONFIG.minInvestment)} coins.`,
   },
   ROUND_CAP_EXCEEDED: {
     status: 422,
-    message: "Superas tu tope de esta ronda, que equivale al 30 % de tu saldo al abrirla.",
+    message: "Superas tu tope de esta ronda: 30 % de tu saldo.",
   },
   INSUFFICIENT_BALANCE: { status: 422, message: "Tu saldo no alcanza para este monto." },
-  ROUND_NOT_OPEN: { status: 409, message: "La ronda no está abierta para invertir." },
+  ALREADY_INVESTED: { status: 409, message: "Ya invertiste en esta ronda." },
+  MARKET_PAUSED: { status: 409, message: "Mercado en pausa. Espera a que el conductor lo reanude." },
+  ROUND_NOT_OPEN: { status: 409, message: "El mercado ya cerró." },
   ROUND_NOT_FOUND: { status: 409, message: "No hay una ronda disponible para invertir." },
   USER_NOT_FOUND: { status: 404, message: "No encontramos tu cuenta de inversionista." },
-  USER_INACTIVE: { status: 403, message: "Tu cuenta no está activa." },
 };
 
 /**
- * Devuelve el estado HTTP, el código y el mensaje para un código de error. Los códigos no
- * reconocidos usan un mensaje genérico con estado 500.
+ * Devuelve el estado HTTP, el código y el mensaje para un código de error. Con el tope informado
+ * por la función SQL, el mensaje lo incluye. Los códigos desconocidos usan un mensaje genérico.
  */
-export function participantError(code: string | undefined): ParticipantError {
+export function participantError(code: string | undefined, cap?: number): ParticipantError {
+  if (code === "ROUND_CAP_EXCEEDED" && cap !== undefined) {
+    return { code, status: 422, message: `Tu tope en esta ronda es ${formatCoins(cap)} coins.` };
+  }
   if (code !== undefined && Object.prototype.hasOwnProperty.call(ERRORS, code)) {
     return { code, ...ERRORS[code] };
   }

@@ -15,6 +15,8 @@ export type SqlResponses = Record<string, unknown[]>;
 export function setupSql(sqlMock: Mock, responses: SqlResponses): void {
   sqlMock.mockImplementation(async (strings: TemplateStringsArray) => {
     const text = strings.join("?");
+    // queryRounds cierra la última llamada vencida antes de leer; no devuelve filas que importen.
+    if (text.includes("fn_cerrar_ultima_llamada_vencida")) return [];
     const key = Object.keys(responses).find((fragment) => text.includes(fragment));
     if (key === undefined) {
       throw new Error(`Consulta no mockeada: ${text.trim().slice(0, 80)}`);

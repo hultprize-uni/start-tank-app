@@ -32,6 +32,18 @@ describe("code-session", () => {
     vi.clearAllMocks();
   });
 
+  it.each([
+    ["jury", 3],
+    ["operator", 4],
+  ] as const)("firma la sesión de %s por %i horas", async (role, hours) => {
+    const token = await signSession(role, "7");
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()) as {
+      iat: number;
+      exp: number;
+    };
+    expect(payload.exp - payload.iat).toBe(hours * 3600);
+  });
+
   it("verifica un token firmado para el mismo rol y devuelve el identificador", async () => {
     const token = await signSession("jury", "7");
     await expect(verifySession(token, "jury")).resolves.toBe("7");

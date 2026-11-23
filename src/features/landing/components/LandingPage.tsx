@@ -4,16 +4,15 @@ import { HeroSection } from "./HeroSection";
 import { LandingFooter } from "./LandingFooter";
 import { LandingHeader } from "./LandingHeader";
 import { PlatformSection } from "./PlatformSection";
+import { PrizesSection } from "./PrizesSection";
 import { ProgramSection } from "./ProgramSection";
 import { RulesSection } from "./RulesSection";
 import { SignupSection } from "./SignupSection";
-import { StartupCallSection } from "./StartupCallSection";
 import styles from "./landing.module.css";
 
 /*
- * Portada pública del evento. Ensambla las secciones en el orden del prototipo. Los datos
- * estructurados del evento se incluyen para los buscadores; el contenido es estático y no se
- * obtiene de la base de datos.
+ * Portada pública del evento, en el orden del diseño de Figma (02 Landing). El contenido es
+ * estático; los datos estructurados del evento se incluyen para los buscadores.
  */
 export function LandingPage() {
   return (
@@ -22,14 +21,17 @@ export function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(EVENT_JSON_LD) }}
       />
+      <a href="#contenido" className={styles.skip}>
+        Saltar al contenido
+      </a>
       <LandingHeader />
       <main id="contenido">
         <HeroSection />
         <EventFacts />
-        <ProgramSection />
         <RulesSection />
+        <ProgramSection />
         <PlatformSection />
-        <StartupCallSection />
+        <PrizesSection />
         <SignupSection />
       </main>
       <LandingFooter />

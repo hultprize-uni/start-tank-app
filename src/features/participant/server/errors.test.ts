@@ -3,16 +3,16 @@ import { participantError } from "./errors";
 
 describe("participantError", () => {
   it.each([
-    ["BELOW_MINIMUM", 422, "El monto mínimo de compra es 250 coins."],
-    ["ROUND_CAP_EXCEEDED", 422, "Superas tu tope de esta ronda, que equivale al 30 % de tu saldo al abrirla."],
+    ["BELOW_MINIMUM", 422, "El monto mínimo es 250 coins."],
+    ["ROUND_CAP_EXCEEDED", 422, "Superas tu tope de esta ronda: 30 % de tu saldo."],
     ["INSUFFICIENT_BALANCE", 422, "Tu saldo no alcanza para este monto."],
-    ["ROUND_NOT_OPEN", 409, "La ronda no está abierta para invertir."],
+    ["ROUND_NOT_OPEN", 409, "El mercado ya cerró."],
   ])("traduce %s a estado %i con mensaje en español", (code, state, message) => {
     expect(participantError(code)).toEqual({ code, status: state, message });
   });
 
   it("asigna estado propio a los errores de cuenta y de ronda inexistente", () => {
-    expect(participantError("USER_INACTIVE").status).toBe(403);
+    expect(participantError("ALREADY_INVESTED").status).toBe(409);
     expect(participantError("USER_NOT_FOUND").status).toBe(404);
     expect(participantError("ROUND_NOT_FOUND").status).toBe(409);
   });

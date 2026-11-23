@@ -11,8 +11,8 @@ describe("VotingScreen", () => {
     render(
       <VotingScreen
         round={{ number: 3, total: 5 }}
-        startup={{ name: "Aqua Lima", sdg: "ODS 6", description: "" }}
-        wallet={{ balance: 8_000, investedInRound: 750, roundCap: 2_700 }}
+        startup={{ name: "Aqua Lima", sdg: "ODS 6", description: "", logoUrl: null }}
+        wallet={{ balance: 8_000, investedInRound: 750, roundCap: 2_700, alreadyInvested: false }}
       />,
     );
 
@@ -26,8 +26,8 @@ describe("VotingScreen", () => {
     render(
       <VotingScreen
         round={{ number: 3, total: 5 }}
-        startup={{ name: "Aqua Lima", sdg: "ODS 6", description: "" }}
-        wallet={{ balance: 8_000, investedInRound: 0, roundCap: 2_700 }}
+        startup={{ name: "Aqua Lima", sdg: "ODS 6", description: "", logoUrl: null }}
+        wallet={{ balance: 8_000, investedInRound: 0, roundCap: 2_700, alreadyInvested: false }}
       />,
     );
 

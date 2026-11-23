@@ -51,6 +51,46 @@
   color: var(--st-cyan-light);
 }
 
+.multiplier {
+  margin-left: 6px;
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.confirmAmount {
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(2.25rem, 8vw, 3rem);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  font-size: 0.4em;
+  font-weight: 600;
+  color: var(--fg-3);
+}
+
+.confirmText {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: var(--sp-2);
+}
+
 .note {
   margin: 0;
   font-size: 12px;

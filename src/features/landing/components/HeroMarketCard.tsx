@@ -1,77 +1,77 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, GradientCard, LiveDot, StatBlock } from "@/shared/ui";
+import { GradientCard, LiveDot } from "@/shared/ui";
 import { usePrefersReducedMotion } from "@/shared/lib/use-prefers-reduced-motion";
-import { DEMO_STARTUPS, marketFrame } from "./market-demo";
+import { marketFrame } from "./market-demo";
 import styles from "./landing.module.css";
 
-/** Intervalo de avance de la serie de precio, en milisegundos. */
-const TICK_MS = 1200;
-/** Intervalo de cambio de startup, en milisegundos. */
-const STARTUP_MS = 9600;
-
-interface DemoState {
-  tick: number;
-  index: number;
-}
+/** Una inversión simulada cada 1.4 segundos. */
+const TICK_MS = 1400;
 
 /*
- * Tarjeta de mercado de la portada. Muestra una simulación con datos de muestra. Con movimiento
- * reducido, la tarjeta permanece en su primer cuadro. No consulta la API ni escribe datos.
+ * Demo de mercado en vivo de la portada (Figma: "Demo de mercado en vivo"): precio, curva
+ * escalonada que sube con cada inversión y cinta de startups. Datos de muestra; no consulta la API.
+ * Con movimiento reducido queda fija en su primer cuadro.
  */
 export function HeroMarketCard() {
   const reducedMotion = usePrefersReducedMotion();
-  const [demo, setDemo] = useState<DemoState>({ tick: 0, index: 2 });
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (reducedMotion) return;
-    const frameId = setInterval(() => {
-      setDemo((current) => ({ ...current, tick: current.tick + 1 }));
-    }, TICK_MS);
-    const startupId = setInterval(() => {
-      setDemo((current) => ({
-        tick: 0,
-        index: (current.index + 1) % DEMO_STARTUPS.length,
-      }));
-    }, STARTUP_MS);
-    return () => {
-      clearInterval(frameId);
-      clearInterval(startupId);
-    };
+    const id = setInterval(() => setTick((current) => current + 1), TICK_MS);
+    return () => clearInterval(id);
   }, [reducedMotion]);
 
-  const startup = DEMO_STARTUPS[demo.index];
-  const frame = marketFrame(demo.tick, demo.index);
+  const frame = marketFrame(tick);
 
   return (
-    <GradientCard glow className={styles.heroFrame} panelClassName={styles.heroPanel}>
-      <div className={styles.heroTop}>
-        <span className={styles.heroLive}>
+    <GradientCard glow className={styles.demoFrame} panelClassName={styles.demoPanel}>
+      <div className={styles.demoTop}>
+        <span className={styles.demoLive}>
           <LiveDot tone="cyan" />
-          Mercado en vivo
+          En vivo
         </span>
-        <span className={styles.heroRound}>Ronda 3 de 5</span>
+        <span className={styles.demoRound}>Ronda 2 de 5</span>
       </div>
-      <p className={styles.heroStartup}>{startup.name}</p>
-      <p className={styles.heroOds}>{startup.ods}</p>
-      <div className={styles.heroPriceRow}>
-        <p className={styles.heroPrice}>{frame.price}</p>
-        <Badge tone="cyan">{frame.delta}</Badge>
+
+      <div className={styles.demoStartup}>
+        <span className={styles.demoLogo} aria-hidden="true">
+          AC
+        </span>
+        <div>
+          <p className={styles.demoName}>AguaClara</p>
+          <p className={styles.demoOds}>ODS 6: Agua limpia</p>
+        </div>
       </div>
-      <svg
-        viewBox="0 0 100 28"
-        preserveAspectRatio="none"
-        className={styles.sparkline}
-        aria-hidden="true"
-        focusable="false"
-      >
-        <polyline points={frame.points} />
+
+      <div className={styles.demoPriceRow} aria-label={`Precio en vivo ${frame.price}`}>
+        <p key={frame.price} className={styles.demoPrice}>
+          {frame.price}
+        </p>
+        <p className={styles.demoDelta}>{frame.delta}</p>
+      </div>
+
+      <svg viewBox="0 0 100 30" preserveAspectRatio="none" className={styles.demoCurve} aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="demo-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="var(--st-cyan)" stopOpacity="0.35" />
+            <stop offset="1" stopColor="var(--st-cyan)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points={frame.area} fill="url(#demo-fill)" />
+        <polyline points={frame.line} />
       </svg>
-      <div className={styles.heroStats}>
-        <StatBlock label="Acumulado" value={`${frame.accumulated} IC`} size="md" />
-        <StatBlock label="Inversores" value={frame.investors} size="md" />
-      </div>
+
+      <ul className={styles.demoTape} aria-label="Startups de la noche">
+        <li className={styles.tapeChip}>
+          AgroSense <span className={styles.tapeUp}>▲ 1.4x</span>
+        </li>
+        <li className={styles.tapeChip}>
+          AguaClara <span className={styles.tapeLive}>● en escena</span>
+        </li>
+      </ul>
     </GradientCard>
   );
 }

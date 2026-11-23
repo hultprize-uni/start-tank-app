@@ -1,48 +1,36 @@
 import Link from "next/link";
-import { PLATFORM_MODULES } from "../content";
+import { LOGIN_HREF, PLATFORM_SCREENS } from "../content";
+import { CtaLink } from "./CtaLink";
 import styles from "./landing.module.css";
 
-/* Módulos de la plataforma. Cada tarjeta enlaza al portal que le corresponde. */
-export function PlatformSection() {
-  const screen = PLATFORM_MODULES.screen;
+const SCREEN_TONE = { cyan: styles.screenCyan, pink: styles.screenPink, muted: styles.screenMuted };
 
+/* Plataforma: el teléfono del asistente y las otras tres pantallas conectadas. */
+export function PlatformSection() {
   return (
     <section id="plataforma" className={styles.section} aria-labelledby="platform-title">
       <div className={styles.container}>
         <h2 id="platform-title" className={styles.sectionTitle}>
-          Cuatro módulos, una sola base de datos
+          Una plataforma, cuatro pantallas conectadas
         </h2>
-        <p className={styles.sectionLead}>
-          Cada rol entra a su propio módulo y no puede ejecutar las acciones de los otros. Abre cada
-          uno en una pestaña distinta: comparten el estado del evento en vivo.
-        </p>
-        <div className={styles.moduleGrid}>
-          <Link href={screen.href} className={`${styles.module} ${styles.moduleScreen}`}>
-            <span className={styles.moduleTitle}>{screen.title}</span>
-            <span className={styles.moduleText}>{screen.text}</span>
-            <span className={styles.moduleAction}>Abrir módulo</span>
-          </Link>
-          <Link
-            href={PLATFORM_MODULES.investor.href}
-            className={`${styles.module} ${styles.moduleInvestor}`}
-          >
-            <span className={styles.moduleTitle}>{PLATFORM_MODULES.investor.title}</span>
-            <span className={styles.moduleText}>{PLATFORM_MODULES.investor.text}</span>
-            <span className={styles.moduleAction}>Abrir módulo</span>
-          </Link>
-          <Link href={PLATFORM_MODULES.jury.href} className={`${styles.module} ${styles.moduleJury}`}>
-            <span className={styles.moduleTitle}>{PLATFORM_MODULES.jury.title}</span>
-            <span className={styles.moduleText}>{PLATFORM_MODULES.jury.text}</span>
-            <span className={styles.moduleAction}>Abrir módulo</span>
-          </Link>
-          <Link
-            href={PLATFORM_MODULES.operator.href}
-            className={`${styles.module} ${styles.moduleOperator}`}
-          >
-            <span className={styles.moduleTitle}>{PLATFORM_MODULES.operator.title}</span>
-            <span className={styles.moduleText}>{PLATFORM_MODULES.operator.text}</span>
-            <span className={styles.moduleAction}>Abrir módulo</span>
-          </Link>
+        <div className={styles.platform}>
+          <article className={styles.phoneCard}>
+            <p className={styles.cardTag}>Tu teléfono</p>
+            <h3 className={styles.phoneTitle}>Inviertes, ves el precio en vivo y tu posición en la tabla.</h3>
+            <CtaLink href={LOGIN_HREF} variant="ghost">
+              Entrar a invertir
+            </CtaLink>
+          </article>
+          <ul className={styles.screens}>
+            {PLATFORM_SCREENS.map((screen) => (
+              <li key={screen.title} className={`${styles.screenCard} ${SCREEN_TONE[screen.tone]}`}>
+                <h3 className={styles.screenTitle}>
+                  <Link href={screen.href}>{screen.title}</Link>
+                </h3>
+                <p className={styles.screenText}>{screen.text}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

@@ -1,88 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { bestEye, countHits, pickWinner, startupScore } from "./scoring";
+import { bestEye, countHits, isHit, pickWinner, startupScore } from "./scoring";
 
 describe("startupScore", () => {
-  it("calcula 0.6 x fracción más 0.4 x porcentaje de asistentes", () => {
-    // Fracción 1.00 y 30 por ciento de asistentes: 0.6 + 0.12 = 0.72.
-    expect(startupScore(1, 0.3)).toBeCloseTo(0.72);
-  });
-
-  it("devuelve 0 cuando no hay respaldos ni inversiones", () => {
-    expect(startupScore(0, 0)).toBe(0);
+  it("weights the jury 60 percent and the investors 40 percent", () => {
+    expect(startupScore(0.75, 0.25)).toBeCloseTo(0.55);
   });
 });
 
 describe("pickWinner", () => {
-  it("elige la startup con el puntaje más alto", () => {
+  it("picks the highest final score", () => {
     const winner = pickWinner([
-      { id: "A", fraction: 0.5, investorPct: 0.9 },
-      { id: "B", fraction: 1, investorPct: 0.3 },
-      { id: "C", fraction: 0.25, investorPct: 0.2 },
+      { id: "a", fraction: 0.5, investorPct: 0.2 },
+      { id: "b", fraction: 0.75, investorPct: 0.25 },
     ]);
-
-    // A: 0.30 + 0.36 = 0.66; B: 0.72; C: 0.23.
-    expect(winner?.id).toBe("B");
+    expect(winner?.id).toBe("b");
   });
 
-  it("desempata por la mayor fracción de respaldo cuando el puntaje coincide", () => {
-    // Ambas startups suman 0.5: X con fracción 0.5 y tracción 0.5; Y con fracción 0.75 y tracción 0.125.
+  it("breaks a tie with the jury fraction", () => {
     const winner = pickWinner([
-      { id: "X", fraction: 0.5, investorPct: 0.5 },
-      { id: "Y", fraction: 0.75, investorPct: 0.125 },
+      { id: "a", fraction: 0.4, investorPct: 0.6 },
+      { id: "b", fraction: 0.6, investorPct: 0.3 },
     ]);
-
-    expect(winner?.id).toBe("Y");
+    expect(winner?.id).toBe("b");
   });
 
-  it("conserva la primera startup cuando puntaje y fracción coinciden", () => {
-    const winner = pickWinner([
-      { id: "P", fraction: 0.5, investorPct: 0.5 },
-      { id: "Q", fraction: 0.5, investorPct: 0.5 },
-    ]);
-
-    expect(winner?.id).toBe("P");
-  });
-
-  it("devuelve undefined cuando no hay startups", () => {
+  it("returns undefined for an empty list", () => {
     expect(pickWinner([])).toBeUndefined();
   });
 });
 
-describe("countHits", () => {
-  it("cuenta las inversiones en startups con 3 o 4 respaldos", () => {
-    expect(countHits([4, 3, 2, 1, 0])).toBe(2);
+describe("hits", () => {
+  it("counts only multipliers above 1.0", () => {
+    expect(isHit(1)).toBe(false);
+    expect(isHit(1.1)).toBe(true);
+    expect(countHits([0.2, 1, 1.4, 1.8])).toBe(2);
   });
 
-  it("cuenta como acierto las inversiones con 3 respaldos de 3 votos", () => {
-    expect(countHits([3])).toBe(1);
-  });
-
-  it("devuelve 0 cuando no hay inversiones", () => {
-    expect(countHits([])).toBe(0);
-  });
-});
-
-describe("bestEye", () => {
-  it("identifica al asistente con mayor número de aciertos", () => {
-    const best = bestEye([
-      { id: "ana", investmentBacks: [4, 1, 0] },
-      { id: "luis", investmentBacks: [3, 3, 4, 2] },
-      { id: "marta", investmentBacks: [0] },
-    ]);
-
-    expect(best).toEqual({ id: "luis", hits: 3 });
-  });
-
-  it("no premia la cantidad de inversiones que no son aciertos", () => {
-    const best = bestEye([
-      { id: "prudente", investmentBacks: [3] },
-      { id: "arriesgado", investmentBacks: [1, 1, 1, 1] },
-    ]);
-
-    expect(best).toEqual({ id: "prudente", hits: 1 });
-  });
-
-  it("devuelve undefined cuando no hay asistentes", () => {
-    expect(bestEye([])).toBeUndefined();
+  it("finds the attendee with most hits, first on ties", () => {
+    expect(
+      bestEye([
+        { id: "a", investmentMultipliers: [1.4] },
+        { id: "b", investmentMultipliers: [1.4, 1.8] },
+        { id: "c", investmentMultipliers: [1.2, 1.6] },
+      ]),
+    ).toEqual({ id: "b", hits: 2 });
   });
 });

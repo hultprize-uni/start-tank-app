@@ -12,14 +12,14 @@ const standing: StandingInfo = {
   previousPosition: 5,
   participants: 74,
   hits: 2,
-  hitsTotal: 5,
+  hitsTotal: 5, streak: 0, window: [], distanceToFirst: 0, distanceToPodium: 0,
   topThree: [],
-  me: { position: 3, name: "Tú", balance: 12_480, isCurrent: true },
+  me: { position: 3, name: "Tú", balance: 12_480, isCurrent: true, previousPosition: null },
 };
 
 describe("FinalScreen", () => {
   it("muestra el saldo final, la posición y los aciertos del evento", () => {
-    render(<FinalScreen balance={12_480} standing={standing} />);
+    render(<FinalScreen balance={12_480} standing={standing} winnerStartup={null} />);
 
     expect(screen.getByText("Fin del evento")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Gracias por invertir." })).toBeInTheDocument();
@@ -30,10 +30,10 @@ describe("FinalScreen", () => {
   });
 
   it("anuncia la premiación en la pantalla del auditorio", () => {
-    render(<FinalScreen balance={12_480} standing={standing} />);
+    render(<FinalScreen balance={12_480} standing={standing} winnerStartup={null} />);
 
     expect(
-      screen.getByText("El ganador y el premio al mejor ojo se anuncian en la pantalla del auditorio."),
+      screen.getByText("La startup ganadora y el premio al mejor ojo se anuncian en la pantalla del auditorio."),
     ).toBeInTheDocument();
   });
 });

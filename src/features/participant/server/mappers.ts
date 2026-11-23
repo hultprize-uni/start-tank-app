@@ -1,4 +1,3 @@
-import { getRoundCap } from "../rules";
 import type {
   AnnulmentMode,
   MarketInfo,
@@ -14,7 +13,10 @@ import type {
   WalletInfo,
 } from "../types";
 import { EVENT_CONFIG } from "@/shared/domain/config";
-import type { Decision, RoundState } from "@/shared/domain/types";
+import { roundCap } from "@/shared/domain/investment";
+import { isHit } from "@/shared/domain/scoring";
+import type { PhaseClock, RoundState } from "@/shared/domain/types";
+import { juryFraction } from "@/shared/domain/verdict";
 import { parseSdg } from "@/server/db/values";
 
 /*
@@ -25,16 +27,14 @@ import { parseSdg } from "@/server/db/values";
 
 /** Nombre con el que se presenta la fila propia del inversionista en la clasificación. */
 const OWN_NAME = "Tú";
+const PODIUM_SIZE = 3;
 
-/** Estados en los que una ronda ocupa el turno de la sala. */
 const ACTIVE_STATES: ReadonlySet<RoundState> = new Set<RoundState>([
   "OPEN",
   "LAST_CALL",
   "CLOSED",
   "VOTING",
 ]);
-
-/** Estados terminales de una ronda: liquidada o anulada. */
 const FINISHED_STATES: ReadonlySet<RoundState> = new Set<RoundState>(["SETTLED", "CANCELLED"]);
 
 /** Fila de la ronda con los datos de su startup y de su startup_leaderboard. */
@@ -43,14 +43,18 @@ export interface ParticipantRoundRow {
   numero: number;
   estado: RoundState;
   multiplicador: string | null;
-  /** Segundos transcurridos desde la última llamada. Nulo si la ronda nunca la tuvo. */
-  segundos_ultima_llamada: number | null;
+  /** Hora ISO en que termina la fase actual. */
+  fase_termina_en: string | null;
+  segundos_restantes_pausa: number | null;
+  liquidada_en: string | null;
   startup_nombre: string;
   ods: string | null;
   descripcion: string | null;
+  logo_url: string | null;
   monto_acumulado: string | null;
   inversores_unicos: number | null;
   precio_vivo: string | null;
+  puntaje_jurado: string | null;
 }
 
 /** Monto invertido y retorno del asistente en una ronda. */
@@ -75,24 +79,24 @@ export interface ParticipantStateData {
   balance: number;
   rounds: readonly ParticipantRoundRow[];
   investments: readonly UserInvestmentRow[];
-  /** Votos emitidos en la última ronda terminada. Las abstenciones se incluyen. */
-  lastDecisions: readonly Decision[];
   /** Primeras tres filas del leaderboard de la última ronda terminada. */
   topThreeRows: readonly ParticipantLeaderboardRow[];
+  /** Filas alrededor del inversionista: hasta 2 por arriba y 2 por abajo, incluida la suya. */
+  windowRows: readonly ParticipantLeaderboardRow[];
   /** Fila del inversionista en el leaderboard de la última ronda terminada. */
   ownRow: ParticipantLeaderboardRow | null;
   /** Número de filas del leaderboard de la última ronda terminada. */
   participants: number;
-  /** Posición del inversionista en la ronda terminada anterior, si existe. */
-  previousPosition: number | null;
-  /**
-   * Identificadores de las rondas que el operador liquidó a 1.0x. Una ronda liquidada a 1.0x queda
-   * en estado LIQUIDADA; esta lista permite distinguirla de una liquidación ordinaria.
-   */
+  /** Posición de cada asistente en la ronda terminada anterior, por identificador. */
+  previousPositions: ReadonlyMap<string, number>;
+  /** Identificadores de las rondas que el operador liquidó a 1.0x. */
   settledAtOneRoundIds: readonly string[];
+  /** Startup ganadora del evento, cuando el cierre ya calculó el puntaje final. */
+  winnerStartup: string | null;
+  /** Hora del servidor en que se arma el estado. */
+  now: Date;
 }
 
-/** Rondas ordenadas por número ascendente sin modificar la lista original. */
 function sortRounds(rounds: readonly ParticipantRoundRow[]): ParticipantRoundRow[] {
   return [...rounds].sort((a, b) => a.numero - b.numero);
 }
@@ -102,62 +106,89 @@ export function finishedRoundsOf(rounds: readonly ParticipantRoundRow[]): Partic
   return sortRounds(rounds).filter((r) => FINISHED_STATES.has(r.estado));
 }
 
-/** Segundos restantes de la última llamada, acotados entre cero y el conteo configurado. */
-function secondsRemaining(seconds: number | null): number {
-  if (seconds === null) return EVENT_CONFIG.lastCallSeconds;
-  const elapsed = Math.floor(seconds);
-  return Math.max(0, EVENT_CONFIG.lastCallSeconds - elapsed);
-}
-
 /** Nombre visible de la startup y de su ODS, por ejemplo "ODS 7 · Energía asequible y no contaminante". */
 function buildStartupInfo(row: ParticipantRoundRow): StartupInfo {
   const sdg = parseSdg(row.ods);
   const label = sdg.number > 0 ? `ODS ${sdg.number} · ${sdg.name}` : (row.ods ?? "");
-  return { name: row.startup_nombre, sdg: label, description: row.descripcion ?? "" };
+  return {
+    name: row.startup_nombre,
+    sdg: label,
+    description: row.descripcion ?? "",
+    logoUrl: row.logo_url,
+  };
 }
 
-/** Modo de anulación de una ronda terminada. Las rondas anuladas con devolución quedan en CANCELLED. */
-function annulmentOf(
-  row: ParticipantRoundRow,
-  settledAtOne: ReadonlySet<string>,
-): AnnulmentMode | null {
+function annulmentOf(row: ParticipantRoundRow, settledAtOne: ReadonlySet<string>): AnnulmentMode | null {
   if (!FINISHED_STATES.has(row.estado)) return null;
   if (row.estado === "CANCELLED") return "refund";
   return settledAtOne.has(row.id_ronda) ? "settle-1x" : null;
 }
 
-/**
- * Posición propia: fila del leaderboard de la última ronda terminada. Si la fila falta, se usa la
- * última posición de la tabla como valor de respaldo.
- */
-function buildOwnEntry(data: ParticipantStateData): StandingEntry {
-  const position = data.ownRow?.posicion ?? data.participants;
-  const balance = data.ownRow ? Number(data.ownRow.saldo) : data.balance;
-  return { position, name: OWN_NAME, balance, isCurrent: true };
+function toEntry(
+  row: ParticipantLeaderboardRow,
+  data: ParticipantStateData,
+): StandingEntry {
+  const isCurrent = row.id_usuario === String(data.userId);
+  return {
+    position: row.posicion,
+    name: isCurrent ? OWN_NAME : row.nombre,
+    balance: Number(row.saldo),
+    isCurrent,
+    previousPosition: data.previousPositions.get(row.id_usuario) ?? null,
+  };
 }
 
-/** Clasificación parcial: top 3 de la última ronda terminada y posición propia. */
-function buildStandingInfo(data: ParticipantStateData): StandingInfo {
-  const me = buildOwnEntry(data);
-  const topThree: StandingEntry[] = data.topThreeRows.map((row) => ({
-    position: row.posicion,
-    name: row.nombre,
-    balance: Number(row.saldo),
-    isCurrent: row.id_usuario === String(data.userId),
-  }));
-  const finishedCount = data.rounds.filter((r) => FINISHED_STATES.has(r.estado)).length;
+/** Aciertos seguidos en las rondas más recientes en que el asistente invirtió. */
+function streakOf(
+  finished: readonly ParticipantRoundRow[],
+  invested: ReadonlyMap<string, { amount: number }>,
+  settledAtOne: ReadonlySet<string>,
+): number {
+  let streak = 0;
+  for (const row of [...finished].reverse()) {
+    if ((invested.get(row.id_ronda)?.amount ?? 0) === 0) continue;
+    const multiplier = Number(row.multiplicador ?? 1);
+    if (annulmentOf(row, settledAtOne) !== null || !isHit(multiplier)) break;
+    streak += 1;
+  }
+  return streak;
+}
+
+function buildStandingInfo(
+  data: ParticipantStateData,
+  invested: ReadonlyMap<string, { amount: number }>,
+  settledAtOne: ReadonlySet<string>,
+): StandingInfo {
+  const finished = finishedRoundsOf(data.rounds);
+  const own = data.ownRow;
+  const me: StandingEntry = own
+    ? toEntry(own, data)
+    : {
+        position: data.participants,
+        name: OWN_NAME,
+        balance: data.balance,
+        isCurrent: true,
+        previousPosition: null,
+      };
+  const topThree = data.topThreeRows.map((row) => toEntry(row, data));
+  const leader = topThree[0]?.balance ?? me.balance;
+  const podiumLast = topThree[PODIUM_SIZE - 1]?.balance ?? 0;
+
   return {
     position: me.position,
-    previousPosition: data.previousPosition ?? me.position,
+    previousPosition: me.previousPosition ?? me.position,
     participants: data.participants,
-    hits: data.ownRow?.aciertos ?? 0,
-    hitsTotal: finishedCount,
+    hits: own?.aciertos ?? 0,
+    hitsTotal: finished.length,
+    streak: streakOf(finished, invested, settledAtOne),
     topThree,
+    window: data.windowRows.map((row) => toEntry(row, data)),
+    distanceToFirst: Math.max(0, leader - me.balance),
+    distanceToPodium: me.position <= PODIUM_SIZE ? 0 : Math.max(0, podiumLast - me.balance),
     me,
   };
 }
 
-/** Precio y acumulado del mercado de la ronda en curso. El precio base se usa mientras no existe fila. */
 function buildMarket(round: ParticipantRoundRow): MarketInfo {
   const price = round.precio_vivo === null ? EVENT_CONFIG.priceBase : Number(round.precio_vivo);
   return {
@@ -168,29 +199,33 @@ function buildMarket(round: ParticipantRoundRow): MarketInfo {
   };
 }
 
-/** Veredicto de la ronda terminada: votos del jurado, multiplicador y resultado del asistente. */
+function buildClock(round: ParticipantRoundRow, now: Date): PhaseClock {
+  return {
+    serverTime: now.toISOString(),
+    phaseEndsAt: round.fase_termina_en,
+    paused: round.segundos_restantes_pausa !== null,
+    pausedSeconds: round.segundos_restantes_pausa,
+  };
+}
+
 function buildVerdict(
-  decisions: readonly Decision[],
   round: ParticipantRoundRow,
   investment: { amount: number; payout: number },
   annulment: AnnulmentMode | null,
 ): VerdictInfo {
-  const backs = decisions.filter((d) => d === "BACK").length;
-  const voters = decisions.filter((d) => d !== "ABSTAIN").length;
-  const multiplier = round.multiplicador === null ? 1 : Number(round.multiplicador);
+  const score = round.puntaje_jurado === null || annulment !== null ? null : Number(round.puntaje_jurado);
   return {
-    decisions: [...decisions],
-    backs,
-    voters,
-    multiplier,
+    juryScore: score,
+    scorePct: score === null ? null : Math.round(juryFraction(score) * 100),
+    multiplier: round.multiplicador === null ? 1 : Number(round.multiplicador),
     invested: investment.amount,
     payout: investment.payout,
     gain: investment.payout - investment.amount,
     annulment,
+    settledAt: round.liquidada_en,
   };
 }
 
-/** Estado de una ronda para el riel: la ronda de referencia en curso aparece como actual. */
 function trackStateOf(
   row: ParticipantRoundRow,
   reference: ParticipantRoundRow | undefined,
@@ -202,7 +237,6 @@ function trackStateOf(
   return reference?.id_ronda === row.id_ronda ? "current" : "pending";
 }
 
-/** Resumen de todas las rondas del evento, con monto invertido, estado y ganancia. */
 function buildRoundSummaries(
   data: ParticipantStateData,
   reference: ParticipantRoundRow | undefined,
@@ -211,21 +245,19 @@ function buildRoundSummaries(
 ): RoundSummary[] {
   return sortRounds(data.rounds).map((row) => {
     const investment = investmentsByRound.get(row.id_ronda) ?? { amount: 0, payout: 0 };
-    const finished = FINISHED_STATES.has(row.estado);
     return {
       number: row.numero,
       startupName: row.startup_nombre,
       state: trackStateOf(row, reference, settledAtOne),
       invested: investment.amount,
-      gain: finished ? investment.payout - investment.amount : null,
+      gain: FINISHED_STATES.has(row.estado) ? investment.payout - investment.amount : null,
     };
   });
 }
 
 /**
- * Arma el view model del inversionista a partir de las filas leídas. La fase se deduce de la ronda
- * activa; si no hay ronda activa, de la última terminada y de la existencia de rondas pendientes.
- * Es una función pura: no accede a la base de datos.
+ * Arma el view model del inversionista. La fase se deduce de la ronda activa; si no hay ronda
+ * activa, de la última terminada y de la existencia de rondas pendientes. Es una función pura.
  */
 export function buildParticipantState(data: ParticipantStateData): ParticipantViewModel {
   const sorted = sortRounds(data.rounds);
@@ -259,43 +291,33 @@ export function buildParticipantState(data: ParticipantStateData): ParticipantVi
     ? (investmentsByRound.get(reference.id_ronda) ?? { amount: 0, payout: 0 })
     : { amount: 0, payout: 0 };
 
-  // Saldo al abrir la ronda de referencia: el saldo actual más lo invertido, menos lo recibido por
-  // la liquidación. Coincide con la regla de fn_registrar_inversion.
+  // Saldo con que entró a la ronda: el actual más lo invertido, menos lo recibido al liquidar.
   const openingBalance = data.balance + investment.amount - investment.payout;
+  const inRound = phase === "open" || phase === "lastCall" || phase === "voting";
   const wallet: WalletInfo = {
     balance: data.balance,
     investedInRound: investment.amount,
-    roundCap: getRoundCap(openingBalance),
+    roundCap: roundCap(openingBalance),
+    alreadyInvested: inRound && investment.amount > 0,
   };
 
-  const round: RoundInfo | null = reference
-    ? { number: reference.numero, total: data.rounds.length }
-    : null;
-  const startup: StartupInfo | null = reference ? buildStartupInfo(reference) : null;
-
+  const round: RoundInfo | null = reference ? { number: reference.numero, total: data.rounds.length } : null;
   const inMarket = phase === "open" || phase === "lastCall";
-  const market: MarketInfo | null = inMarket && reference ? buildMarket(reference) : null;
-
-  const revealedRound = phase === "result" || phase === "final";
+  const revealed = phase === "result" || phase === "final";
 
   return {
     phase,
     round,
-    startup,
+    startup: reference ? buildStartupInfo(reference) : null,
     wallet,
-    market,
-    countdownSeconds:
-      phase === "lastCall" ? secondsRemaining(reference?.segundos_ultima_llamada ?? null) : null,
+    market: inMarket && reference ? buildMarket(reference) : null,
+    clock: reference && active !== undefined ? buildClock(reference, data.now) : null,
     verdict:
-      revealedRound && reference
-        ? buildVerdict(
-            data.lastDecisions,
-            reference,
-            investment,
-            annulmentOf(reference, settledAtOne),
-          )
+      revealed && reference
+        ? buildVerdict(reference, investment, annulmentOf(reference, settledAtOne))
         : null,
-    standing: last !== undefined ? buildStandingInfo(data) : null,
+    standing: last !== undefined ? buildStandingInfo(data, investmentsByRound, settledAtOne) : null,
     rounds: buildRoundSummaries(data, reference, investmentsByRound, settledAtOne),
+    winnerStartup: data.winnerStartup,
   };
 }

@@ -41,8 +41,8 @@ describe("readJuryView", () => {
       "from veredicto v": [{ id_ronda: "1", decision: "RESPALDA" }],
       "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "EN_VOTACION" }],
       "from jurado j": [
-        { id_jurado: "1", nombre: "Jurado de ejemplo 1", decision: "RESPALDA" },
-        { id_jurado: "2", nombre: "Jurado de ejemplo 2", decision: "RECHAZA" },
+        { id_jurado: "1", nombre: "Jurado de ejemplo 1", enviado: true, se_abstiene: false, puntaje: "4.000" },
+        { id_jurado: "2", nombre: "Jurado de ejemplo 2", enviado: true, se_abstiene: false, puntaje: "2.000" },
       ],
       "select count(*)::int as total from jurado": [{ total: 2 }],
     });
@@ -66,8 +66,8 @@ describe("readJuryView", () => {
       "from veredicto v": [{ id_ronda: "1", decision: "RESPALDA" }],
       "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "LIQUIDADA", multiplicador: "1.20" }],
       "from jurado j": [
-        { id_jurado: "1", nombre: "Jurado de ejemplo 1", decision: "RESPALDA" },
-        { id_jurado: "2", nombre: "Jurado de ejemplo 2", decision: "RECHAZA" },
+        { id_jurado: "1", nombre: "Jurado de ejemplo 1", enviado: true, se_abstiene: false, puntaje: "4.000" },
+        { id_jurado: "2", nombre: "Jurado de ejemplo 2", enviado: true, se_abstiene: false, puntaje: "2.000" },
       ],
       "select count(*)::int as total from jurado": [{ total: 2 }],
     });

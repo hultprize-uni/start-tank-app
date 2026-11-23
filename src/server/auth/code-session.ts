@@ -18,7 +18,11 @@ export interface ActiveSession<R extends SessionRole = SessionRole> {
 }
 
 const ALGORITHM = "HS256";
-const DURATION_SECONDS = 60 * 60 * 12;
+/** Duración de la sesión por rol (RF-05): jurados 3 horas, operadores 4 horas. */
+export const SESSION_SECONDS: Readonly<Record<SessionRole, number>> = {
+  jury: 60 * 60 * 3,
+  operator: 60 * 60 * 4,
+};
 const MIN_SECRET_LENGTH = 32;
 
 const COOKIE_NAMES: Readonly<Record<SessionRole, string>> = {
@@ -54,7 +58,7 @@ export async function signSession(role: SessionRole, id: string): Promise<string
     .setProtectedHeader({ alg: ALGORITHM })
     .setSubject(id)
     .setIssuedAt()
-    .setExpirationTime(`${DURATION_SECONDS}s`)
+    .setExpirationTime(`${SESSION_SECONDS[role]}s`)
     .sign(secretKey());
 }
 
@@ -76,13 +80,13 @@ export async function verifySession(token: string, role: SessionRole): Promise<s
 }
 
 /** Opciones de la cookie de sesión. Solo se transmite por HTTPS en producción. */
-export function sessionCookieOptions() {
+export function sessionCookieOptions(role: SessionRole) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: DURATION_SECONDS,
+    maxAge: SESSION_SECONDS[role],
   };
 }
 
@@ -93,12 +97,12 @@ export async function startSession(
   id: string,
 ): Promise<void> {
   const token = await signSession(role, id);
-  response.cookies.set(COOKIE_NAMES[role], token, sessionCookieOptions());
+  response.cookies.set(COOKIE_NAMES[role], token, sessionCookieOptions(role));
 }
 
 /** Expira en la respuesta la cookie de sesión del rol indicado, con los mismos atributos de creación. */
 export function clearSessionCookie(response: NextResponse, role: SessionRole): void {
-  response.cookies.set(COOKIE_NAMES[role], "", { ...sessionCookieOptions(), maxAge: 0 });
+  response.cookies.set(COOKIE_NAMES[role], "", { ...sessionCookieOptions(role), maxAge: 0 });
 }
 
 /** Lee la cookie del rol indicado y exige un token válido. */

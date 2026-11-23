@@ -1,4 +1,5 @@
 import { API_ROUTES } from "@/shared/lib/api-routes";
+import { syncServerClock } from "@/shared/lib/use-server-clock";
 import type { ParticipantViewModel, InvestmentResult } from "../types";
 
 /*
@@ -33,7 +34,11 @@ export async function fetchParticipantState(
   if (!response.ok) {
     throw new Error(`El estado del inversionista respondió ${response.status}`);
   }
-  return (await response.json()) as ParticipantViewModel;
+  const view = (await response.json()) as ParticipantViewModel;
+  if (typeof view.serverTime === "string") {
+    syncServerClock(view.serverTime);
+  }
+  return view;
 }
 
 /**

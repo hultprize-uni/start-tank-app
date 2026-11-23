@@ -1,4 +1,4 @@
-import { jsonResponse, readJsonBody } from "@/server/http/responses";
+import { jsonResponse, readJsonBody, stateResponse } from "@/server/http/responses";
 import { participantError } from "./errors";
 import { readParticipantState, registerInvestment } from "./queries";
 import { getParticipantSession } from "./session";
@@ -30,8 +30,7 @@ export async function handleParticipantState(): Promise<Response> {
     return participantErrorResponse("NO_SESSION");
   }
 
-  const view = await readParticipantState(session.userId);
-  return jsonResponse(view);
+  return stateResponse(await readParticipantState(session.userId));
 }
 
 /*
@@ -52,7 +51,8 @@ export async function handleParticipantInvest(request: Request): Promise<Respons
 
   const result = await registerInvestment(session.userId, amount);
   if (!result.ok) {
-    return participantErrorResponse(result.error ?? "INTERNAL_ERROR");
+    const error = participantError(result.error ?? "INTERNAL_ERROR", result.cap);
+    return jsonResponse({ error: error.code, message: error.message }, error.status);
   }
   return jsonResponse({ ok: true, balance: result.balance ?? null });
 }

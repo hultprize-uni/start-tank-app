@@ -10,6 +10,10 @@ function round(partial: Partial<RoundRow> & Pick<RoundRow, "numero" | "estado">)
     id_ronda: String(partial.numero),
     multiplicador: null,
     segundos_ultima_llamada: null,
+    fase_termina_en: null,
+    segundos_restantes_pausa: null,
+    liquidada_en: null,
+    puntaje_jurado: null,
     startup_nombre: `Startup ${partial.numero}`,
     ods: "ODS 6",
     monto_acumulado: "0",
@@ -24,7 +28,14 @@ function round(partial: Partial<RoundRow> & Pick<RoundRow, "numero" | "estado">)
 }
 
 function vote(id: string, name: string, decision: RoundVoteRow["decision"]): RoundVoteRow {
-  return { id_jurado: id, nombre: name, decision };
+  return {
+    id_jurado: id,
+    nombre: name,
+    enviado: decision !== null,
+    se_abstiene: decision === "ABSTAIN",
+    puntaje: null,
+    decision,
+  };
 }
 
 const COMPLETE_VOTES: RoundVoteRow[] = [

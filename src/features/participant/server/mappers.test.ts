@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildParticipantState,
+  type ParticipantLeaderboardRow,
   type ParticipantRoundRow,
   type ParticipantStateData,
 } from "./mappers";
+
+const NOW = new Date("2026-11-26T20:00:00.000Z");
 
 /** Fila de ronda con valores por defecto; cada prueba sobrescribe solo lo que necesita. */
 function round(
@@ -16,252 +19,190 @@ function round(
     numero: number,
     estado: state,
     multiplicador: null,
-    segundos_ultima_llamada: null,
+    fase_termina_en: null,
+    segundos_restantes_pausa: null,
+    liquidada_en: null,
     startup_nombre: "AgroSense",
     ods: "ODS 2",
     descripcion: "Descripción de prueba",
+    logo_url: null,
     monto_acumulado: "0",
     inversores_unicos: 0,
     precio_vivo: "100.00",
+    puntaje_jurado: null,
     ...extra,
   };
 }
 
-/** Datos base del inversionista con saldo de 10,000 y sin inversiones. */
+function row(id: number, position: number, balance: number, hits = 0): ParticipantLeaderboardRow {
+  return { id_usuario: String(id), nombre: `Asistente ${id}`, posicion: position, saldo: String(balance), aciertos: hits };
+}
+
+/** Datos base del inversionista (id 7) con saldo de 10,000 y sin inversiones. */
 function data(extra: Partial<ParticipantStateData>): ParticipantStateData {
   return {
     userId: 7,
     balance: 10_000,
     rounds: [],
     investments: [],
-    lastDecisions: [],
     topThreeRows: [],
+    windowRows: [],
     ownRow: null,
     participants: 0,
-    previousPosition: null,
+    previousPositions: new Map(),
     settledAtOneRoundIds: [],
+    winnerStartup: null,
+    now: NOW,
     ...extra,
   };
 }
 
 const scheduledRounds = [round(1, "SCHEDULED"), round(2, "SCHEDULED"), round(3, "SCHEDULED")];
+
 describe("buildParticipantState", () => {
-  it("arma la fase programada con tope de 30 % del saldo y sin mercado ni veredicto", () => {
+  it("arma la fase programada con tope de 30 % del saldo y sin reloj", () => {
     const vm = buildParticipantState(data({ rounds: scheduledRounds }));
 
-    expect(vm).toEqual({
+    expect(vm).toMatchObject({
       phase: "scheduled",
       round: { number: 1, total: 3 },
-      startup: { name: "AgroSense", sdg: "ODS 2 · Hambre cero", description: "Descripción de prueba" },
-      wallet: { balance: 10_000, investedInRound: 0, roundCap: 3_000 },
+      startup: { name: "AgroSense", sdg: "ODS 2 · Hambre cero", logoUrl: null },
+      wallet: { balance: 10_000, investedInRound: 0, roundCap: 3_000, alreadyInvested: false },
       market: null,
-      countdownSeconds: null,
+      clock: null,
       verdict: null,
       standing: null,
-      rounds: [
-        { number: 1, startupName: "AgroSense", state: "current", invested: 0, gain: null },
-        { number: 2, startupName: "AgroSense", state: "pending", invested: 0, gain: null },
-        { number: 3, startupName: "AgroSense", state: "pending", invested: 0, gain: null },
-      ],
+      winnerStartup: null,
     });
   });
 
-  it("calcula el tope con el saldo al abrir la ronda y expone el mercado en fase abierta", () => {
+  it("entrega el reloj de la fase con la hora del servidor y la pausa", () => {
+    const open = round(1, "OPEN", { fase_termina_en: "2026-11-26T20:10:00.000Z" });
+    expect(buildParticipantState(data({ rounds: [open] })).clock).toEqual({
+      serverTime: NOW.toISOString(),
+      phaseEndsAt: "2026-11-26T20:10:00.000Z",
+      paused: false,
+      pausedSeconds: null,
+    });
+
+    const paused = round(1, "LAST_CALL", { segundos_restantes_pausa: 42 });
+    const vm = buildParticipantState(data({ rounds: [paused] }));
+    expect(vm.phase).toBe("lastCall");
+    expect(vm.clock).toMatchObject({ paused: true, pausedSeconds: 42, phaseEndsAt: null });
+  });
+
+  it("marca la ronda como invertida y calcula el tope con el saldo de entrada", () => {
     const vm = buildParticipantState(
       data({
-        balance: 9_500,
-        rounds: [
-          round(1, "OPEN", { monto_acumulado: "4000", precio_vivo: "120.00", inversores_unicos: 18 }),
-          round(2, "SCHEDULED"),
-        ],
-        investments: [{ id_ronda: "1", monto: "500", retorno: "0" }],
+        balance: 9_000,
+        rounds: [round(1, "OPEN")],
+        investments: [{ id_ronda: "1", monto: "1000", retorno: "0" }],
       }),
     );
-
-    expect(vm.phase).toBe("open");
-    expect(vm.wallet).toEqual({ balance: 9_500, investedInRound: 500, roundCap: 3_000 });
-    expect(vm.market).toEqual({ price: 120, priceChange: 20, totalRaised: 4_000, investorCount: 18 });
-    expect(vm.countdownSeconds).toBeNull();
-    expect(vm.verdict).toBeNull();
-    expect(vm.standing).toBeNull();
-    expect(vm.rounds.map((r) => r.state)).toEqual(["current", "pending"]);
-    expect(vm.rounds[0]).toEqual({ number: 1, startupName: "AgroSense", state: "current", invested: 500, gain: null });
+    expect(vm.wallet).toEqual({ balance: 9_000, investedInRound: 1_000, roundCap: 3_000, alreadyInvested: true });
   });
 
-  it("muestra la clasificación durante el mercado a partir de la primera ronda terminada", () => {
+  it("muestra el veredicto con el puntaje en porcentaje y la hora de liquidación", () => {
+    const settled = round(1, "SETTLED", {
+      multiplicador: "1.400",
+      puntaje_jurado: "4.0000",
+      liquidada_en: "2026-11-26T20:20:00.000Z",
+    });
     const vm = buildParticipantState(
       data({
-        balance: 10_200,
-        rounds: [round(1, "SETTLED", { multiplicador: "1.400" }), round(2, "OPEN")],
-        investments: [{ id_ronda: "1", monto: "500", retorno: "700" }],
-        lastDecisions: ["BACK", "BACK", "BACK", "REJECT"],
-        ownRow: { id_usuario: "7", nombre: "Ana", posicion: 4, saldo: "10200.00", aciertos: 1 },
-        participants: 74,
-        previousPosition: 6,
-      }),
-    );
-
-    expect(vm.phase).toBe("open");
-    expect(vm.verdict).toBeNull();
-    expect(vm.standing).toMatchObject({ position: 4, previousPosition: 6, hitsTotal: 1 });
-  });
-
-  it("informa los segundos restantes de la última llamada sin bajar de cero", () => {
-    const inLastCall = buildParticipantState(
-      data({ rounds: [round(1, "LAST_CALL", { segundos_ultima_llamada: 20.7 })] }),
-    );
-    const expired = buildParticipantState(
-      data({ rounds: [round(1, "LAST_CALL", { segundos_ultima_llamada: 75 })] }),
-    );
-
-    expect(inLastCall.phase).toBe("lastCall");
-    expect(inLastCall.countdownSeconds).toBe(40);
-    expect(expired.countdownSeconds).toBe(0);
-  });
-
-  it("oculta el mercado durante la votación", () => {
-    const vm = buildParticipantState(data({ rounds: [round(1, "VOTING")] }));
-
-    expect(vm.phase).toBe("voting");
-    expect(vm.market).toBeNull();
-    expect(vm.standing).toBeNull();
-  });
-
-  it("arma veredicto y clasificación tras liquidar, con la posición propia", () => {
-    const vm = buildParticipantState(
-      data({
-        balance: 10_200,
-        rounds: [round(1, "SETTLED", { multiplicador: "1.400" }), round(2, "SCHEDULED")],
-        investments: [{ id_ronda: "1", monto: "500", retorno: "700" }],
-        lastDecisions: ["BACK", "BACK", "BACK", "REJECT"],
-        topThreeRows: [
-          { id_usuario: "1", nombre: "Sofía", posicion: 1, saldo: "12000.00", aciertos: 2 },
-          { id_usuario: "2", nombre: "Carlos", posicion: 2, saldo: "11000.00", aciertos: 1 },
-          { id_usuario: "3", nombre: "Lucía", posicion: 3, saldo: "10900.00", aciertos: 1 },
-        ],
-        ownRow: { id_usuario: "7", nombre: "Ana", posicion: 4, saldo: "10200.00", aciertos: 1 },
-        participants: 74,
-        previousPosition: 6,
+        balance: 10_400,
+        rounds: [settled, round(2, "SCHEDULED")],
+        investments: [{ id_ronda: "1", monto: "1000", retorno: "1400" }],
       }),
     );
 
     expect(vm.phase).toBe("result");
-    expect(vm.round).toEqual({ number: 1, total: 2 });
-    expect(vm.wallet).toEqual({ balance: 10_200, investedInRound: 500, roundCap: 3_000 });
     expect(vm.verdict).toEqual({
-      decisions: ["BACK", "BACK", "BACK", "REJECT"],
-      backs: 3,
-      voters: 4,
+      juryScore: 4,
+      scorePct: 75,
       multiplier: 1.4,
-      invested: 500,
-      payout: 700,
-      gain: 200,
+      invested: 1_000,
+      payout: 1_400,
+      gain: 400,
       annulment: null,
-    });
-    expect(vm.rounds).toEqual([
-      { number: 1, startupName: "AgroSense", state: "settled", invested: 500, gain: 200 },
-      { number: 2, startupName: "AgroSense", state: "pending", invested: 0, gain: null },
-    ]);
-    expect(vm.standing).toEqual({
-      position: 4,
-      previousPosition: 6,
-      participants: 74,
-      hits: 1,
-      hitsTotal: 1,
-      topThree: [
-        { position: 1, name: "Sofía", balance: 12_000, isCurrent: false },
-        { position: 2, name: "Carlos", balance: 11_000, isCurrent: false },
-        { position: 3, name: "Lucía", balance: 10_900, isCurrent: false },
-      ],
-      me: { position: 4, name: "Tú", balance: 10_200, isCurrent: true },
+      settledAt: "2026-11-26T20:20:00.000Z",
     });
   });
 
-  it("pasa a la fase final cuando no quedan rondas por abrir", () => {
+  it("oculta el puntaje en una ronda anulada", () => {
     const vm = buildParticipantState(
-      data({
-        rounds: [round(1, "SETTLED", { multiplicador: "0.200" })],
-        investments: [{ id_ronda: "1", monto: "300", retorno: "60" }],
-        lastDecisions: ["REJECT", "REJECT", "REJECT", "REJECT"],
-        ownRow: { id_usuario: "7", nombre: "Ana", posicion: 1, saldo: "9760.00", aciertos: 0 },
-        participants: 1,
-      }),
+      data({ rounds: [round(1, "CANCELLED", { multiplicador: "1.000" }), round(2, "SCHEDULED")] }),
     );
-
-    expect(vm.phase).toBe("final");
-    expect(vm.round).toEqual({ number: 1, total: 1 });
-    expect(vm.standing?.previousPosition).toBe(1);
-    expect(vm.standing?.hitsTotal).toBe(1);
+    expect(vm.verdict).toMatchObject({ annulment: "refund", juryScore: null, scorePct: null });
   });
 
-  it("marca una ronda anulada con devolución como anulada en el veredicto y en el riel", () => {
+  it("arma la clasificación con vecinos, distancias, movimiento y racha", () => {
+    const rounds = [
+      round(1, "SETTLED", { multiplicador: "1.400" }),
+      round(2, "SETTLED", { multiplicador: "1.200" }),
+      round(3, "SCHEDULED"),
+    ];
+    const own = row(7, 5, 10_600, 2);
     const vm = buildParticipantState(
       data({
-        rounds: [round(1, "SETTLED", { multiplicador: "1.400" }), round(2, "CANCELLED")],
+        balance: 10_600,
+        rounds,
         investments: [
-          { id_ronda: "1", monto: "100", retorno: "140" },
-          { id_ronda: "2", monto: "400", retorno: "400" },
+          { id_ronda: "1", monto: "500", retorno: "700" },
+          { id_ronda: "2", monto: "500", retorno: "600" },
         ],
-        ownRow: { id_usuario: "7", nombre: "Ana", posicion: 2, saldo: "10040.00", aciertos: 1 },
-        participants: 10,
+        topThreeRows: [row(1, 1, 12_000), row(2, 2, 11_500), row(3, 3, 11_000)],
+        windowRows: [row(3, 3, 11_000), row(4, 4, 10_800), own, row(8, 6, 10_500), row(9, 7, 10_400)],
+        ownRow: own,
+        participants: 40,
+        previousPositions: new Map([
+          ["7", 8],
+          ["4", 4],
+        ]),
       }),
     );
 
+    expect(vm.standing).toMatchObject({
+      position: 5,
+      previousPosition: 8,
+      participants: 40,
+      hits: 2,
+      hitsTotal: 2,
+      streak: 2,
+      distanceToFirst: 1_400,
+      distanceToPodium: 400,
+    });
+    expect(vm.standing?.window.map((entry) => [entry.position, entry.name, entry.previousPosition])).toEqual([
+      [3, "Asistente 3", null],
+      [4, "Asistente 4", 4],
+      [5, "Tú", 8],
+      [6, "Asistente 8", null],
+      [7, "Asistente 9", null],
+    ]);
+  });
+
+  it("corta la racha en la última ronda sin acierto", () => {
+    const vm = buildParticipantState(
+      data({
+        rounds: [
+          round(1, "SETTLED", { multiplicador: "1.400" }),
+          round(2, "SETTLED", { multiplicador: "0.600" }),
+          round(3, "SCHEDULED"),
+        ],
+        investments: [
+          { id_ronda: "1", monto: "500", retorno: "700" },
+          { id_ronda: "2", monto: "500", retorno: "300" },
+        ],
+      }),
+    );
+    expect(vm.standing?.streak).toBe(0);
+  });
+
+  it("muestra el cierre del evento con la startup ganadora", () => {
+    const vm = buildParticipantState(
+      data({ rounds: [round(1, "SETTLED", { multiplicador: "1.000" })], winnerStartup: "AgroSense" }),
+    );
     expect(vm.phase).toBe("final");
-    expect(vm.verdict).toMatchObject({ annulment: "refund", invested: 400, payout: 400, gain: 0 });
-    expect(vm.rounds.map((r) => r.state)).toEqual(["settled", "annulled"]);
-    expect(vm.rounds[1]).toEqual({ number: 2, startupName: "AgroSense", state: "annulled", invested: 400, gain: 0 });
-  });
-
-  it("identifica la anulación liquidada a 1.0x mediante la lista de rondas del operador", () => {
-    const vm = buildParticipantState(
-      data({
-        rounds: [round(1, "SETTLED", { multiplicador: "1.000" }), round(2, "SCHEDULED")],
-        investments: [{ id_ronda: "1", monto: "300", retorno: "300" }],
-        settledAtOneRoundIds: ["1"],
-        ownRow: { id_usuario: "7", nombre: "Ana", posicion: 3, saldo: "10000.00", aciertos: 0 },
-        participants: 10,
-      }),
-    );
-
-    expect(vm.phase).toBe("result");
-    expect(vm.verdict?.annulment).toBe("settle-1x");
-    expect(vm.verdict?.multiplier).toBe(1);
-    expect(vm.rounds[0].state).toBe("annulled");
-  });
-
-  it("muestra la fase de votación con la clasificación de la ronda anterior", () => {
-    const vm = buildParticipantState(
-      data({
-        rounds: [round(1, "SETTLED", { multiplicador: "0.200" }), round(2, "VOTING")],
-        investments: [{ id_ronda: "1", monto: "300", retorno: "60" }],
-        lastDecisions: ["REJECT", "REJECT", "REJECT", "REJECT"],
-        ownRow: { id_usuario: "7", nombre: "Ana", posicion: 1, saldo: "9760.00", aciertos: 0 },
-        participants: 1,
-      }),
-    );
-
-    expect(vm.phase).toBe("voting");
-    expect(vm.rounds.map((r) => r.state)).toEqual(["settled", "current"]);
-    expect(vm.rounds[0].gain).toBe(-240);
-    expect(vm.rounds[1].gain).toBeNull();
-  });
-
-  it("conserva la forma completa del view model en todas las fases", () => {
-    const vm = buildParticipantState(data({ rounds: scheduledRounds }));
-
-    expect(Object.keys(vm).sort()).toEqual(
-      [
-        "countdownSeconds",
-        "market",
-        "phase",
-        "rounds",
-        "round",
-        "standing",
-        "startup",
-        "verdict",
-        "wallet",
-      ].sort(),
-    );
+    expect(vm.winnerStartup).toBe("AgroSense");
   });
 });

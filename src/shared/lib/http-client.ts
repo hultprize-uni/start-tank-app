@@ -3,6 +3,8 @@
  * la API en un resultado discriminado para que los hooks no manejen excepciones de red ni de formato.
  */
 
+import { syncServerClock } from "./use-server-clock";
+
 /** Resultado de una petición: los datos cuando el estado es 2xx, o el código de error en otro caso. */
 export type ApiResponse<T> =
   | { ok: true; data: T }
@@ -60,6 +62,10 @@ export async function requestJson<T>(
 
   try {
     const data = (await response.json()) as T;
+    const serverTime = (data as { serverTime?: unknown } | null)?.serverTime;
+    if (typeof serverTime === "string") {
+      syncServerClock(serverTime);
+    }
     return { ok: true, data };
   } catch {
     return { ok: false, status: response.status, code: null, offline: false };

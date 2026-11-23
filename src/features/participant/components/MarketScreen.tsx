@@ -1,4 +1,8 @@
-import { Badge, Button, MarketCard, ProgressBar } from "@/shared/ui";
+"use client";
+
+import { Badge, Button, MarketCard } from "@/shared/ui";
+import type { PhaseClock } from "@/shared/domain/types";
+import { usePhaseSeconds } from "@/shared/lib/use-server-clock";
 import { formatCoins, formatPriceChange } from "../format";
 import type { MarketInfo, RoundInfo, StartupInfo, WalletInfo } from "../types";
 import { LastCallCountdown } from "./LastCallCountdown";
@@ -9,22 +13,25 @@ interface MarketScreenProps {
   startup: StartupInfo;
   market: MarketInfo;
   wallet: WalletInfo;
-  /** Segundos de la última llamada. Nulo mientras el mercado está abierto. */
-  countdownSeconds: number | null;
-  /** Abre la hoja de inversión. Solo se pasa en el móvil; en el escritorio el formulario va en línea. */
-  onInvest?: () => void;
+  /** Verdadero en la última llamada. */
+  lastCall: boolean;
+  clock: PhaseClock | null;
+  onInvest: () => void;
 }
 
-/** Mercado abierto y última llamada: precio en vivo, tope de la ronda y acceso a la inversión. */
-export function MarketScreen({
-  round,
-  startup,
-  market,
-  wallet,
-  countdownSeconds,
-  onInvest,
-}: MarketScreenProps) {
-  const isLastCall = countdownSeconds !== null;
+/** Minutos y segundos, por ejemplo "12:05". */
+function formatClock(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Mercado abierto y última llamada (RF-23): precio en vivo, saldo, cronómetro con la hora del
+ * servidor y acceso a la inversión. Con la ronda en pausa o ya invertida, el botón no aparece.
+ */
+export function MarketScreen({ round, startup, market, wallet, lastCall, clock, onInvest }: MarketScreenProps) {
+  const seconds = usePhaseSeconds(clock);
+  const paused = clock?.paused ?? false;
   const roundLabel = `Ronda ${round.number} de ${round.total}`;
 
   return (
@@ -32,7 +39,9 @@ export function MarketScreen({
       <h1 className="visually-hidden">Mercado de la {roundLabel.toLowerCase()}</h1>
 
       <div className={styles.status}>
-        {isLastCall ? (
+        {paused ? (
+          <Badge tone="yellow">Mercado en pausa</Badge>
+        ) : lastCall ? (
           <Badge tone="yellow" live>
             Última llamada
           </Badge>
@@ -41,9 +50,14 @@ export function MarketScreen({
             Mercado abierto
           </Badge>
         )}
+        {!lastCall && seconds !== null ? (
+          <span className={styles.timer} aria-label={`Quedan ${formatClock(seconds)} de mercado`}>
+            Cierra en {formatClock(seconds)}
+          </span>
+        ) : null}
       </div>
 
-      {isLastCall ? <LastCallCountdown seconds={countdownSeconds} /> : null}
+      {lastCall && seconds !== null ? <LastCallCountdown seconds={seconds} /> : null}
 
       <MarketCard
         name={startup.name}
@@ -59,27 +73,34 @@ export function MarketScreen({
         headingLevel={2}
       />
 
-      <div className={styles.cap}>
-        <div className={styles.capHeader}>
-          <span className={styles.label}>Invertido en esta ronda</span>
-          <span className={styles.label}>Tope {formatCoins(wallet.roundCap)}</span>
+      {wallet.alreadyInvested ? (
+        <div className={styles.cap} role="status">
+          <span className={styles.label}>Ya invertiste en esta ronda</span>
+          <p className={styles.invested}>
+            {formatCoins(wallet.investedInRound)} <span className={styles.unit}>coins</span>
+          </p>
+          <p className={styles.note}>Tu resultado depende del puntaje del jurado. Llega al revelar.</p>
         </div>
-        <p className={styles.invested}>
-          {formatCoins(wallet.investedInRound)} <span className={styles.unit}>coins</span>
+      ) : paused ? (
+        <p className={styles.cap} role="status">
+          El conductor pausó el mercado. Podrás invertir cuando lo reanude.
         </p>
-        <ProgressBar
-          value={wallet.investedInRound}
-          max={Math.max(1, wallet.roundCap)}
-          label="Uso del tope de la ronda"
-          valueText={`${formatCoins(wallet.investedInRound)} de ${formatCoins(wallet.roundCap)} coins`}
-        />
-      </div>
-
-      {onInvest ? (
-        <Button variant="primary" size="lg" fullWidth onClick={onInvest}>
-          Invertir
-        </Button>
-      ) : null}
+      ) : (
+        <>
+          <div className={styles.cap}>
+            <div className={styles.capHeader}>
+              <span className={styles.label}>Tu saldo</span>
+              <span className={styles.label}>Tope {formatCoins(wallet.roundCap)}</span>
+            </div>
+            <p className={styles.invested}>
+              {formatCoins(wallet.balance)} <span className={styles.unit}>coins</span>
+            </p>
+          </div>
+          <Button variant="primary" size="lg" fullWidth onClick={onInvest}>
+            Invertir
+          </Button>
+        </>
+      )}
 
       <p className={styles.note}>
         El precio mide el interés de la sala. Tu retorno depende solo del jurado.

@@ -7,4 +7,15 @@ export {
   handleOperatorManualSettlement,
   handleOperatorState,
 } from "./server/handlers";
+export {
+  handleOperatorAttendees,
+  handleOperatorBalance,
+  handleOperatorCloseEvent,
+  handleOperatorConfigGet,
+  handleOperatorConfigPost,
+  handleOperatorHealth,
+  handleOperatorManualMode,
+  handleOperatorPreflight,
+  handleOperatorRehearsal,
+} from "./server/admin";
 export type { OperatorViewModel } from "./types";

@@ -76,6 +76,9 @@ const ACTIONS_FROM_DB: Readonly<Record<string, OperatorAction>> = {
   ULTIMA_LLAMADA: "LAST_CALL",
   CERRAR: "CLOSE",
   HABILITAR_VOTO: "ENABLE_VOTING",
+  PAUSAR: "PAUSE",
+  REANUDAR: "RESUME",
+  MAS_UN_MINUTO: "ADD_MINUTE",
   REVELAR: "REVEAL",
   SIGUIENTE: "NEXT",
   ANULAR_DEVOLVER: "CANCEL_REFUND",
@@ -89,6 +92,9 @@ const ACTIONS_TO_DB: Readonly<Record<OperatorAction, string>> = {
   LAST_CALL: "ULTIMA_LLAMADA",
   CLOSE: "CERRAR",
   ENABLE_VOTING: "HABILITAR_VOTO",
+  PAUSE: "PAUSAR",
+  RESUME: "REANUDAR",
+  ADD_MINUTE: "MAS_UN_MINUTO",
   REVEAL: "REVELAR",
   NEXT: "SIGUIENTE",
   CANCEL_REFUND: "ANULAR_DEVOLVER",
@@ -117,6 +123,25 @@ const ERROR_CODES: Readonly<Record<string, string>> = {
   TRANSICION_NO_PERMITIDA: "TRANSITION_NOT_ALLOWED",
   OTRA_RONDA_ACTIVA: "ANOTHER_ROUND_ACTIVE",
   ACCION_INVALIDA: "INVALID_ACTION",
+  MERCADO_EN_PAUSA: "MARKET_PAUSED",
+  YA_INVIRTIO: "ALREADY_INVESTED",
+  SIN_PERMISO: "FORBIDDEN",
+  MOTIVO_REQUERIDO: "REASON_REQUIRED",
+  NOTA_INVALIDA: "INVALID_NOTE",
+  NOTAS_INVALIDAS: "INVALID_NOTES",
+  NOTAS_INCOMPLETAS: "INCOMPLETE_NOTES",
+  CRITERIO_NO_EXISTE: "CRITERION_NOT_FOUND",
+  RONDA_NO_CALIFICABLE: "ROUND_NOT_GRADABLE",
+  YA_ENVIO: "ALREADY_SUBMITTED",
+  RONDA_ANTERIOR_PENDIENTE: "PREVIOUS_ROUND_PENDING",
+  YA_EN_PAUSA: "ALREADY_PAUSED",
+  NO_ESTA_EN_PAUSA: "NOT_PAUSED",
+  SIN_CRONOMETRO: "NO_TIMER",
+  RONDA_YA_LIQUIDADA: "ROUND_ALREADY_SETTLED",
+  RONDA_NO_DISPONIBLE: "ROUND_NOT_AVAILABLE",
+  PUNTAJE_INVALIDO: "INVALID_SCORE",
+  SALDO_NEGATIVO: "NEGATIVE_BALANCE",
+  MONTO_INVALIDO: "INVALID_AMOUNT",
 };
 
 /** Convierte un estado de ronda de la base de datos. Lanza un error si el valor no se conoce. */
@@ -165,6 +190,8 @@ export interface FunctionResult {
   state?: RoundState;
   /** Saldo del asistente, cuando la función lo informa. */
   balance?: number | null;
+  /** Tope de la ronda, cuando la inversión lo supera. */
+  cap?: number;
 }
 
 /** Traduce el objeto jsonb que devuelve una función SQL (claves ok, error, estado y saldo). */
@@ -178,6 +205,9 @@ export function normalizeFunctionResult(raw: Record<string, unknown>): FunctionR
   }
   if ("saldo" in raw) {
     result.balance = raw.saldo === null || raw.saldo === undefined ? null : Number(raw.saldo);
+  }
+  if (raw.tope !== undefined && raw.tope !== null) {
+    result.cap = Number(raw.tope);
   }
   return result;
 }

@@ -21,7 +21,7 @@ describe("readScreen", () => {
     setupSql(sqlMock, {
       "from ronda r": [DB_OPEN_ROUND_ROW],
       "from jurado j": [],
-      "estado = 'ACTIVO'": [{ total: 40 }],
+      "from usuario": [{ total: 40 }],
     });
 
     const vm = await readScreen(new Date("2026-11-08T15:00:00.000Z"));
@@ -39,7 +39,7 @@ describe("readScreen", () => {
     setupSql(sqlMock, {
       "from ronda r": [DB_OPEN_ROUND_ROW],
       "from jurado j": [],
-      "estado = 'ACTIVO'": [{ total: 40 }],
+      "from usuario": [{ total: 40 }],
     });
 
     await readScreen();

@@ -31,7 +31,7 @@ function stubViewport(desktop: boolean) {
   }));
 }
 
-const startup = { name: "Nodo Solar", sdg: "ODS 7 · Energía asequible", description: "Solar comunitario." };
+const startup = { name: "Nodo Solar", sdg: "ODS 7 · Energía asequible", description: "Solar comunitario.", logoUrl: null };
 const sampleRounds = [
   { number: 1, startupName: "Aurora Agro", state: "settled" as const, invested: 500, gain: 200 },
   { number: 2, startupName: "Nodo Solar", state: "current" as const, invested: 0, gain: null },
@@ -44,20 +44,21 @@ function openView(overrides: Partial<ParticipantViewModel> = {}): ParticipantVie
     phase: "open",
     round: { number: 2, total: 3 },
     startup,
-    wallet: { balance: 9_000, investedInRound: 0, roundCap: 2_700 },
+    wallet: { balance: 9_000, investedInRound: 0, roundCap: 2_700, alreadyInvested: false },
     market: { price: 110, priceChange: 10, totalRaised: 2_200, investorCount: 9 },
-    countdownSeconds: null,
+    clock: null,
     verdict: null,
     standing: {
       position: 4,
       previousPosition: 6,
       participants: 74,
       hits: 1,
-      hitsTotal: 1,
-      topThree: [{ position: 1, name: "Sofía", balance: 12_000, isCurrent: false }],
-      me: { position: 4, name: "Tú", balance: 9_000, isCurrent: true },
+      hitsTotal: 1, streak: 0, window: [], distanceToFirst: 0, distanceToPodium: 0,
+      topThree: [{ position: 1, name: "Sofía", balance: 12_000, isCurrent: false, previousPosition: null }],
+      me: { position: 4, name: "Tú", balance: 9_000, isCurrent: true, previousPosition: null },
     },
     rounds: sampleRounds,
+    winnerStartup: null,
     ...overrides,
   };
 }
@@ -94,12 +95,12 @@ describe("ParticipantPortal en el móvil", () => {
     setState(openView());
     render(<ParticipantPortal />);
 
-    expect(screen.getByText("9,000")).toBeInTheDocument();
+    expect(screen.getAllByText("9,000").length).toBeGreaterThan(0);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Invertir" }));
 
-    expect(screen.getByRole("dialog", { name: "¿Cuánto inviertes?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Invertir en Nodo Solar" })).toBeInTheDocument();
   });
 
   it("confirma la inversión, cierra la hoja y muestra el aviso de confirmación", async () => {
@@ -108,7 +109,8 @@ describe("ParticipantPortal en el móvil", () => {
     render(<ParticipantPortal />);
 
     await user.click(screen.getByRole("button", { name: "Invertir" }));
-    await user.click(screen.getByRole("button", { name: "Mín 250" }));
+    await user.click(screen.getByRole("button", { name: "250" }));
+    await user.click(screen.getByRole("button", { name: "Revisar inversión" }));
     await user.click(screen.getByRole("button", { name: "Confirmar inversión" }));
 
     expect(state.current?.actions.invest).toHaveBeenCalledWith(250);
@@ -123,7 +125,8 @@ describe("ParticipantPortal en el móvil", () => {
     render(<ParticipantPortal />);
 
     await user.click(screen.getByRole("button", { name: "Invertir" }));
-    await user.click(screen.getByRole("button", { name: "Mín 250" }));
+    await user.click(screen.getByRole("button", { name: "250" }));
+    await user.click(screen.getByRole("button", { name: "Revisar inversión" }));
     await user.click(screen.getByRole("button", { name: "Confirmar inversión" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("El mercado ya cerró.");
@@ -140,24 +143,25 @@ describe("ParticipantPortal en el móvil", () => {
 describe("ParticipantPortal en el escritorio", () => {
   beforeEach(() => stubViewport(true));
 
-  it("muestra el riel de rondas y el panel de inversión en línea sin botón Invertir", () => {
+  it("muestra el riel de rondas y el botón Invertir sin abrir la ventana", () => {
     setState(openView());
     render(<ParticipantPortal />);
 
     const sidebar = screen.getByRole("complementary", { name: "Resumen del evento" });
     expect(within(sidebar).getByText("Rondas")).toBeInTheDocument();
     expect(within(sidebar).getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "¿Cuánto inviertes?" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Invertir" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Invertir" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("confirma la inversión desde el panel en línea", async () => {
+  it("confirma la inversión desde la ventana centrada", async () => {
     const user = userEvent.setup();
     setState(openView());
     render(<ParticipantPortal />);
 
-    await user.click(screen.getByRole("button", { name: "Mín 250" }));
+    await user.click(screen.getByRole("button", { name: "Invertir" }));
+    await user.click(screen.getByRole("button", { name: "250" }));
+    await user.click(screen.getByRole("button", { name: "Revisar inversión" }));
     await user.click(screen.getByRole("button", { name: "Confirmar inversión" }));
 
     expect(state.current?.actions.invest).toHaveBeenCalledWith(250);
@@ -173,23 +177,23 @@ describe("ParticipantPortal en los estados de la ronda", () => {
         phase: "result",
         market: null,
         verdict: {
-          decisions: ["BACK", "BACK", "REJECT", "REJECT"],
-          backs: 2,
-          voters: 4,
+          juryScore: null,
+          scorePct: null,
           multiplier: 1,
           invested: 500,
           payout: 500,
           gain: 0,
           annulment: "refund",
+          settledAt: null,
         },
       }),
     );
     render(<ParticipantPortal />);
 
     expect(screen.getByText("Ronda anulada")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Clasificación parcial" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Clasificación" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Tus rondas" })).toBeInTheDocument();
-    expect(screen.getByText("Esperando ronda 3")).toBeInTheDocument();
+    expect(screen.getByText("Esperando la ronda 3")).toBeInTheDocument();
   });
 
   it("muestra el cierre del evento con saldo final y aciertos", () => {
@@ -198,15 +202,15 @@ describe("ParticipantPortal en los estados de la ronda", () => {
         phase: "final",
         round: { number: 3, total: 3 },
         market: null,
-        wallet: { balance: 12_480, investedInRound: 0, roundCap: 3_000 },
+        wallet: { balance: 12_480, investedInRound: 0, roundCap: 3_000, alreadyInvested: false },
         standing: {
           position: 3,
           previousPosition: 5,
           participants: 74,
           hits: 2,
-          hitsTotal: 3,
+          hitsTotal: 3, streak: 0, window: [], distanceToFirst: 0, distanceToPodium: 0,
           topThree: [],
-          me: { position: 3, name: "Tú", balance: 12_480, isCurrent: true },
+          me: { position: 3, name: "Tú", balance: 12_480, isCurrent: true, previousPosition: null },
         },
       }),
     );
@@ -219,7 +223,17 @@ describe("ParticipantPortal en los estados de la ronda", () => {
   });
 
   it("muestra la última llamada con su cuenta regresiva", () => {
-    setState(openView({ phase: "lastCall", countdownSeconds: 30 }));
+    setState(
+      openView({
+        phase: "lastCall",
+        clock: {
+          serverTime: new Date().toISOString(),
+          phaseEndsAt: new Date(Date.now() + 29_500).toISOString(),
+          paused: false,
+          pausedSeconds: null,
+        },
+      }),
+    );
     render(<ParticipantPortal />);
 
     expect(screen.getByText("Última llamada")).toBeInTheDocument();
@@ -235,7 +249,7 @@ describe("ParticipantPortal en los estados de la ronda", () => {
   });
 
   it("muestra la startup programada antes de abrir el mercado", () => {
-    setState(openView({ phase: "scheduled", market: null, countdownSeconds: null }));
+    setState(openView({ phase: "scheduled", market: null }));
     render(<ParticipantPortal />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Nodo Solar" })).toBeInTheDocument();

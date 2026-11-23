@@ -1,64 +1,59 @@
 "use client";
 
 import { AmountField, Button } from "@/shared/ui";
-import { JURY_SIZE, useInvestForm } from "../hooks/useInvestForm";
+import { useInvestForm } from "../hooks/useInvestForm";
 import type { InvestmentResult, WalletInfo } from "../types";
+import { InvestConfirm } from "./InvestConfirm";
+import { InvestPreview } from "./InvestPreview";
 import styles from "./InvestForm.module.css";
 
 interface InvestFormProps {
+  startupName: string;
   wallet: WalletInfo;
   /** Envía el monto validado. Devuelve el resultado que muestra el portal. */
   onConfirm: (amount: number) => Promise<InvestmentResult>;
 }
 
-/** Formulario de monto: campo con atajos, vista previa del retorno según el jurado y confirmación. */
-export function InvestForm({ wallet, onConfirm }: InvestFormProps) {
+/** Formulario en dos pasos: elegir el monto con su vista previa, y confirmar (RF-12, RF-24). */
+export function InvestForm({ startupName, wallet, onConfirm }: InvestFormProps) {
   const form = useInvestForm(wallet, onConfirm);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void form.submit();
+    if (form.step === "amount") form.review();
+    else void form.submit();
   };
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
-      <AmountField
-        name="amount"
-        label="Monto a invertir"
-        value={form.draft}
-        onChange={form.setDraft}
-        placeholder="0"
-        suffix="coins"
-        error={form.errorMessage}
-        shortcuts={form.shortcuts}
-        shortcutsLabel="Atajos de monto"
-      />
-
-      <div className={styles.preview} role="group" aria-label="Retorno según el jurado">
-        <p className={styles.previewTitle}>Retorno según el jurado</p>
-        {form.preview.map((row) => (
-          <div key={row.backs} className={styles.row}>
-            <span className={styles.scenario}>
-              {row.backs} de {JURY_SIZE} respaldan · {row.multiplierText}
-            </span>
-            <span className={`${styles.value} ${styles[row.tone]}`}>{row.payoutText ?? "—"}</span>
-          </div>
-        ))}
-      </div>
-
-      <p className={styles.note}>No podrás retirar tu inversión antes del veredicto.</p>
-
-      <Button
-        type="submit"
-        variant="primary"
-        size="lg"
-        fullWidth
-        disabled={!form.canSubmit}
-        loading={form.pending}
-        loadingLabel="Enviando inversión"
-      >
-        Confirmar inversión
-      </Button>
+      {form.step === "amount" ? (
+        <>
+          <AmountField
+            name="amount"
+            label="Monto a invertir"
+            value={form.draft}
+            onChange={form.setDraft}
+            placeholder="0"
+            suffix="coins"
+            error={form.errorMessage}
+            shortcuts={form.shortcuts}
+            shortcutsLabel="Atajos de monto"
+            hint={`Tu tope en esta ronda: ${form.maxAmount.toLocaleString("en-US")} coins`}
+          />
+          <InvestPreview rows={form.preview} />
+          <Button type="submit" variant="primary" size="lg" fullWidth disabled={!form.canReview}>
+            Revisar inversión
+          </Button>
+        </>
+      ) : (
+        <InvestConfirm
+          amount={form.amount}
+          startupName={startupName}
+          balanceAfter={wallet.balance - form.amount}
+          pending={form.pending}
+          onBack={form.back}
+        />
+      )}
     </form>
   );
 }

@@ -1,11 +1,12 @@
 import { EVENT_CONFIG } from "@/shared/domain/config";
+import { roundCap } from "@/shared/domain/investment";
 
 /** Motivo por el que un monto de inversión no puede confirmarse. */
 export type InvestmentIssue = "below-min" | "above-cap" | "above-balance";
 
-/** Tope de inversión de una ronda: fracción configurada del saldo al abrir la ronda. */
+/** Tope de inversión de una ronda: 30 % del saldo con que se entra a la ronda. */
 export function getRoundCap(startingBalance: number): number {
-  return Math.floor(startingBalance * EVENT_CONFIG.roundCapRatio);
+  return roundCap(startingBalance);
 }
 
 /** Precio de la startup según el monto acumulado de la sala, acotado a los límites configurados. */
@@ -15,16 +16,7 @@ export function getMarketPrice(totalRaised: number): number {
   return Math.round(bounded);
 }
 
-/**
- * Multiplicador del veredicto: 0.2 + 1.6 x fracción de respaldo.
- * Las abstenciones no entran en el denominador; sin votos emitidos la fracción es 0.
- */
-export function getMultiplier(backs: number, voters: number): number {
-  const fraction = voters > 0 ? backs / voters : 0;
-  return EVENT_CONFIG.multiplierBase + EVENT_CONFIG.multiplierSlope * fraction;
-}
-
-/** Valida un monto de inversión contra el mínimo, el tope restante y el saldo. Devuelve null si es válido. */
+/** Valida un monto contra el mínimo, el tope y el saldo. Devuelve null si es válido. */
 export function getInvestmentIssue(input: {
   amount: number;
   balance: number;

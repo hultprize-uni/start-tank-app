@@ -29,6 +29,29 @@
   color: var(--fg-2);
 }
 
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-inner);
+  background: var(--bg-band);
+}
+
+.facts dd {
+  margin: 4px 0 0;
+}
+
+.fact {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-1);
+}
+
 .note {
   margin: 0;
   font-size: var(--fs-small);

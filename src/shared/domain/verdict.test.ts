@@ -1,57 +1,55 @@
 import { describe, expect, it } from "vitest";
-import { calcVerdict, multiplierFor } from "./verdict";
-import type { Decision } from "./types";
+import { calcScoreVerdict, juryFraction, juryScore, multiplierForScore } from "./verdict";
 
-const BACK: Decision = "BACK";
-const REJECT: Decision = "REJECT";
-const ABSTIENE: Decision = "ABSTAIN";
-
-describe("calcVerdict", () => {
-  it("calcula 3 de 4 respaldos como multiplicador 1.4x", () => {
-    const result = calcVerdict([BACK, BACK, BACK, REJECT]);
-
-    expect(result.backs).toBe(3);
-    expect(result.voters).toBe(4);
-    expect(result.fraction).toBeCloseTo(0.75);
-    expect(result.multiplier).toBeCloseTo(1.4);
-  });
-
-  it("excluye la abstención del denominador y calcula 3 de 3 como 1.8x", () => {
-    const result = calcVerdict([BACK, BACK, BACK, ABSTIENE]);
-
-    expect(result.backs).toBe(3);
-    expect(result.voters).toBe(3);
-    expect(result.fraction).toBe(1);
-    expect(result.multiplier).toBeCloseTo(1.8);
-  });
-
-  it("asigna fracción 0.5 y multiplicador 1.0x cuando no hay votos computables", () => {
-    const result = calcVerdict([ABSTIENE, ABSTIENE, ABSTIENE, ABSTIENE]);
-
-    expect(result.voters).toBe(0);
-    expect(result.fraction).toBe(0.5);
-    expect(result.multiplier).toBeCloseTo(1.0);
-  });
-
-  it("asigna fracción 0.5 cuando la lista de decisiones está vacía", () => {
-    const result = calcVerdict([]);
-
-    expect(result.fraction).toBe(0.5);
-    expect(result.multiplier).toBeCloseTo(1.0);
-  });
-
-  it("calcula los multiplicadores de la tabla de la especificación", () => {
-    expect(calcVerdict([REJECT, REJECT, REJECT, REJECT]).multiplier).toBeCloseTo(0.2);
-    expect(calcVerdict([BACK, REJECT, REJECT, REJECT]).multiplier).toBeCloseTo(0.6);
-    expect(calcVerdict([BACK, BACK, REJECT, REJECT]).multiplier).toBeCloseTo(1.0);
-    expect(calcVerdict([BACK, BACK, BACK, BACK]).multiplier).toBeCloseTo(1.8);
+describe("multiplierForScore", () => {
+  it.each([
+    [1, 0.2],
+    [2, 0.6],
+    [3, 1],
+    [4, 1.4],
+    [5, 1.8],
+    [4.25, 1.5],
+    [3.3333, 1.133],
+  ])("maps a score of %f to %f", (score, multiplier) => {
+    expect(multiplierForScore(score)).toBe(multiplier);
   });
 });
 
-describe("multiplierFor", () => {
-  it("aplica la fórmula 0.2 + 1.6 x fracción", () => {
-    expect(multiplierFor(0)).toBeCloseTo(0.2);
-    expect(multiplierFor(0.5)).toBeCloseTo(1.0);
-    expect(multiplierFor(1)).toBeCloseTo(1.8);
+describe("juryFraction", () => {
+  it("is 0 at the minimum score and 1 at the maximum", () => {
+    expect(juryFraction(1)).toBe(0);
+    expect(juryFraction(3)).toBe(0.5);
+    expect(juryFraction(5)).toBe(1);
+  });
+});
+
+describe("juryScore", () => {
+  it("averages notes with equal weights", () => {
+    const notes = [5, 4, 3, 4].map((value) => ({ value, weight: 0.25 }));
+    expect(juryScore(notes)).toBe(4);
+  });
+
+  it("weights the notes by criterion weight", () => {
+    const notes = [
+      { value: 5, weight: 0.7 },
+      { value: 1, weight: 0.1 },
+      { value: 1, weight: 0.1 },
+      { value: 1, weight: 0.1 },
+    ];
+    expect(juryScore(notes)).toBe(3.8);
+  });
+
+  it("rejects a verdict without weight", () => {
+    expect(() => juryScore([])).toThrow(RangeError);
+  });
+});
+
+describe("calcScoreVerdict", () => {
+  it("averages the jurors who did not abstain", () => {
+    expect(calcScoreVerdict([4, 4, 2, null])).toEqual({ score: 3.3333, voters: 3, multiplier: 1.133 });
+  });
+
+  it("returns null when every juror abstains", () => {
+    expect(calcScoreVerdict([null, null])).toBeNull();
   });
 });

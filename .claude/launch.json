@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "start-tank-mocks",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["exec", "next", "dev", "--turbopack", "-p", "3100"],
+      "env": { "NEXT_PUBLIC_USE_MOCKS": "true" },
+      "port": 3100
+    }
+  ]
+}

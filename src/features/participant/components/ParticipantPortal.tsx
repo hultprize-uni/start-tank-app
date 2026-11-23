@@ -10,8 +10,7 @@ import { usePortalToast } from "../hooks/usePortalToast";
 import { investmentConfirmedMessage } from "../messages";
 import type { InvestmentResult, ParticipantViewModel } from "../types";
 import { FinalScreen } from "./FinalScreen";
-import { InvestPanel } from "./InvestPanel";
-import { InvestSheet } from "./InvestSheet";
+import { InvestModal } from "./InvestModal";
 import { LoginScreen } from "./LoginScreen";
 import { MarketScreen } from "./MarketScreen";
 import { ParticipantShell } from "./ParticipantShell";
@@ -25,14 +24,21 @@ import { VotingScreen } from "./VotingScreen";
 import styles from "./ParticipantPortal.module.css";
 
 /** Pantalla de la ronda según la fase. La pantalla no guarda estado propio. */
-function renderRoundScreen(vm: ParticipantViewModel, onInvest: (() => void) | undefined): ReactNode {
+function renderRoundScreen(vm: ParticipantViewModel, onInvest: () => void): ReactNode {
   const { round, startup, wallet, market, verdict, standing } = vm;
 
   switch (vm.phase) {
     case "login":
       return null;
     case "scheduled":
-      return round && startup ? <ScheduledScreen round={round} startup={startup} /> : null;
+      return round && startup && wallet ? (
+        <ScheduledScreen
+          round={round}
+          startup={startup}
+          balance={wallet.balance}
+          streak={standing?.streak ?? 0}
+        />
+      ) : null;
     case "open":
     case "lastCall":
       return round && startup && wallet && market ? (
@@ -41,7 +47,8 @@ function renderRoundScreen(vm: ParticipantViewModel, onInvest: (() => void) | un
           startup={startup}
           market={market}
           wallet={wallet}
-          countdownSeconds={vm.countdownSeconds}
+          lastCall={vm.phase === "lastCall"}
+          clock={vm.clock}
           onInvest={onInvest}
         />
       ) : null;
@@ -50,11 +57,13 @@ function renderRoundScreen(vm: ParticipantViewModel, onInvest: (() => void) | un
         <VotingScreen round={round} startup={startup} wallet={wallet} />
       ) : null;
     case "result":
-      return round && startup && verdict ? (
-        <ResultScreen round={round} startup={startup} verdict={verdict} />
+      return round && startup && verdict && wallet ? (
+        <ResultScreen round={round} startup={startup} verdict={verdict} balance={wallet.balance} />
       ) : null;
     case "final":
-      return wallet && standing ? <FinalScreen balance={wallet.balance} standing={standing} /> : null;
+      return wallet && standing ? (
+        <FinalScreen balance={wallet.balance} standing={standing} winnerStartup={vm.winnerStartup} />
+      ) : null;
   }
 }
 
@@ -67,7 +76,11 @@ export function ParticipantPortal() {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const { toast, showToast } = usePortalToast();
 
-  const canInvest = vm !== null && (vm.phase === "open" || vm.phase === "lastCall");
+  const canInvest =
+    vm !== null &&
+    (vm.phase === "open" || vm.phase === "lastCall") &&
+    vm.wallet?.alreadyInvested === false &&
+    vm.clock?.paused !== true;
   const sheet = useInvestSheet(vm?.round?.number ?? null, canInvest);
 
   useEffect(() => {
@@ -106,7 +119,6 @@ export function ParticipantPortal() {
   }
 
   const balance = vm.wallet?.balance ?? 0;
-  const showInlineInvest = isDesktop && canInvest && vm.startup !== null && vm.wallet !== null;
   const showRanking = vm.standing !== null;
   const isRevealed = vm.phase === "result" || vm.phase === "final";
 
@@ -118,16 +130,9 @@ export function ParticipantPortal() {
         isDesktop={isDesktop}
         header={<PortalHeader balance={balance} />}
         sidebar={<PortalSidebar balance={balance} rounds={vm.rounds} />}
-        primary={renderRoundScreen(vm, isDesktop ? undefined : sheet.open)}
+        primary={renderRoundScreen(vm, sheet.open)}
         secondary={
           <>
-            {showInlineInvest && vm.startup && vm.wallet ? (
-              <InvestPanel
-                startupName={vm.startup.name}
-                wallet={vm.wallet}
-                onConfirm={confirmInvestment}
-              />
-            ) : null}
             {showRanking && vm.standing ? (
               <RankingPanel standing={vm.standing} showDelta={isRevealed} />
             ) : null}
@@ -137,11 +142,12 @@ export function ParticipantPortal() {
       />
 
       {vm.startup && vm.wallet ? (
-        <InvestSheet
-          open={sheet.isOpen && !isDesktop}
+        <InvestModal
+          open={sheet.isOpen}
           onClose={sheet.close}
-          startupName={vm.startup.name}
+          startup={vm.startup}
           wallet={vm.wallet}
+          isDesktop={isDesktop}
           onConfirm={confirmInvestment}
         />
       ) : null}

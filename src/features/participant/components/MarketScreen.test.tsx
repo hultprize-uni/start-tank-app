@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PhaseClock } from "@/shared/domain/types";
 import type { MarketInfo, RoundInfo, StartupInfo, WalletInfo } from "../types";
 import { MarketScreen } from "./MarketScreen";
 
@@ -11,150 +12,74 @@ afterEach(cleanup);
 const round: RoundInfo = { number: 2, total: 5 };
 const startup: StartupInfo = {
   name: "Nodo Solar",
-  sdg: "ODS 7 · Energía asequible",
+  sdg: "ODS 7 · Energía asequible y no contaminante",
   description: "",
+  logoUrl: null,
 };
-const market: MarketInfo = {
-  price: 120,
-  priceChange: 20,
-  totalRaised: 4_000,
-  investorCount: 18,
-};
-const wallet: WalletInfo = { balance: 9_000, investedInRound: 500, roundCap: 2_700 };
+const market: MarketInfo = { price: 110, priceChange: 10, totalRaised: 2_200, investorCount: 9 };
+const wallet: WalletInfo = { balance: 9_000, investedInRound: 0, roundCap: 2_700, alreadyInvested: false };
 
-describe("MarketScreen en mercado abierto", () => {
-  it("muestra la startup, el precio en vivo y la etiqueta de mercado abierto", () => {
-    render(
-      <MarketScreen
-        round={round}
-        startup={startup}
-        market={market}
-        wallet={wallet}
-        countdownSeconds={null}
-      />,
-    );
+function clockEndingIn(seconds: number, paused = false): PhaseClock {
+  return {
+    serverTime: new Date().toISOString(),
+    phaseEndsAt: paused ? null : new Date(Date.now() + seconds * 1000 - 500).toISOString(),
+    paused,
+    pausedSeconds: paused ? seconds : null,
+  };
+}
+
+function renderMarket(overrides: Partial<Parameters<typeof MarketScreen>[0]> = {}) {
+  const onInvest = vi.fn();
+  render(
+    <MarketScreen
+      round={round}
+      startup={startup}
+      market={market}
+      wallet={wallet}
+      lastCall={false}
+      clock={clockEndingIn(600)}
+      onInvest={onInvest}
+      {...overrides}
+    />,
+  );
+  return onInvest;
+}
+
+describe("MarketScreen", () => {
+  it("muestra el mercado abierto con el precio, el saldo y el cierre", () => {
+    renderMarket();
 
     expect(screen.getByText("Mercado abierto")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Mercado de la ronda 2 de 5" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Nodo Solar" })).toBeInTheDocument();
-    expect(screen.getByText("120")).toBeInTheDocument();
-    expect(screen.getByText("▲ +20")).toBeInTheDocument();
-    expect(screen.getByText("4,000")).toBeInTheDocument();
-    expect(screen.getByText("18")).toBeInTheDocument();
+    expect(screen.getByText("9,000")).toBeInTheDocument();
+    expect(screen.getByText("Tope 2,700")).toBeInTheDocument();
+    expect(screen.getByText("Cierra en 10:00")).toBeInTheDocument();
   });
 
-  it("expresa el uso del tope de la ronda como barra de progreso accesible", () => {
-    render(
-      <MarketScreen
-        round={round}
-        startup={startup}
-        market={market}
-        wallet={wallet}
-        countdownSeconds={null}
-      />,
-    );
-
-    const bar = screen.getByRole("progressbar", { name: "Uso del tope de la ronda" });
-    expect(bar).toHaveAttribute("aria-valuenow", "500");
-    expect(bar).toHaveAttribute("aria-valuemax", "2700");
-    expect(bar).toHaveAttribute("aria-valuetext", "500 de 2,700 coins");
+  it("abre la inversión con el botón Invertir", async () => {
+    const onInvest = renderMarket();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Invertir" }));
+    expect(onInvest).toHaveBeenCalledOnce();
   });
 
-  it("no muestra la cuenta regresiva fuera de la última llamada", () => {
-    render(
-      <MarketScreen
-        round={round}
-        startup={startup}
-        market={market}
-        wallet={wallet}
-        countdownSeconds={null}
-      />,
-    );
+  it("muestra la última llamada con su cuenta regresiva del servidor", () => {
+    renderMarket({ lastCall: true, clock: clockEndingIn(42) });
 
-    expect(screen.queryByText("Cierre automático en")).not.toBeInTheDocument();
+    expect(screen.getByText("Última llamada")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tiempo restante de la última llamada")).toHaveTextContent("00:42");
   });
 
-  it("ofrece el botón de inversión cuando recibe la acción del móvil", async () => {
-    const user = userEvent.setup();
-    const onInvest = vi.fn();
-    render(
-      <MarketScreen
-        round={round}
-        startup={startup}
-        market={market}
-        wallet={wallet}
-        countdownSeconds={null}
-        onInvest={onInvest}
-      />,
-    );
+  it("bloquea la inversión con el mercado en pausa", () => {
+    renderMarket({ clock: clockEndingIn(120, true) });
 
-    await user.click(screen.getByRole("button", { name: "Invertir" }));
-
-    expect(onInvest).toHaveBeenCalledTimes(1);
-  });
-
-  it("omite el botón de inversión en el escritorio, donde el formulario va en línea", () => {
-    render(
-      <MarketScreen
-        round={round}
-        startup={startup}
-        market={market}
-        wallet={wallet}
-        countdownSeconds={null}
-      />,
-    );
-
+    expect(screen.getByText("Mercado en pausa")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Invertir" })).not.toBeInTheDocument();
   });
 
-  it("muestra una variación negativa del precio con el signo correspondiente", () => {
-    render(
-      <MarketScreen
-        round={round}
-        startup={startup}
-        market={{ ...market, price: 90, priceChange: -10 }}
-        wallet={wallet}
-        countdownSeconds={null}
-      />,
-    );
+  it("muestra que ya invirtió y no ofrece otra inversión", () => {
+    renderMarket({ wallet: { ...wallet, balance: 8_000, investedInRound: 1_000, alreadyInvested: true } });
 
-    expect(screen.getByText("▼ −10")).toBeInTheDocument();
-  });
-});
-
-describe("MarketScreen en última llamada", () => {
-  it("muestra la cuenta regresiva con el tiempo restante y la barra de avance", () => {
-    render(
-      <MarketScreen
-        round={round}
-        startup={startup}
-        market={market}
-        wallet={wallet}
-        countdownSeconds={42}
-      />,
-    );
-
-    expect(screen.getByText("Última llamada")).toBeInTheDocument();
-    expect(screen.getByText("Cierre automático en")).toBeInTheDocument();
-    expect(screen.getByLabelText("Tiempo restante de la última llamada")).toHaveTextContent("00:42");
-    expect(screen.getByRole("progressbar", { name: "Barra de tiempo de la última llamada" })).toHaveAttribute(
-      "aria-valuenow",
-      "42",
-    );
-  });
-
-  it("resalta el contador en los últimos diez segundos", () => {
-    render(
-      <MarketScreen
-        round={round}
-        startup={startup}
-        market={market}
-        wallet={wallet}
-        countdownSeconds={8}
-      />,
-    );
-
-    expect(screen.getByLabelText("Tiempo restante de la última llamada")).toHaveTextContent("00:08");
-    expect(screen.getByLabelText("Tiempo restante de la última llamada").className).toMatch(/warning/);
+    expect(screen.getByText("Ya invertiste en esta ronda")).toBeInTheDocument();
+    expect(screen.getByText("1,000")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Invertir" })).not.toBeInTheDocument();
   });
 });

@@ -19,13 +19,14 @@ function jsonResponse(body: unknown, status = 200): Response {
 const sampleView: ParticipantViewModel = {
   phase: "open",
   round: { number: 2, total: 5 },
-  startup: { name: "Nodo Solar", sdg: "ODS 7 · Energía asequible y no contaminante", description: "" },
-  wallet: { balance: 9_000, investedInRound: 0, roundCap: 3_000 },
+  startup: { name: "Nodo Solar", sdg: "ODS 7 · Energía asequible y no contaminante", description: "", logoUrl: null },
+  wallet: { balance: 9_000, investedInRound: 0, roundCap: 3_000, alreadyInvested: false },
   market: { price: 110, priceChange: 10, totalRaised: 2_200, investorCount: 9 },
-  countdownSeconds: null,
+  clock: null,
   verdict: null,
   standing: null,
   rounds: [],
+  winnerStartup: null,
 };
 
 describe("fetchParticipantState", () => {

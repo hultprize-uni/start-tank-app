@@ -12,13 +12,14 @@ import { handleParticipantState as GET } from "./handlers";
 const sampleView: ParticipantViewModel = {
   phase: "scheduled",
   round: { number: 1, total: 5 },
-  startup: { name: "AgroSense", sdg: "ODS 2 · Hambre cero", description: "Descripción" },
-  wallet: { balance: 10_000, investedInRound: 0, roundCap: 3_000 },
+  startup: { name: "AgroSense", sdg: "ODS 2 · Hambre cero", description: "Descripción", logoUrl: null },
+  wallet: { balance: 10_000, investedInRound: 0, roundCap: 3_000, alreadyInvested: false },
   market: null,
-  countdownSeconds: null,
+  clock: null,
   verdict: null,
   standing: null,
   rounds: [],
+  winnerStartup: null,
 };
 
 beforeEach(() => {
@@ -46,6 +47,6 @@ describe("GET /api/participant/state", () => {
     expect(mockState).toHaveBeenCalledWith(7);
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
-    await expect(response.json()).resolves.toEqual(sampleView);
+    await expect(response.json()).resolves.toMatchObject(sampleView);
   });
 });

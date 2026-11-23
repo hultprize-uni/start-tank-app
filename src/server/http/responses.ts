@@ -13,6 +13,14 @@ export function jsonResponse(body: unknown, state = 200): NextResponse {
   return NextResponse.json(body, { status: state, headers: NO_CACHE_HEADERS });
 }
 
+/**
+ * Respuesta de estado de una vista: agrega serverTime con la hora del servidor, que los clientes
+ * usan para sincronizar los cronómetros (RNF-15).
+ */
+export function stateResponse(body: object): NextResponse {
+  return jsonResponse({ ...body, serverTime: new Date().toISOString() });
+}
+
 /** Respuesta de error con un código estable que el cliente interpreta. */
 export function errorResponse(state: number, code: string): NextResponse {
   return jsonResponse({ error: code }, state);

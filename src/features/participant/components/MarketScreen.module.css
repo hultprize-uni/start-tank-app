@@ -20,6 +20,14 @@
   background: var(--bg-band);
 }
 
+.timer {
+  margin-left: auto;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+
 .capHeader {
   display: flex;
   justify-content: space-between;

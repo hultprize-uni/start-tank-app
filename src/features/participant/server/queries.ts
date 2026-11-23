@@ -1,11 +1,6 @@
-import type { Decision } from "@/shared/domain/types";
 import { sql } from "@/server/db/client";
-import {
-  normalizeFunctionResult,
-  toDecision,
-  toRoundState,
-  type FunctionResult,
-} from "@/server/db/values";
+import { closeExpiredLastCall } from "@/server/db/rounds";
+import { normalizeFunctionResult, toRoundState, type FunctionResult } from "@/server/db/values";
 import {
   buildParticipantState,
   finishedRoundsOf,
@@ -21,35 +16,33 @@ import type { ParticipantViewModel } from "../types";
  * valida las reglas en la transacción.
  */
 
-/** Fila de ronda tal como la devuelve Postgres, con el estado en el valor de la base de datos. */
 interface RawParticipantRoundRow extends Omit<ParticipantRoundRow, "estado"> {
   estado: string;
 }
 
-/** Saldo actual del asistente. */
 async function queryBalance(userId: number): Promise<number> {
   const [row] = await sql<{ saldo: string }>`
-    select saldo_actual::text as saldo
-      from usuario
-     where id_usuario = ${userId}::bigint`;
+    select saldo_actual::text as saldo from usuario where id_usuario = ${userId}::bigint`;
   return Number(row?.saldo ?? 0);
 }
 
-
-/** Todas las rondas con los datos de su startup y de su fila de startup_leaderboard. */
 async function queryParticipantRounds(): Promise<ParticipantRoundRow[]> {
   const rows = await sql<RawParticipantRoundRow>`
     select r.id_ronda::text as id_ronda,
            r.numero,
            r.estado,
            r.multiplicador::text as multiplicador,
-           extract(epoch from (now() - r.ultima_llamada_en))::float8 as segundos_ultima_llamada,
+           to_char(r.fase_termina_en at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as fase_termina_en,
+           r.segundos_restantes_pausa,
+           to_char(r.liquidada_en at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as liquidada_en,
            s.nombre as startup_nombre,
            s.ods,
            s.descripcion,
+           s.logo_url,
            sl.monto_acumulado::text as monto_acumulado,
            sl.inversores_unicos,
-           sl.precio_vivo::text as precio_vivo
+           sl.precio_vivo::text as precio_vivo,
+           sl.puntaje_jurado::text as puntaje_jurado
       from ronda r
       join startup s on s.id_startup = r.id_startup
       left join startup_leaderboard sl on sl.id_ronda = r.id_ronda
@@ -57,22 +50,17 @@ async function queryParticipantRounds(): Promise<ParticipantRoundRow[]> {
   return rows.map((row) => ({ ...row, estado: toRoundState(row.estado) }));
 }
 
-/** Montos y retornos del asistente agrupados por ronda. */
+/** Monto y retorno del asistente por ronda. Hay una sola inversión por ronda. */
 async function queryUserInvestments(userId: number): Promise<UserInvestmentRow[]> {
   return sql<UserInvestmentRow>`
     select i.id_ronda::text as id_ronda,
-           sum(i.monto)::text as monto,
-           coalesce(sum(i.retorno), 0)::text as retorno
+           i.monto::text as monto,
+           coalesce(i.retorno, 0)::text as retorno
       from inversion i
-     where i.id_usuario = ${userId}::bigint
-     group by i.id_ronda`;
+     where i.id_usuario = ${userId}::bigint`;
 }
 
-
-/**
- * Rondas que el operador liquidó a 1.0x. La acción queda registrada en accion_ronda con el valor
- * de la base de datos; la anulación con devolución se identifica por el estado ANULADA.
- */
+/** Rondas que el operador liquidó a 1.0x; la devolución se identifica por el estado ANULADA. */
 async function queryRoundsSettledAtOne(): Promise<string[]> {
   const rows = await sql<{ id_ronda: string }>`
     select distinct a.id_ronda::text as id_ronda
@@ -81,18 +69,24 @@ async function queryRoundsSettledAtOne(): Promise<string[]> {
   return rows.map((row) => row.id_ronda);
 }
 
-/** Decisiones emitidas por los jurados en una ronda. */
-async function queryDecisions(roundId: string): Promise<Decision[]> {
-  const rows = await sql<{ decision: string }>`
-    select v.decision
-      from veredicto v
-     where v.id_ronda = ${roundId}::bigint`;
-  return rows.map((row) => toDecision(row.decision));
+/** Startup con el mayor puntaje final, que existe solo después del cierre del evento. */
+async function queryWinnerStartup(): Promise<string | null> {
+  const [row] = await sql<{ nombre: string }>`
+    select s.nombre
+      from startup_leaderboard sl
+      join startup s on s.id_startup = sl.id_startup
+     where sl.puntaje is not null
+     order by sl.puntaje desc, sl.puntaje_jurado desc nulls last
+     limit 1`;
+  return row?.nombre ?? null;
 }
 
-
-/** Primeras tres filas del leaderboard de una ronda. */
-async function queryTopThree(roundId: string): Promise<ParticipantLeaderboardRow[]> {
+/** Filas del leaderboard de una ronda entre dos posiciones, inclusive. */
+async function queryLeaderboardRange(
+  roundId: string,
+  from: number,
+  to: number,
+): Promise<ParticipantLeaderboardRow[]> {
   return sql<ParticipantLeaderboardRow>`
     select u.id_usuario::text as id_usuario,
            coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre,
@@ -102,15 +96,11 @@ async function queryTopThree(roundId: string): Promise<ParticipantLeaderboardRow
       from leaderboard l
       join usuario u on u.id_usuario = l.id_usuario
      where l.id_ronda = ${roundId}::bigint
-     order by l.posicion
-     limit 3`;
+       and l.posicion between ${from} and ${to}
+     order by l.posicion`;
 }
 
-/** Fila del asistente en el leaderboard de una ronda, si existe. */
-async function queryLeaderboardRow(
-  roundId: string,
-  userId: number,
-): Promise<ParticipantLeaderboardRow | null> {
+async function queryOwnRow(roundId: string, userId: number): Promise<ParticipantLeaderboardRow | null> {
   const [row] = await sql<ParticipantLeaderboardRow>`
     select u.id_usuario::text as id_usuario,
            coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre,
@@ -124,48 +114,60 @@ async function queryLeaderboardRow(
   return row ?? null;
 }
 
-/** Número de filas del leaderboard de una ronda. */
 async function queryParticipantCount(roundId: string): Promise<number> {
   const [row] = await sql<{ total: number }>`
-    select count(*)::int as total
-      from leaderboard
-     where id_ronda = ${roundId}::bigint`;
+    select count(*)::int as total from leaderboard where id_ronda = ${roundId}::bigint`;
   return row?.total ?? 0;
 }
 
+/** Posiciones de la ronda anterior para los asistentes indicados, por identificador. */
+async function queryPositions(roundId: string, userIds: readonly string[]): Promise<Map<string, number>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await sql<{ id_usuario: string; posicion: number }>`
+    select id_usuario::text as id_usuario, posicion
+      from leaderboard
+     where id_ronda = ${roundId}::bigint
+       and id_usuario = any(${userIds.map(Number)}::bigint[])`;
+  return new Map(rows.map((row) => [row.id_usuario, row.posicion]));
+}
+
 /**
- * Lee el view model del inversionista para la sesión indicada. Las consultas del leaderboard se
- * ejecutan solo cuando existe una ronda terminada.
+ * Lee el view model del inversionista para la sesión indicada y registra su latido de conexión.
+ * Antes de leer, cierra la última llamada vencida (RF-08).
  */
 export async function readParticipantState(userId: number): Promise<ParticipantViewModel> {
-  const [balance, rounds, investments, settledAtOneRoundIds] = await Promise.all([
+  await closeExpiredLastCall();
+  const [balance, rounds, investments, settledAtOneRoundIds, winnerStartup] = await Promise.all([
     queryBalance(userId),
     queryParticipantRounds(),
     queryUserInvestments(userId),
     queryRoundsSettledAtOne(),
+    queryWinnerStartup(),
+    sql`select fn_latido_usuario(${userId}::bigint)`,
   ]);
 
-  const finishedRounds = finishedRoundsOf(rounds);
-  const last = finishedRounds[finishedRounds.length - 1];
-  const previous = finishedRounds[finishedRounds.length - 2];
+  const finished = finishedRoundsOf(rounds);
+  const last = finished[finished.length - 1];
+  const previous = finished[finished.length - 2];
 
-  let lastDecisions: Decision[] = [];
   let topThreeRows: ParticipantLeaderboardRow[] = [];
+  let windowRows: ParticipantLeaderboardRow[] = [];
   let ownRow: ParticipantLeaderboardRow | null = null;
   let participants = 0;
+  let previousPositions = new Map<string, number>();
   if (last !== undefined) {
-    [lastDecisions, topThreeRows, ownRow, participants] = await Promise.all([
-      queryDecisions(last.id_ronda),
-      queryTopThree(last.id_ronda),
-      queryLeaderboardRow(last.id_ronda, userId),
+    [topThreeRows, ownRow, participants] = await Promise.all([
+      queryLeaderboardRange(last.id_ronda, 1, 3),
+      queryOwnRow(last.id_ronda, userId),
       queryParticipantCount(last.id_ronda),
     ]);
-  }
-
-  let previousPosition: number | null = null;
-  if (previous !== undefined) {
-    const previousRow = await queryLeaderboardRow(previous.id_ronda, userId);
-    previousPosition = previousRow?.posicion ?? null;
+    if (ownRow !== null) {
+      windowRows = await queryLeaderboardRange(last.id_ronda, ownRow.posicion - 2, ownRow.posicion + 2);
+    }
+    if (previous !== undefined) {
+      const ids = [...new Set([...topThreeRows, ...windowRows].map((row) => row.id_usuario))];
+      previousPositions = await queryPositions(previous.id_ronda, ids);
+    }
   }
 
   return buildParticipantState({
@@ -173,22 +175,23 @@ export async function readParticipantState(userId: number): Promise<ParticipantV
     balance,
     rounds,
     investments,
-    lastDecisions,
     topThreeRows,
+    windowRows,
     ownRow,
     participants,
-    previousPosition,
+    previousPositions,
     settledAtOneRoundIds,
+    winnerStartup,
+    now: new Date(),
   });
 }
 
-
 /**
  * Registra una inversión del asistente en la ronda abierta mediante fn_registrar_inversion. El
- * identificador del asistente lo fija el servidor a partir de la sesión, nunca el cuerpo de la
- * petición. Si no hay ronda abierta, devuelve ROUND_NOT_OPEN sin invocar la función.
+ * identificador del asistente lo fija el servidor a partir de la sesión, nunca el cuerpo.
  */
 export async function registerInvestment(userId: number, amount: number): Promise<FunctionResult> {
+  await closeExpiredLastCall();
   const [active] = await sql<{ id_ronda: string }>`
     select r.id_ronda::text as id_ronda
       from ronda r

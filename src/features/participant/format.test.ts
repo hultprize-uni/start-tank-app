@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatCoins, formatMultiplier, formatPriceChange, formatSignedCoins } from "./format";
-import { getInvestmentIssue, getMarketPrice, getMultiplier, getRoundCap } from "./rules";
+import { getInvestmentIssue, getMarketPrice, getRoundCap } from "./rules";
 
 describe("formatCoins", () => {
   it("redondea y separa miles con coma", () => {
@@ -35,7 +35,7 @@ describe("formatMultiplier", () => {
 describe("reglas del portal", () => {
   it("calcula el tope de la ronda como 30 % del saldo al abrir", () => {
     expect(getRoundCap(10_000)).toBe(3_000);
-    expect(getRoundCap(9_999)).toBe(2_999);
+    expect(getRoundCap(9_999)).toBe(2_999.7);
   });
 
   it("acota el precio entre 50 y 200 según el monto acumulado", () => {
@@ -43,13 +43,7 @@ describe("reglas del portal", () => {
     expect(getMarketPrice(2_000)).toBe(101);
     expect(getMarketPrice(1_000_000)).toBe(200);
   });
-
-  it("calcula el multiplicador sin contar abstenciones en el denominador", () => {
-    expect(getMultiplier(4, 4)).toBeCloseTo(1.8);
-    expect(getMultiplier(0, 0)).toBeCloseTo(0.2);
-    expect(getMultiplier(2, 3)).toBeCloseTo(0.2 + 1.6 * (2 / 3));
-  });
-
+
   it("distingue monto bajo el mínimo, tope superado y saldo insuficiente", () => {
     expect(getInvestmentIssue({ amount: 249, balance: 9_000, remainingCap: 3_000 })).toBe("below-min");
     expect(getInvestmentIssue({ amount: 300, balance: 9_000, remainingCap: 200 })).toBe("above-cap");

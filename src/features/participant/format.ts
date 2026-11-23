@@ -17,7 +17,7 @@ export function formatPriceChange(value: number): string {
   return `▼ −${Math.abs(value)}`;
 }
 
-/** Formatea un multiplicador con un decimal, por ejemplo "1.4x". */
+/** Formatea un multiplicador con uno o dos decimales, por ejemplo "1.4x", "1.0x" o "1.13x". */
 export function formatMultiplier(value: number): string {
-  return `${value.toFixed(1)}x`;
+  return `${value.toFixed(2).replace(/0$/, "")}x`;
 }
