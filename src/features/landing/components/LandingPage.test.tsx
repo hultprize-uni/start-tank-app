@@ -43,6 +43,40 @@ describe("LandingPage: estructura", () => {
       expect(link).toHaveAttribute("href", PAGE_ROUTES.participant);
     }
   });
+
+  it("enlaza los cuatro portales de la plataforma y la inscripción en Luma", () => {
+    render(<LandingPage />);
+
+    expect(screen.getByRole("link", { name: "Pantalla del auditorio" })).toHaveAttribute(
+      "href",
+      PAGE_ROUTES.screen,
+    );
+    expect(screen.getByRole("link", { name: "Portal del jurado" })).toHaveAttribute(
+      "href",
+      PAGE_ROUTES.jury,
+    );
+    expect(screen.getByRole("link", { name: "Consola del operador" })).toHaveAttribute(
+      "href",
+      PAGE_ROUTES.operator,
+    );
+    expect(screen.getByRole("link", { name: "Inscribirme en Luma" })).toBeInTheDocument();
+  });
+
+  it("muestra los datos del evento, el programa y los premios", () => {
+    render(<LandingPage />);
+
+    expect(screen.getByText("26 nov")).toBeInTheDocument();
+    expect(screen.getByText("2:00 p. m.")).toBeInTheDocument();
+    expect(screen.getByText("CTIC")).toBeInTheDocument();
+    expect(screen.getByText("80 a 100")).toBeInTheDocument();
+
+    expect(screen.getByText("14:00")).toBeInTheDocument();
+    expect(screen.getByText("14:30")).toBeInTheDocument();
+    expect(screen.getByText("16:50")).toBeInTheDocument();
+
+    expect(screen.getByText("Shark Tank")).toBeInTheDocument();
+    expect(screen.getByText("Idea millonaria en 20 minutos")).toBeInTheDocument();
+  });
 });
 
 describe("LandingPage: reglas vigentes", () => {
@@ -70,5 +104,12 @@ describe("LandingPage: metadatos", () => {
   it("incluye título y descripción con la fecha del evento", () => {
     expect(String(landingMetadata.title)).toContain("Start Tank");
     expect(landingMetadata.description).toContain("26 de noviembre");
+    expect(landingMetadata.openGraph).toMatchObject({
+      locale: "es_PE",
+      siteName: "Start Tank",
+    });
+    expect(landingMetadata.twitter).toMatchObject({
+      card: "summary",
+    });
   });
 });
