@@ -132,7 +132,7 @@ Las fases F0 a F2 son de Renato y se ejecutan primero. Al cerrar F2, Jhon, Ilia 
 |---|---|---|
 | 0.1 Activar pnpm con corepack e instalar dependencias con `pnpm install`. | `package.json` | |
 | 0.2 Completar `.env` con `DATABASE_URL` de Neon, `SESSION_SECRET` de 32 caracteres o más, `NEON_AUTH_BASE_URL` y `NEON_AUTH_COOKIE_SECRET`, y compartirlo con el equipo por un canal privado. El `.env` no se sube al repositorio. | `.env`, `.env.example` | RNF-09 |
-| 0.3 Configurar en Neon Auth solo el proveedor Google. | Neon Auth | RF-01 |
+| 0.3 Verificar en Neon Auth que solo el proveedor Google está habilitado. El ingreso con Google ya funciona en local. | Neon Auth | RF-01 |
 | 0.4 Crear la rama de Neon para staging y aplicar las migraciones existentes. | `db/README.md` | |
 | 0.5 Confirmar que `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm build` pasan sobre `main`. | `.github/workflows/ci.yml` | |
 | 0.6 Subir `docs/start-tank-tech/` al repositorio y actualizar el README con la instalación y el enlace a los documentos. | `docs/`, `README.md` | |
@@ -170,7 +170,7 @@ Las fases F0 a F2 son de Renato y se ejecutan primero. Al cerrar F2, Jhon, Ilia 
 
 | Tarea | Archivos | Requisitos |
 |---|---|---|
-| 3.1 Ingreso solo con Google. | `LoginScreen`, `auth-client` | RF-01, RF-02 |
+| 3.1 Ingreso solo con Google: ya implementado en `LoginScreen` y `auth-client`. Se verifica que la billetera se crea una sola vez por cuenta y que la sesión vence a las 2 horas (F2.5). | `LoginScreen`, `auth-client`, `provisioning.ts` | RF-01, RF-02 |
 | 3.2 Modal de inversión de tamaño medio con el logo, el ODS y la descripción de la startup, y el campo de monto con los atajos `250`, `25%` y `Máx`. | `InvestModal`, `InvestForm`, `useInvestForm` | RF-12, RNF-13 |
 | 3.3 Vista previa de lo que recibiría con puntajes de 1 a 5 y confirmación en dos pasos. | `InvestPreview`, `InvestConfirm` | RF-24 |
 | 3.4 Estado "Ya invertiste en esta ronda" y bloqueo con el mensaje "Mercado en pausa" o con el mercado cerrado. | `MarketScreen`, `InvestPanel` | RF-07, RF-12 |

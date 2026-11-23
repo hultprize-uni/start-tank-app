@@ -1,8 +1,9 @@
 -- Datos de ejemplo para desarrollo local.
 --
--- Contiene cinco startups con sus rondas, la fila inicial de precio vivo de cada ronda,
--- cuatro jurados y un operador. Los códigos de acceso son valores ficticios y no deben
--- utilizarse en un entorno productivo.
+-- Contiene cinco startups con sus rondas, la fila inicial de precio vivo de cada ronda, cuatro
+-- jurados y dos operadores. Los códigos de acceso son valores ficticios y no deben utilizarse en un
+-- entorno productivo. Los criterios y la configuración por defecto no están aquí: los crea la
+-- migración 20261124000700_datos_base.sql.
 --
 -- Cada inserción omite las filas existentes, de modo que el script puede ejecutarse varias veces.
 
@@ -35,7 +36,8 @@ insert into jurado (codigo_acceso, nombre, organizacion) values
   ('JUR-EJ-004', 'Jurado de ejemplo 4', 'Organización de ejemplo D')
 on conflict (codigo_acceso) do nothing;
 
--- Operador de ejemplo.
-insert into operador (codigo_acceso, nombre) values
-  ('OPE-EJ-001', 'Operador de ejemplo')
+-- Operadores de ejemplo: el conductor ejecuta las acciones y el soporte solo observa.
+insert into operador (codigo_acceso, nombre, rol) values
+  ('OPE-EJ-001', 'Conductor de ejemplo', 'CONDUCTOR'),
+  ('OPE-EJ-002', 'Soporte de ejemplo', 'SOPORTE')
 on conflict (codigo_acceso) do nothing;

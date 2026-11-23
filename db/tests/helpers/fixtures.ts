@@ -5,16 +5,26 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 
-export type Decision = "RESPALDA" | "RECHAZA" | "SE_ABSTIENE";
+/** Puntaje de 1 a 5 que un jurado da a todos los criterios, o la abstención. */
+export type Score = number | "ABSTIENE";
+
+/** Nota de un criterio dentro de un envío. */
+export interface CriterionNote {
+  id_criterio: number;
+  valor: number;
+}
 
 /** Respuesta jsonb de las funciones transaccionales. Solo aparecen las claves que la función devuelve. */
 export interface FunctionResult {
   ok: boolean;
   error?: string;
   saldo?: number | null;
+  tope?: number;
   estado?: string;
   multiplicador?: number;
-  fraccion_respaldo?: number;
+  puntaje?: number | null;
+  puntaje_jurado?: number;
+  liquidada_en?: string;
   idempotente?: boolean;
 }
 
@@ -22,7 +32,7 @@ export interface PriceRow {
   montoAcumulado: number;
   inversoresUnicos: number;
   precioVivo: number;
-  fraccionRespaldo: number | null;
+  puntajeJurado: number | null;
   puntaje: number | null;
 }
 
@@ -42,25 +52,22 @@ export interface InvestmentRow {
   state: string;
 }
 
+export interface RoundTimer {
+  state: string;
+  phaseEndsAt: Date | null;
+  pausedSeconds: number | null;
+}
+
 let sequence = 0;
 
 /** Crea un asistente con el saldo indicado (por omisión, el capital inicial de 10,000). */
-export async function createUser(
-  pool: Pool,
-  options: { balance?: number; state?: string } = {},
-): Promise<number> {
+export async function createUser(pool: Pool, options: { balance?: number } = {}): Promise<number> {
   sequence += 1;
   const { rows } = await pool.query<{ id: string }>(
-    `insert into usuario (proveedor_oauth, id_externo, correo, nombre, saldo_actual, estado)
-     values ('test', $1, $2, $3, $4, $5)
+    `insert into usuario (proveedor_oauth, id_externo, correo, nombre, saldo_actual)
+     values ('test', $1, $2, $3, $4)
      returning id_usuario as id`,
-    [
-      randomUUID(),
-      `asistente-${sequence}@example.test`,
-      `Asistente ${sequence}`,
-      options.balance ?? 10000,
-      options.state ?? "ACTIVO",
-    ],
+    [randomUUID(), `asistente-${sequence}@example.test`, `Asistente ${sequence}`, options.balance ?? 10000],
   );
   return Number(rows[0].id);
 }
@@ -78,6 +85,14 @@ export async function getRoundId(pool: Pool, number: number): Promise<number> {
 export async function getJurorIds(pool: Pool): Promise<number[]> {
   const { rows } = await pool.query<{ id: string }>(
     "select id_jurado as id from jurado order by id_jurado",
+  );
+  return rows.map((row) => Number(row.id));
+}
+
+/** Devuelve los identificadores de los criterios en orden ascendente. */
+export async function getCriterionIds(pool: Pool): Promise<number[]> {
+  const { rows } = await pool.query<{ id: string }>(
+    "select id_criterio as id from criterio order by id_criterio",
   );
   return rows.map((row) => Number(row.id));
 }
@@ -103,10 +118,18 @@ export async function waitForLockWait(pool: Pool, timeoutMs = 10000): Promise<vo
   throw new Error("Ninguna sesión quedó en espera de un bloqueo dentro del plazo previsto.");
 }
 
-/** Devuelve el identificador del operador de los datos de ejemplo. */
+/** Devuelve el identificador del operador conductor de los datos de ejemplo. */
 export async function getOperatorId(pool: Pool): Promise<number> {
   const { rows } = await pool.query<{ id: string }>(
-    "select id_operador as id from operador order by id_operador limit 1",
+    "select id_operador as id from operador where rol = 'CONDUCTOR' order by id_operador limit 1",
+  );
+  return Number(rows[0].id);
+}
+
+/** Devuelve el identificador del operador de soporte de los datos de ejemplo. */
+export async function getSupportOperatorId(pool: Pool): Promise<number> {
+  const { rows } = await pool.query<{ id: string }>(
+    "select id_operador as id from operador where rol = 'SOPORTE' order by id_operador limit 1",
   );
   return Number(rows[0].id);
 }
@@ -135,15 +158,48 @@ export async function getRoundMultiplier(pool: Pool, roundId: number): Promise<n
   return rows[0].multiplicador === null ? null : Number(rows[0].multiplicador);
 }
 
+/** Estado, hora de fin de la fase y segundos guardados por la pausa de una ronda. */
+export async function getRoundTimer(pool: Pool, roundId: number): Promise<RoundTimer> {
+  const { rows } = await pool.query<{
+    estado: string;
+    fase_termina_en: Date | null;
+    segundos_restantes_pausa: number | null;
+  }>("select estado, fase_termina_en, segundos_restantes_pausa from ronda where id_ronda = $1", [
+    roundId,
+  ]);
+  return {
+    state: rows[0].estado,
+    phaseEndsAt: rows[0].fase_termina_en,
+    pausedSeconds: rows[0].segundos_restantes_pausa,
+  };
+}
+
+/** Segundos que faltan para el fin de la fase, medidos con el reloj de la base de datos. */
+export async function getSecondsToPhaseEnd(pool: Pool, roundId: number): Promise<number | null> {
+  const { rows } = await pool.query<{ segundos: string | null }>(
+    "select extract(epoch from (fase_termina_en - now())) as segundos from ronda where id_ronda = $1",
+    [roundId],
+  );
+  return rows[0].segundos === null ? null : Number(rows[0].segundos);
+}
+
+/** Cambia la hora de fin de la fase, para simular que el tiempo ya pasó sin esperarlo. */
+export async function setPhaseEnd(pool: Pool, roundId: number, secondsFromNow: number): Promise<void> {
+  await pool.query(
+    "update ronda set fase_termina_en = now() + make_interval(secs => $2) where id_ronda = $1",
+    [roundId, secondsFromNow],
+  );
+}
+
 export async function getPriceRow(pool: Pool, roundId: number): Promise<PriceRow> {
   const { rows } = await pool.query<{
     monto_acumulado: string;
     inversores_unicos: number;
     precio_vivo: string;
-    fraccion_respaldo: string | null;
+    puntaje_jurado: string | null;
     puntaje: string | null;
   }>(
-    `select monto_acumulado, inversores_unicos, precio_vivo, fraccion_respaldo, puntaje
+    `select monto_acumulado, inversores_unicos, precio_vivo, puntaje_jurado, puntaje
        from startup_leaderboard
       where id_ronda = $1`,
     [roundId],
@@ -153,7 +209,7 @@ export async function getPriceRow(pool: Pool, roundId: number): Promise<PriceRow
     montoAcumulado: Number(row.monto_acumulado),
     inversoresUnicos: row.inversores_unicos,
     precioVivo: Number(row.precio_vivo),
-    fraccionRespaldo: row.fraccion_respaldo === null ? null : Number(row.fraccion_respaldo),
+    puntajeJurado: row.puntaje_jurado === null ? null : Number(row.puntaje_jurado),
     puntaje: row.puntaje === null ? null : Number(row.puntaje),
   };
 }
@@ -218,32 +274,67 @@ export async function invest(
   return rows[0].resultado;
 }
 
-/** Ejecuta una acción del operador mediante fn_accion_operador. */
+/**
+ * Ejecuta una acción del operador mediante fn_accion_operador. Las anulaciones exigen motivo, por
+ * lo que reciben uno de prueba salvo que se indique otro valor (o null para omitirlo).
+ */
 export async function operatorAction(
   pool: Pool,
   operatorId: number,
   roundId: number,
   action: string,
+  reason?: string | null,
 ): Promise<FunctionResult> {
+  const motivo = reason === undefined ? (action.startsWith("ANULAR_") ? "motivo de prueba" : null) : reason;
   const { rows } = await pool.query<{ resultado: FunctionResult }>(
-    "select fn_accion_operador($1, $2, $3) as resultado",
-    [operatorId, roundId, action],
+    "select fn_accion_operador($1, $2, $3, $4) as resultado",
+    [operatorId, roundId, action, motivo],
   );
   return rows[0].resultado;
 }
 
-/** Registra el voto de un jurado mediante fn_registrar_voto. */
+/** Guarda la nota de un criterio en el borrador del jurado mediante fn_guardar_borrador. */
+export async function saveDraft(
+  pool: Pool,
+  jurorId: number,
+  roundId: number,
+  criterionId: number,
+  value: number,
+): Promise<FunctionResult> {
+  const { rows } = await pool.query<{ resultado: FunctionResult }>(
+    "select fn_guardar_borrador($1, $2, $3, $4) as resultado",
+    [jurorId, roundId, criterionId, value],
+  );
+  return rows[0].resultado;
+}
+
+/** Envía las notas indicadas o la abstención mediante fn_registrar_voto. */
+export async function submitVerdict(
+  pool: Pool,
+  jurorId: number,
+  roundId: number,
+  options: { abstains?: boolean; notes?: unknown } = {},
+): Promise<FunctionResult> {
+  const { rows } = await pool.query<{ resultado: FunctionResult }>(
+    "select fn_registrar_voto($1, $2, $3, $4::jsonb) as resultado",
+    [jurorId, roundId, options.abstains ?? false, JSON.stringify(options.notes ?? [])],
+  );
+  return rows[0].resultado;
+}
+
+/** Registra el voto de un jurado con el mismo puntaje en todos los criterios, o su abstención. */
 export async function castVote(
   pool: Pool,
   jurorId: number,
   roundId: number,
-  decision: string,
+  score: Score,
 ): Promise<FunctionResult> {
-  const { rows } = await pool.query<{ resultado: FunctionResult }>(
-    "select fn_registrar_voto($1, $2, $3) as resultado",
-    [jurorId, roundId, decision],
-  );
-  return rows[0].resultado;
+  if (score === "ABSTIENE") {
+    return submitVerdict(pool, jurorId, roundId, { abstains: true });
+  }
+  const criteria = await getCriterionIds(pool);
+  const notes: CriterionNote[] = criteria.map((id) => ({ id_criterio: id, valor: score }));
+  return submitVerdict(pool, jurorId, roundId, { notes });
 }
 
 /** Revela el veredicto mediante fn_revelar_veredicto. */
@@ -251,10 +342,41 @@ export async function reveal(
   pool: Pool,
   operatorId: number,
   roundId: number,
+  options: { withPresent?: boolean; reason?: string | null } = {},
 ): Promise<FunctionResult> {
   const { rows } = await pool.query<{ resultado: FunctionResult }>(
-    "select fn_revelar_veredicto($1, $2) as resultado",
-    [operatorId, roundId],
+    "select fn_revelar_veredicto($1, $2, $3, $4) as resultado",
+    [operatorId, roundId, options.withPresent ?? false, options.reason ?? null],
+  );
+  return rows[0].resultado;
+}
+
+/** Liquida con un puntaje manual mediante fn_liquidar_manual. */
+export async function manualSettle(
+  pool: Pool,
+  operatorId: number,
+  roundId: number,
+  score: number,
+  reason: string | null = "conteo a mano",
+): Promise<FunctionResult> {
+  const { rows } = await pool.query<{ resultado: FunctionResult }>(
+    "select fn_liquidar_manual($1, $2, $3, $4) as resultado",
+    [operatorId, roundId, score, reason],
+  );
+  return rows[0].resultado;
+}
+
+/** Ajusta el saldo de un asistente mediante fn_ajustar_saldo. */
+export async function adjustBalance(
+  pool: Pool,
+  operatorId: number,
+  userId: number,
+  amount: number,
+  reason: string | null = "corrección de prueba",
+): Promise<FunctionResult> {
+  const { rows } = await pool.query<{ resultado: FunctionResult }>(
+    "select fn_ajustar_saldo($1, $2, $3, $4) as resultado",
+    [operatorId, userId, amount, reason],
   );
   return rows[0].resultado;
 }
@@ -300,14 +422,14 @@ export async function settleRound(
   pool: Pool,
   operatorId: number,
   roundId: number,
-  decisions: Decision[],
+  scores: Score[],
 ): Promise<FunctionResult> {
   const jurors = await getJurorIds(pool);
-  if (decisions.length !== jurors.length) {
-    throw new Error("La cantidad de decisiones debe coincidir con la cantidad de jurados.");
+  if (scores.length !== jurors.length) {
+    throw new Error("La cantidad de puntajes debe coincidir con la cantidad de jurados.");
   }
   for (let index = 0; index < jurors.length; index += 1) {
-    const vote = await castVote(pool, jurors[index], roundId, decisions[index]);
+    const vote = await castVote(pool, jurors[index], roundId, scores[index]);
     if (!vote.ok) {
       throw new Error(`Voto rechazado en la ronda ${roundId}: ${vote.error}`);
     }
@@ -323,9 +445,9 @@ export async function runFullRound(
   pool: Pool,
   operatorId: number,
   roundId: number,
-  decisions: Decision[],
+  scores: Score[],
 ): Promise<FunctionResult> {
   await openRound(pool, operatorId, roundId);
   await closeForVoting(pool, operatorId, roundId);
-  return settleRound(pool, operatorId, roundId, decisions);
+  return settleRound(pool, operatorId, roundId, scores);
 }

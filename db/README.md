@@ -20,11 +20,21 @@ Aplicar los archivos en el orden listado. El orden coincide con el orden lexicog
 3. `migrations/20261108000200_fn_registrar_voto.sql`: función de registro de votos.
 4. `migrations/20261108000300_fn_revelar_veredicto.sql`: función interna `fn_liquidar_ronda` y función de revelación del veredicto.
 5. `migrations/20261108000400_fn_accion_operador.sql`: función de acciones del operador.
-6. `seed.sql`: datos de ejemplo. Ejecutar solo en entornos de desarrollo, porque contiene códigos de acceso ficticios.
+6. `migrations/20261109000000_fn_accion_operador_serialize.sql`: serializa las acciones del operador con un bloqueo asesor.
+7. `migrations/20261110000000_fn_manual_settlement.sql`: liquidación manual (versión inicial).
+8. `migrations/20261124000000_nuevas_tablas.sql`: tablas `criterio`, `configuracion`, `nota_criterio` y `borrador_nota`, y la función auxiliar `fn_config_num`.
+9. `migrations/20261124000100_ajustes_columnas.sql`: ajustes de columnas (abstención y puntaje en `veredicto`, una inversión por asistente y ronda, cronómetro de fase y pausa en `ronda`, rol de operador, motivo en `accion_ronda`) y retiro de las columnas obsoletas.
+10. `migrations/20261124000200_fn_registrar_inversion_v2.sql`: inversión única por ronda, límites desde `configuracion`, pausa y última llamada vencida; latidos de conexión.
+11. `migrations/20261124000300_fn_borrador_y_voto.sql`: `fn_guardar_borrador` y `fn_registrar_voto` con notas por criterio.
+12. `migrations/20261124000400_fn_veredicto_continuo.sql`: liquidación con multiplicador continuo, revelación con rescate y liquidación manual por puntaje.
+13. `migrations/20261124000500_fn_accion_operador_v2.sql`: acciones del conductor con cronómetros y pausa, y cierre automático de la última llamada.
+14. `migrations/20261124000600_fn_ajustar_saldo.sql`: ajuste manual de saldo.
+15. `migrations/20261124000700_datos_base.sql`: criterios de calificación y configuración por defecto (las funciones los leen para operar).
+16. `seed.sql`: startups, rondas, jurados y operadores de ejemplo. Ejecutar solo en entornos de desarrollo, porque contiene códigos de acceso ficticios.
 
 ## Estado en Neon
 
-Las migraciones `20261108000000` a `20261108000400` están aplicadas en el proyecto Neon `start-tank`. Las sentencias de permisos sobre roles de Supabase no se aplicaron en esa base, por lo que este directorio refleja su estado actual. La migración de políticas de seguridad a nivel de fila se retiró del repositorio, ya que el acceso lo gestiona el servidor de la aplicación.
+Las migraciones `20261108000000` a `20261110000000` están aplicadas en el proyecto Neon `start-tank`; las `20261124…` están pendientes de aplicar. Las sentencias de permisos sobre roles de Supabase no se aplicaron en esa base, por lo que este directorio refleja su estado actual. La migración de políticas de seguridad a nivel de fila se retiró del repositorio, ya que el acceso lo gestiona el servidor de la aplicación.
 
 ## Pruebas de integración
 
