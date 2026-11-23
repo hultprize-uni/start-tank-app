@@ -8,7 +8,7 @@ export const JURY_SESSION_EXPIRED_MESSAGE = "Tu sesión venció. Ingresa tu cód
 
 const LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   CODE_REQUIRED: "Ingresa tu código de acceso.",
-  INVALID_CODE: "El código no es válido. Revísalo e inténtalo de nuevo.",
+  INVALID_CODE: "Ese código no existe. Revísalo con el equipo organizador e inténtalo de nuevo.",
 };
 
 const VOTE_MESSAGES: Readonly<Record<string, string>> = {

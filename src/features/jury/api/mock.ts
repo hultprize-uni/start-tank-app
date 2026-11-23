@@ -21,7 +21,8 @@ const MOCK_ACCESS_DELAY_MS = 600;
 const MOCK_SUBMIT_DELAY_MS = 500;
 
 /** Mensaje cuando el código simulado no coincide con ningún jurado. */
-export const MOCK_CODE_ERROR = "El código no es válido. Revísalo e inténtalo de nuevo.";
+export const MOCK_CODE_ERROR =
+  "Ese código no existe. Revísalo con el equipo organizador e inténtalo de nuevo.";
 
 /** Ronda simulada con los votos de los otros jurados y el multiplicador de la liquidación. */
 interface MockRound {

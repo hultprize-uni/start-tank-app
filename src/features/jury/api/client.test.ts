@@ -39,7 +39,7 @@ describe("loginJury", () => {
     expect(sentBody(fetchMock.mock.calls[0])).toEqual({ code: "4821" });
   });
 
-  it("informa en español cuando el código es inválido (401)", async () => {
+  it("informa en español cuando el código no existe (401)", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_CODE" }, 401));
 
     const result = await loginJury("0000");
@@ -47,7 +47,7 @@ describe("loginJury", () => {
     expect(result).toEqual({
       ok: false,
       sessionExpired: false,
-      message: "El código no es válido. Revísalo e inténtalo de nuevo.",
+      message: "Ese código no existe. Revísalo con el equipo organizador e inténtalo de nuevo.",
     });
   });
 
