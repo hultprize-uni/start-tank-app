@@ -1,0 +1,107 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scale {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 54px;
+  min-width: 44px;
+  padding: 8px 4px;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  background: var(--bg-page);
+  color: var(--fg-2);
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.option:hover {
+  border-color: var(--line-strong);
+  color: var(--fg-1);
+}
+
+.option:has(input:focus-visible) {
+  outline: 2px solid var(--st-cyan-light);
+  outline-offset: 2px;
+}
+
+.option:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-band));
+  color: var(--fg-1);
+}
+
+.number {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: inherit;
+}
+
+.anchors {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.anchor {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--fg-2);
+}
+
+.anchorEnd {
+  text-align: right;
+}
+
+.anchorTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  border-radius: 6px;
+  background: var(--line-1);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--fg-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option {
+    transition: none;
+  }
+}
