@@ -16,9 +16,9 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-height: 54px;
-  min-width: 44px;
-  padding: 8px 4px;
+  min-height: 52px;
+  min-width: 0;
+  padding: 8px 2px;
   border: 1px solid var(--line-2);
   border-radius: 14px;
   background: var(--bg-page);
@@ -62,16 +62,17 @@
 }
 
 .label {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   line-height: 1.15;
+  overflow-wrap: anywhere;
   color: inherit;
 }
 
 .anchors {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px 10px;
 }
 
 .anchor {
@@ -82,7 +83,27 @@
 }
 
 .anchorEnd {
-  text-align: right;
+  text-align: left;
+}
+
+@media (min-width: 420px) {
+  .anchors {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .anchorEnd {
+    text-align: right;
+  }
+}
+
+@media (min-width: 480px) {
+  .option {
+    padding: 8px 4px;
+  }
+
+  .label {
+    font-size: 10.5px;
+  }
 }
 
 .anchorTag {

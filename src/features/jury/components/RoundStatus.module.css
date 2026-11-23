@@ -1,6 +1,6 @@
 .bar {
   position: sticky;
-  top: 12px;
+  top: 8px;
   z-index: 3;
   display: flex;
   flex-wrap: wrap;
@@ -8,7 +8,7 @@
   justify-content: space-between;
   gap: 10px 16px;
   box-sizing: border-box;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 1px solid var(--line-2);
   border-radius: 18px;
   background: color-mix(in srgb, var(--st-ink-800) 88%, transparent);
@@ -60,4 +60,11 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--warning);
+}
+
+@media (min-width: 820px) {
+  .bar {
+    top: 16px;
+    padding: 12px 18px;
+  }
 }

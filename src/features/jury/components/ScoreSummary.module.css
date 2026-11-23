@@ -33,7 +33,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--fg-3);
+  color: var(--fg-2);
 }
 
 .score {
@@ -72,7 +72,7 @@
 }
 
 .draftMuted {
-  color: var(--fg-3);
+  color: var(--fg-2);
 }
 
 .draftSaved {
