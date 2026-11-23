@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1180" viewBox="0 0 1500 1180" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#333" stroke-width="1.2"/></marker></defs>
+<rect width="1500" height="1180" fill="#fff"/>
+<rect x="215" y="30" width="1060" height="1110" fill="#fff" stroke="#333" stroke-width="1.5"/>
+<text x="745" y="22" text-anchor="middle" font-size="16" fill="#111">Start Tank</text>
+<line x1="90" y1="380" x2="320.1" y2="459.4" stroke="#333" stroke-width="1"/>
+<line x1="90" y1="680" x2="362.6" y2="506.6" stroke="#333" stroke-width="1"/>
+<line x1="90" y1="680" x2="341.9" y2="594.4" stroke="#333" stroke-width="1"/>
+<line x1="90" y1="680" x2="296.3" y2="673.4" stroke="#333" stroke-width="1"/>
+<line x1="90" y1="680" x2="302.4" y2="734.3" stroke="#333" stroke-width="1"/>
+<line x1="90" y1="680" x2="345.1" y2="815.2" stroke="#333" stroke-width="1"/>
+<line x1="90" y1="200" x2="953.5" y2="122.1" stroke="#333" stroke-width="1"/>
+<line x1="90" y1="200" x2="282.0" y2="220.0" stroke="#333" stroke-width="1"/>
+<line x1="90" y1="200" x2="334.4" y2="306.7" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1077.8" y2="137.7" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="280" x2="1106.1" y2="135.8" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1085.8" y2="307.3" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1093.2" y2="391.9" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1106.1" y2="475.8" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1174.5" y2="626.7" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1151.9" y2="687.4" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1115.9" y2="765.3" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1098.3" y2="848.5" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1088.8" y2="932.8" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="620" x2="1083.1" y2="1017.5" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="280" x2="1074.3" y2="932.2" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="280" x2="1072.7" y2="1017.2" stroke="#333" stroke-width="1"/>
+<line x1="1400" y1="1080" x2="863.0" y2="1100.0" stroke="#333" stroke-width="1"/>
+<line x1="400.0" y1="302.0" x2="400.0" y2="248.0" stroke="#333" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+<text x="406.0" y="279.0" font-size="11" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">&lt;&lt;include&gt;&gt;</text>
+<line x1="562.0" y1="220.0" x2="518.0" y2="220.0" stroke="#333" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+<text x="546.0" y="224.0" font-size="11" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">&lt;&lt;extend&gt;&gt;</text>
+<line x1="1060.0" y1="507.0" x2="1060.0" y2="478.0" stroke="#333" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+<text x="1066.0" y="496.5" font-size="11" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">&lt;&lt;extend&gt;&gt;</text>
+<ellipse cx="400" cy="480" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="400" y="478.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-01</text>
+<text x="400" y="491.0" text-anchor="middle" font-size="11.5" fill="#111">Ingresar con Google</text>
+<ellipse cx="400" cy="570" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="400" y="561.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-02</text>
+<text x="400" y="574.0" text-anchor="middle" font-size="11.5" fill="#111">Consultar mercado y</text>
+<text x="400" y="587.0" text-anchor="middle" font-size="11.5" fill="#111">posición</text>
+<ellipse cx="400" cy="660" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="400" y="651.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-03</text>
+<text x="400" y="664.0" text-anchor="middle" font-size="11.5" fill="#111">Invertir en la startup en</text>
+<text x="400" y="677.0" text-anchor="middle" font-size="11.5" fill="#111">escena</text>
+<ellipse cx="400" cy="750" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="400" y="748.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-04</text>
+<text x="400" y="761.0" text-anchor="middle" font-size="11.5" fill="#111">Ver veredicto y saldo</text>
+<ellipse cx="400" cy="840" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="400" y="838.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-05</text>
+<text x="400" y="851.0" text-anchor="middle" font-size="11.5" fill="#111">Ver resultado final</text>
+<ellipse cx="1060" cy="110" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="108.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-06</text>
+<text x="1060" y="121.0" text-anchor="middle" font-size="11.5" fill="#111">Ingresar con código</text>
+<ellipse cx="400" cy="220" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="400" y="218.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-07</text>
+<text x="400" y="231.0" text-anchor="middle" font-size="11.5" fill="#111">Calificar en borrador</text>
+<ellipse cx="680" cy="220" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="680" y="211.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-08</text>
+<text x="680" y="224.0" text-anchor="middle" font-size="11.5" fill="#111">Declarar conflicto de</text>
+<text x="680" y="237.0" text-anchor="middle" font-size="11.5" fill="#111">interés</text>
+<ellipse cx="400" cy="330" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="400" y="328.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-09</text>
+<text x="400" y="341.0" text-anchor="middle" font-size="11.5" fill="#111">Enviar notas</text>
+<ellipse cx="1060" cy="280" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="271.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-10</text>
+<text x="1060" y="284.0" text-anchor="middle" font-size="11.5" fill="#111">Completar checklist e</text>
+<text x="1060" y="297.0" text-anchor="middle" font-size="11.5" fill="#111">iniciar evento</text>
+<ellipse cx="1060" cy="365" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="363.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-11</text>
+<text x="1060" y="376.0" text-anchor="middle" font-size="11.5" fill="#111">Controlar la ronda</text>
+<ellipse cx="1060" cy="450" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="448.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-12</text>
+<text x="1060" y="461.0" text-anchor="middle" font-size="11.5" fill="#111">Revelar veredicto</text>
+<ellipse cx="1060" cy="535" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="533.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-13</text>
+<text x="1060" y="546.0" text-anchor="middle" font-size="11.5" fill="#111">Revelar con los presentes</text>
+<ellipse cx="1060" cy="620" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="618.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-14</text>
+<text x="1060" y="631.0" text-anchor="middle" font-size="11.5" fill="#111">Anular ronda</text>
+<ellipse cx="1060" cy="705" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="703.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-15</text>
+<text x="1060" y="716.0" text-anchor="middle" font-size="11.5" fill="#111">Ajustar saldo</text>
+<ellipse cx="1060" cy="790" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="788.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-16</text>
+<text x="1060" y="801.0" text-anchor="middle" font-size="11.5" fill="#111">Configurar el evento</text>
+<ellipse cx="1060" cy="875" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="873.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-17</text>
+<text x="1060" y="886.0" text-anchor="middle" font-size="11.5" fill="#111">Cerrar evento</text>
+<ellipse cx="1060" cy="960" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="958.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-18</text>
+<text x="1060" y="971.0" text-anchor="middle" font-size="11.5" fill="#111">Vigilar salud y alertas</text>
+<ellipse cx="1060" cy="1045" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="1060" y="1043.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-19</text>
+<text x="1060" y="1056.0" text-anchor="middle" font-size="11.5" fill="#111">Consultar asistentes</text>
+<ellipse cx="745" cy="1100" rx="118" ry="28" fill="#fff3a6" stroke="#333" stroke-width="1.2"/>
+<text x="745" y="1098.0" text-anchor="middle" font-size="11" fill="#111" font-weight="bold">CU-20</text>
+<text x="745" y="1111.0" text-anchor="middle" font-size="11.5" fill="#111">Ver escenario</text>
+<circle cx="90" cy="362" r="10" fill="#fff" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="372" x2="90" y2="404" stroke="#333" stroke-width="1.4"/>
+<line x1="72" y1="382" x2="108" y2="382" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="404" x2="76" y2="426" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="404" x2="104" y2="426" stroke="#333" stroke-width="1.4"/>
+<text x="90" y="444" text-anchor="middle" font-size="12.5" fill="#111">Google</text>
+<text x="90" y="458" text-anchor="middle" font-size="12.5" fill="#111">(Neon Auth)</text>
+<circle cx="90" cy="662" r="10" fill="#fff" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="672" x2="90" y2="704" stroke="#333" stroke-width="1.4"/>
+<line x1="72" y1="682" x2="108" y2="682" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="704" x2="76" y2="726" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="704" x2="104" y2="726" stroke="#333" stroke-width="1.4"/>
+<text x="90" y="744" text-anchor="middle" font-size="12.5" fill="#111">Asistente</text>
+<circle cx="90" cy="182" r="10" fill="#fff" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="192" x2="90" y2="224" stroke="#333" stroke-width="1.4"/>
+<line x1="72" y1="202" x2="108" y2="202" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="224" x2="76" y2="246" stroke="#333" stroke-width="1.4"/>
+<line x1="90" y1="224" x2="104" y2="246" stroke="#333" stroke-width="1.4"/>
+<text x="90" y="264" text-anchor="middle" font-size="12.5" fill="#111">Jurado</text>
+<circle cx="1400" cy="602" r="10" fill="#fff" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="612" x2="1400" y2="644" stroke="#333" stroke-width="1.4"/>
+<line x1="1382" y1="622" x2="1418" y2="622" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="644" x2="1386" y2="666" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="644" x2="1414" y2="666" stroke="#333" stroke-width="1.4"/>
+<text x="1400" y="684" text-anchor="middle" font-size="12.5" fill="#111">Conductor</text>
+<circle cx="1400" cy="262" r="10" fill="#fff" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="272" x2="1400" y2="304" stroke="#333" stroke-width="1.4"/>
+<line x1="1382" y1="282" x2="1418" y2="282" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="304" x2="1386" y2="326" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="304" x2="1414" y2="326" stroke="#333" stroke-width="1.4"/>
+<text x="1400" y="344" text-anchor="middle" font-size="12.5" fill="#111">Soporte</text>
+<circle cx="1400" cy="1062" r="10" fill="#fff" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="1072" x2="1400" y2="1104" stroke="#333" stroke-width="1.4"/>
+<line x1="1382" y1="1082" x2="1418" y2="1082" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="1104" x2="1386" y2="1126" stroke="#333" stroke-width="1.4"/>
+<line x1="1400" y1="1104" x2="1414" y2="1126" stroke="#333" stroke-width="1.4"/>
+<text x="1400" y="1144" text-anchor="middle" font-size="12.5" fill="#111">Público del</text>
+<text x="1400" y="1158" text-anchor="middle" font-size="12.5" fill="#111">auditorio</text>
+</svg>

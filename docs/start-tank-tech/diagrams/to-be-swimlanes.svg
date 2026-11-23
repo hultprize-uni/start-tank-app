@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1814" viewBox="0 0 1240 1814" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 z" fill="#111"/></marker></defs>
+<rect width="1240" height="1814" fill="#fff"/>
+<rect x="20" y="20" width="1200" height="34" fill="#fff" stroke="#111"/>
+<text x="620.0" y="42" text-anchor="middle" font-size="15" font-weight="bold">Start Tank: flujo TO-BE de un evento con cinco rondas</text>
+<rect x="20" y="54" width="300" height="1710" fill="#fff" stroke="#111"/>
+<line x1="20" y1="84" x2="320" y2="84" stroke="#111"/>
+<text x="170.0" y="74" text-anchor="middle" font-size="13" font-weight="bold">Jurado</text>
+<rect x="320" y="54" width="300" height="1710" fill="#fff" stroke="#111"/>
+<line x1="320" y1="84" x2="620" y2="84" stroke="#111"/>
+<text x="470.0" y="74" text-anchor="middle" font-size="13" font-weight="bold">Admin</text>
+<rect x="620" y="54" width="300" height="1710" fill="#fff" stroke="#111"/>
+<line x1="620" y1="84" x2="920" y2="84" stroke="#111"/>
+<text x="770.0" y="74" text-anchor="middle" font-size="13" font-weight="bold">Escenario</text>
+<rect x="920" y="54" width="300" height="1710" fill="#fff" stroke="#111"/>
+<line x1="920" y1="84" x2="1220" y2="84" stroke="#111"/>
+<text x="1070.0" y="74" text-anchor="middle" font-size="13" font-weight="bold">Usuario</text>
+<polyline points="470.0,166.0 470.0,234.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,294.0 470.0,354.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,414.0 470.0,594.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,444.0 170.0,444.0 170.0,474.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,444.0 770.0,444.0 770.0,474.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,444.0 1070.0,444.0 1070.0,474.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="170.0,534.0 170.0,594.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="375.0,624.0 265.0,624.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="565.0,624.0 975.0,624.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="770.0,534.0 770.0,714.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="1070.0,534.0 1070.0,574.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="1070.0,674.0 1070.0,714.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="1165.0,624.0 1195.0,624.0 1195.0,1344.0 1165.0,1344.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="1070.0,774.0 1070.0,1314.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="770.0,774.0 770.0,834.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,654.0 470.0,834.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="565.0,864.0 675.0,864.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,894.0 470.0,954.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="375.0,984.0 265.0,984.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="170.0,654.0 170.0,954.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,1014.0 470.0,1054.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="170.0,1014.0 170.0,1314.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="170.0,1034.0 770.0,1034.0 770.0,1074.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="770.0,894.0 770.0,1074.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="375.0,1104.0 358.0,1104.0 358.0,1284.0 470.0,1284.0" fill="none" stroke="#111" stroke-width="1.4"/>
+<polyline points="470.0,1154.0 470.0,1194.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,1254.0 470.0,1314.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="565.0,1344.0 675.0,1344.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="375.0,1344.0 265.0,1344.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="865.0,1344.0 975.0,1344.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="770.0,1134.0 770.0,1314.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="170.0,1374.0 170.0,1387.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,1374.0 470.0,1387.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="770.0,1374.0 770.0,1387.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="1070.0,1374.0 1070.0,1387.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,1393.0 470.0,1414.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="375.0,1464.0 34.0,1464.0 34.0,579.0 470.0,579.0" fill="none" stroke="#111" stroke-width="1.4"/>
+<polyline points="470.0,1514.0 470.0,1554.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="375.0,1584.0 265.0,1584.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="565.0,1584.0 675.0,1584.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="865.0,1584.0 975.0,1584.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<polyline points="470.0,1614.0 470.0,1676.0" fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#ar)"/>
+<rect x="150.0" y="1387.0" width="940.0" height="6" fill="#111"/>
+<circle cx="470.0" cy="444.0" r="3.5" fill="#111"/>
+<circle cx="770.0" cy="624.0" r="3.5" fill="#111"/>
+<circle cx="170.0" cy="1034.0" r="3.5" fill="#111"/>
+<circle cx="470.0" cy="1034.0" r="3.5" fill="#111"/>
+<circle cx="470.0" cy="1284.0" r="3.5" fill="#111"/>
+<circle cx="470.0" cy="579.0" r="3.5" fill="#111"/>
+<ellipse cx="470.0" cy="144.0" rx="45.0" ry="22.0" fill="#b8e28c" stroke="#78a84a" stroke-width="1.5"/>
+<text x="470.0" y="148.0" text-anchor="middle" font-size="12">Inicio</text>
+<rect x="375.0" y="234.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="470.0" y="260.5" text-anchor="middle" font-size="12">1. Completa el checklist</text>
+<text x="470.0" y="275.5" text-anchor="middle" font-size="12">previo</text>
+<rect x="375.0" y="354.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="470.0" y="388.0" text-anchor="middle" font-size="12">2. Inicia el evento</text>
+<rect x="75.0" y="474.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="170.0" y="508.0" text-anchor="middle" font-size="12">3. Entra con su código</text>
+<rect x="675.0" y="474.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="770.0" y="500.5" text-anchor="middle" font-size="12">4. Abre la pantalla y</text>
+<text x="770.0" y="515.5" text-anchor="middle" font-size="12">muestra la espera</text>
+<rect x="975.0" y="474.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="1070.0" y="500.5" text-anchor="middle" font-size="12">5. Entra con OAuth y</text>
+<text x="1070.0" y="515.5" text-anchor="middle" font-size="12">recibe 10,000 IC</text>
+<rect x="375.0" y="594.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="470.0" y="620.5" text-anchor="middle" font-size="12">6. Abre el mercado</text>
+<text x="470.0" y="635.5" text-anchor="middle" font-size="12">de la ronda</text>
+<rect x="75.0" y="594.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="170.0" y="620.5" text-anchor="middle" font-size="12">7. Califica en borrador o</text>
+<text x="170.0" y="635.5" text-anchor="middle" font-size="12">declara conflicto</text>
+<polygon points="1070.0,574.0 1165.0,624.0 1070.0,674.0 975.0,624.0" fill="#f6ab4e" stroke="#c27c1c" stroke-width="1.5"/>
+<text x="1070.0" y="620.5" text-anchor="middle" font-size="12">8. ¿Invierte en</text>
+<text x="1070.0" y="635.5" text-anchor="middle" font-size="12">esta ronda?</text>
+<rect x="675.0" y="714.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="770.0" y="740.5" text-anchor="middle" font-size="12">9. Muestra curva,</text>
+<text x="770.0" y="755.5" text-anchor="middle" font-size="12">tabla y feed</text>
+<rect x="975.0" y="714.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="1070.0" y="740.5" text-anchor="middle" font-size="12">10. Elige el monto y</text>
+<text x="1070.0" y="755.5" text-anchor="middle" font-size="12">confirma en 2 pasos</text>
+<rect x="375.0" y="834.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="470.0" y="860.5" text-anchor="middle" font-size="12">11. Anuncia la</text>
+<text x="470.0" y="875.5" text-anchor="middle" font-size="12">última llamada</text>
+<rect x="675.0" y="834.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="770.0" y="860.5" text-anchor="middle" font-size="12">12. Muestra la</text>
+<text x="770.0" y="875.5" text-anchor="middle" font-size="12">cuenta regresiva</text>
+<rect x="375.0" y="954.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="470.0" y="980.5" text-anchor="middle" font-size="12">13. Cierra el mercado</text>
+<text x="470.0" y="995.5" text-anchor="middle" font-size="12">y habilita el voto</text>
+<rect x="75.0" y="954.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="170.0" y="980.5" text-anchor="middle" font-size="12">14. Envía sus notas</text>
+<text x="170.0" y="995.5" text-anchor="middle" font-size="12">(una sola vez)</text>
+<rect x="675.0" y="1074.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="770.0" y="1100.5" text-anchor="middle" font-size="12">15. Ilumina el asiento</text>
+<text x="770.0" y="1115.5" text-anchor="middle" font-size="12">de cada jurado</text>
+<polygon points="470.0,1054.0 565.0,1104.0 470.0,1154.0 375.0,1104.0" fill="#f6ab4e" stroke="#c27c1c" stroke-width="1.5"/>
+<text x="470.0" y="1100.5" text-anchor="middle" font-size="12">16. ¿Enviaron</text>
+<text x="470.0" y="1115.5" text-anchor="middle" font-size="12">los 4 jurados?</text>
+<rect x="375.0" y="1194.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="470.0" y="1220.5" text-anchor="middle" font-size="12">17. Revela con los</text>
+<text x="470.0" y="1235.5" text-anchor="middle" font-size="12">presentes (motivo)</text>
+<rect x="375.0" y="1314.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="470.0" y="1340.5" text-anchor="middle" font-size="12">18. Revela el veredicto</text>
+<text x="470.0" y="1355.5" text-anchor="middle" font-size="12">La base liquida</text>
+<rect x="675.0" y="1314.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="770.0" y="1340.5" text-anchor="middle" font-size="12">19. Revela notas,</text>
+<text x="770.0" y="1355.5" text-anchor="middle" font-size="12">multiplicador y tabla</text>
+<rect x="975.0" y="1314.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="1070.0" y="1340.5" text-anchor="middle" font-size="12">20. Ve multiplicador,</text>
+<text x="1070.0" y="1355.5" text-anchor="middle" font-size="12">saldo y posición</text>
+<rect x="75.0" y="1314.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="170.0" y="1348.0" text-anchor="middle" font-size="12">21. Ve el veredicto</text>
+<polygon points="470.0,1414.0 565.0,1464.0 470.0,1514.0 375.0,1464.0" fill="#f6ab4e" stroke="#c27c1c" stroke-width="1.5"/>
+<text x="470.0" y="1460.5" text-anchor="middle" font-size="12">22. ¿Quedan</text>
+<text x="470.0" y="1475.5" text-anchor="middle" font-size="12">startups?</text>
+<rect x="375.0" y="1554.0" width="190" height="60" rx="6" fill="#a8dcf6" stroke="#4f9fc6" stroke-width="1.5"/>
+<text x="470.0" y="1588.0" text-anchor="middle" font-size="12">23. Cierra el evento</text>
+<rect x="75.0" y="1556.0" width="190" height="56" rx="28.0" fill="#ef8d83" stroke="#bf5a50" stroke-width="1.5"/>
+<text x="170.0" y="1580.5" text-anchor="middle" font-size="12">Termina su</text>
+<text x="170.0" y="1595.5" text-anchor="middle" font-size="12">participación</text>
+<rect x="675.0" y="1556.0" width="190" height="56" rx="28.0" fill="#ef8d83" stroke="#bf5a50" stroke-width="1.5"/>
+<text x="770.0" y="1580.5" text-anchor="middle" font-size="12">24. Muestra ganadora,</text>
+<text x="770.0" y="1595.5" text-anchor="middle" font-size="12">top 3 y mejor ojo</text>
+<rect x="975.0" y="1556.0" width="190" height="56" rx="28.0" fill="#ef8d83" stroke="#bf5a50" stroke-width="1.5"/>
+<text x="1070.0" y="1580.5" text-anchor="middle" font-size="12">25. Ve su resultado</text>
+<text x="1070.0" y="1595.5" text-anchor="middle" font-size="12">final</text>
+<rect x="375.0" y="1676.0" width="190" height="56" rx="28.0" fill="#ef8d83" stroke="#bf5a50" stroke-width="1.5"/>
+<text x="470.0" y="1708.0" text-anchor="middle" font-size="12">Evento cerrado</text>
+<text x="667.5" y="617.0" text-anchor="middle" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">mercado abierto</text>
+<text x="1078.0" y="694.0" text-anchor="start" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">Sí</text>
+<text x="1180.0" y="616.0" text-anchor="middle" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">No</text>
+<text x="320.0" y="1027.0" text-anchor="middle" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">notas enviadas</text>
+<text x="340.0" y="1097.0" text-anchor="middle" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">Sí</text>
+<text x="478.0" y="1174.0" text-anchor="start" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">No: falta un jurado</text>
+<text x="620.0" y="1337.0" text-anchor="middle" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">ronda liquidada</text>
+<text x="320.0" y="1337.0" text-anchor="middle" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">resultado</text>
+<text x="920.0" y="1337.0" text-anchor="middle" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">1.2 s después</text>
+<text x="44" y="1456.0" text-anchor="start" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">Sí: siguiente ronda</text>
+<text x="478.0" y="1534.0" text-anchor="start" font-size="11" font-style="italic" fill="#111" stroke="#fff" stroke-width="3" paint-order="stroke">No</text>
+<text x="620.0" y="1802" text-anchor="middle" font-size="11" fill="#444">Las flechas entre carriles viajan por la base de datos: ninguna vista habla directamente con otra.</text>
+</svg>

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1420" viewBox="0 0 1400 1420" font-family="Georgia, 'Times New Roman', serif">
+<defs><marker id="ar" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 z" fill="#555"/></marker></defs>
+<rect width="1400" height="1420" fill="#fff"/>
+<text x="610.0" y="52" text-anchor="middle" font-size="26" font-weight="bold" fill="#2a2623">PROCESOS EN LOTES - MODELO EN CASCADA</text>
+<text x="610.0" y="92" text-anchor="middle" font-size="20" fill="#2a2623">Cierre del evento y resultados finales</text>
+<path d="M150.0,164 v72 a110.0,14 0 0 0 220,0 v-72 z" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<ellipse cx="260" cy="164" rx="110.0" ry="14" fill="#f1eeea" stroke="#6b645e" stroke-width="2"/>
+<text x="260" y="210.0" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">RONDA</text>
+<polyline points="260,262 260,322" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<rect x="166.0" y="331.0" width="200" height="90" fill="#b9b3ad"/>
+<rect x="160.0" y="325.0" width="200" height="90" fill="#d6d3ce" stroke="#6b645e" stroke-width="2"/>
+<text x="260" y="365.8333333333333" text-anchor="middle" font-size="13" font-weight="bold" fill="#2a2623">EVALÚA</text>
+<text x="260" y="382.8333333333333" text-anchor="middle" font-size="13" font-weight="bold" fill="#2a2623">RONDAS</text>
+<polyline points="260,415 260,480" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<rect x="150.0" y="488.0" width="220" height="64" rx="32.0" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<ellipse cx="356.0" cy="520" rx="14" ry="32.0" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<text x="254" y="524.0" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">RONDAS-OK</text>
+<path d="M640.0,164 v82 a140.0,14 0 0 0 280,0 v-82 z" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<ellipse cx="780" cy="164" rx="140.0" ry="14" fill="#f1eeea" stroke="#6b645e" stroke-width="2"/>
+<text x="780" y="199.0" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">TABLAS</text>
+<text x="780" y="215.0" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">STARTUP_LEADERBOARD</text>
+<text x="780" y="231.0" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">LEADERBOARD · USUARIO</text>
+<polyline points="780,262 780,560" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<polyline points="370,520 664,596" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<text x="500.0" y="535" font-size="14" fill="#333">validación</text>
+<polyline points="1214,140 1230,140 1230,560 1214,560" fill="none" stroke="#555" stroke-width="2"/>
+<text x="1252" y="346.0" font-size="15" font-weight="bold" fill="#000">PASO 1</text>
+<text x="1252" y="368.0" font-size="15" font-weight="bold" fill="#000">EVALUACIÓN</text>
+<rect x="671.0" y="571.0" width="230" height="90" fill="#b9b3ad"/>
+<rect x="665.0" y="565.0" width="230" height="90" fill="#d6d3ce" stroke="#6b645e" stroke-width="2"/>
+<text x="780" y="605.8333333333334" text-anchor="middle" font-size="13" font-weight="bold" fill="#2a2623">UNLOAD</text>
+<text x="780" y="622.8333333333334" text-anchor="middle" font-size="13" font-weight="bold" fill="#2a2623">(puntajes y saldos)</text>
+<polyline points="780,655 780,715" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<rect x="665.0" y="723.0" width="230" height="64" rx="32.0" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<ellipse cx="881.0" cy="755" rx="14" ry="32.0" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<text x="774" y="759.0" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">RESULTADOS</text>
+<polyline points="1214,580 1230,580 1230,800 1214,800" fill="none" stroke="#555" stroke-width="2"/>
+<text x="1252" y="686.0" font-size="15" font-weight="bold" fill="#000">PASO 2</text>
+<text x="1252" y="708.0" font-size="15" font-weight="bold" fill="#000">UNLOAD</text>
+<polyline points="780,787 780,850" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<polygon points="780,845 835,900 780,955 725,900" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<text x="780" y="905.0" text-anchor="middle" font-size="15" font-weight="bold" fill="#2a2623">S</text>
+<polyline points="780,955 780,1010" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<rect x="650.0" y="1018.0" width="260" height="64" rx="32.0" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<ellipse cx="896.0" cy="1050" rx="14" ry="32.0" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<text x="774" y="1054.0" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">RESULTADOS-ORD</text>
+<polyline points="1214,830 1230,830 1230,1090 1214,1090" fill="none" stroke="#555" stroke-width="2"/>
+<text x="1252" y="956.0" font-size="15" font-weight="bold" fill="#000">PASO 3</text>
+<text x="1252" y="978.0" font-size="15" font-weight="bold" fill="#000">SORT (S)</text>
+<rect x="401.0" y="1151.0" width="250" height="90" fill="#b9b3ad"/>
+<rect x="395.0" y="1145.0" width="250" height="90" fill="#d6d3ce" stroke="#6b645e" stroke-width="2"/>
+<text x="520" y="1185.8333333333333" text-anchor="middle" font-size="13" font-weight="bold" fill="#2a2623">LOAD</text>
+<text x="520" y="1202.8333333333333" text-anchor="middle" font-size="13" font-weight="bold" fill="#2a2623">(puntaje final)</text>
+<polyline points="780,1082 560,1142" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<path d="M380.0,1289 v67 a140.0,14 0 0 0 280,0 v-67 z" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<ellipse cx="520" cy="1289" rx="140.0" ry="14" fill="#f1eeea" stroke="#6b645e" stroke-width="2"/>
+<text x="520" y="1324.5" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">STARTUP_LEADERBOARD</text>
+<text x="520" y="1340.5" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">ACTUALIZADA</text>
+<polyline points="520,1235 520,1275" fill="none" stroke="#555" stroke-width="2.6" marker-end="url(#ar)"/>
+<path d="M885.0,1289 v67 a125.0,14 0 0 0 250,0 v-67 z" fill="#e5e2dd" stroke="#6b645e" stroke-width="2"/>
+<ellipse cx="1010" cy="1289" rx="125.0" ry="14" fill="#f1eeea" stroke="#6b645e" stroke-width="2"/>
+<text x="1010" y="1324.5" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">ACCION_RONDA</text>
+<text x="1010" y="1340.5" text-anchor="middle" font-size="12" font-weight="bold" fill="#2a2623">REGISTRO DEL CIERRE</text>
+<polyline points="645,1190 1010,1295" fill="none" stroke="#555" stroke-width="2.6" stroke-dasharray="9 7" marker-end="url(#ar)"/>
+<polyline points="1214,1130 1230,1130 1230,1395 1214,1395" fill="none" stroke="#555" stroke-width="2"/>
+<text x="1252" y="1258.5" font-size="15" font-weight="bold" fill="#000">PASO 4</text>
+<text x="1252" y="1280.5" font-size="15" font-weight="bold" fill="#000">LOAD</text>
+</svg>
