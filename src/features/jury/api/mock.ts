@@ -188,6 +188,7 @@ export function buildMockView(world: MockWorld): JuryViewModel {
   const base: JuryViewModel = {
     screen: "access",
     phase: null,
+    clock: null,
     access: world.access,
     jurorLabel: null,
     round: null,
@@ -210,10 +211,25 @@ export function buildMockView(world: MockWorld): JuryViewModel {
         }
       : null;
 
+  const now = Date.now();
+  const hasTimer =
+    step.phase === "open" ||
+    step.phase === "last_call" ||
+    step.phase === "voting" ||
+    step.phase === "result";
+
   return {
     ...base,
     screen: screenOf(step.phase, ownVote),
     phase: step.phase,
+    clock: hasTimer
+      ? {
+          serverTime: new Date(now).toISOString(),
+          phaseEndsAt: new Date(now + step.duration).toISOString(),
+          paused: false,
+          pausedSeconds: null,
+        }
+      : null,
     jurorLabel: `Jurado ${world.juror + 1}`,
     round: round
       ? {

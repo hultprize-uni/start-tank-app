@@ -28,10 +28,10 @@ export function JurySession({ jurorLabel, state, actions }: JurySessionProps) {
       <div className={styles.main}>
         <JuryMobileHeader jurorLabel={jurorLabel} onLogout={actions.logout} />
         <h1 className="visually-hidden">Portal del jurado</h1>
+        {phase !== null && <RoundStatus phase={phase} round={round} clock={state.clock} />}
 
         <div className={styles.grid}>
           <div className={styles.column}>
-            {phase !== null && <RoundStatus phase={phase} round={round} />}
             {round !== null && (
               <>
                 <StartupCard round={round} />

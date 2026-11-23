@@ -23,6 +23,7 @@ const INITIAL_VOTE: JuryVoteView = {
 export const INITIAL_JURY_STATE: JuryViewModel = {
   screen: "access",
   phase: null,
+  clock: null,
   access: INITIAL_ACCESS,
   jurorLabel: null,
   round: null,

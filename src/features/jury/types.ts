@@ -1,4 +1,4 @@
-import type { Decision } from "@/shared/domain/types";
+import type { Decision, PhaseClock } from "@/shared/domain/types";
 
 /** Pantalla visible del portal del jurado. */
 export type JuryScreen = "access" | "waiting" | "voting" | "vote_registered" | "result";
@@ -90,6 +90,8 @@ export interface JuryViewModel {
   screen: JuryScreen;
   /** Fase de la ronda vigente. Nula mientras el jurado no ha ingresado. */
   phase: JuryPhase | null;
+  /** Reloj de la fase sincronizado con la hora del servidor. */
+  clock: PhaseClock | null;
   access: JuryAccessView;
   jurorLabel: string | null;
   round: JuryRoundView | null;

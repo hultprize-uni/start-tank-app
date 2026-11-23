@@ -1,4 +1,4 @@
-import type { Decision, RoundState } from "@/shared/domain/types";
+import type { Decision, PhaseClock, RoundState } from "@/shared/domain/types";
 import { classifyRounds, sortRounds, type RoundRow, type RoundVoteRow } from "@/server/db/rounds";
 import { JURY_CRITERIA } from "../criteria";
 import type { JuryPhase, JuryRailItem, JuryRevealView, JuryViewModel } from "../types";
@@ -26,6 +26,8 @@ export interface JuryData {
   /** Descripción de la startup de la ronda vigente. Nula cuando no hay ronda vigente. */
   description: string | null;
   totalJurors: number;
+  /** Hora del servidor usada para sincronizar el reloj de la fase. */
+  now?: Date;
 }
 
 /** Fase del jurado asociada a cada estado de la ronda. */
@@ -97,6 +99,20 @@ function buildReveal(
   };
 }
 
+/** Reloj de fase construido desde la fila de ronda vigente (RF-07, RNF-15). */
+function buildPhaseClock(current: RoundRow | undefined, now: Date): PhaseClock | null {
+  if (current === undefined) return null;
+  const phaseEndsAt = current.fase_termina_en ?? null;
+  const pausedSeconds = current.segundos_restantes_pausa ?? null;
+  if (phaseEndsAt === null && pausedSeconds === null) return null;
+  return {
+    serverTime: now.toISOString(),
+    phaseEndsAt,
+    paused: pausedSeconds !== null,
+    pausedSeconds,
+  };
+}
+
 /**
  * Construye el view model del portal del jurado. Los votos de otros jurados solo se publican en la
  * fase "result"; antes de ella el view model expone únicamente conteos.
@@ -110,6 +126,7 @@ export function buildJuryView(data: JuryData): JuryViewModel {
   return {
     screen: screenOf(current.phase, ownVote),
     phase: current.phase,
+    clock: buildPhaseClock(current.row, data.now ?? new Date()),
     access: { status: "idle", errorMessage: null },
     jurorLabel: data.name,
     round:

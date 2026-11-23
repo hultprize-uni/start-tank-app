@@ -15,6 +15,7 @@ const fetchMock = vi.fn();
 const WAITING_STATE: JuryViewModel = {
   screen: "waiting",
   phase: "scheduled",
+  clock: null,
   access: { status: "idle", errorMessage: null },
   jurorLabel: "Jurado 2",
   round: {
