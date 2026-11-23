@@ -1,6 +1,6 @@
 import type { Decision } from "@/shared/domain/types";
 import { sql } from "@/server/db/client";
-import { classifyRounds, queryRoundVotes, queryRounds } from "@/server/db/rounds";
+import { classifyRounds, closeExpiredLastCall, queryRoundVotes, queryRounds } from "@/server/db/rounds";
 import type { StaffMember } from "@/server/db/staff";
 import {
   normalizeFunctionResult,
@@ -103,4 +103,30 @@ export async function registerVote(jurorId: string, decision: Decision): Promise
   const [row] = await sql<{ resultado: Record<string, unknown> }>`
     select fn_registrar_voto(${jurorId}::bigint, ${active.id_ronda}::bigint, ${toDbDecision(decision)}::varchar) as resultado`;
   return normalizeFunctionResult(row.resultado);
+}
+
+/**
+ * Guarda en el borrador la nota de un criterio en la ronda calificable vigente mediante
+ * fn_guardar_borrador (RF-14).
+ */
+export async function saveDraftNote(
+  jurorId: string,
+  criterionId: string,
+  value: number,
+): Promise<FunctionResult> {
+  await closeExpiredLastCall();
+  const [round] = await sql<{ id_ronda: string }>`
+    select id_ronda::text as id_ronda
+      from ronda
+     where estado in ('ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')
+     order by numero
+     limit 1`;
+  if (round === undefined) {
+    return { ok: false, error: "ROUND_NOT_GRADABLE" };
+  }
+
+  const [row] = await sql<{ resultado: Record<string, unknown> }>`
+    select fn_guardar_borrador(${jurorId}::bigint, ${round.id_ronda}::bigint,
+                               ${criterionId}::bigint, ${value}::int) as resultado`;
+  return normalizeFunctionResult(row?.resultado ?? {});
 }

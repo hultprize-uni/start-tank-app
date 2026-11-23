@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { API_ROUTES } from "@/shared/lib/api-routes";
-import { readJuryState, loginJury, voteJury } from "./client";
+import { loginJury, readJuryState, saveJuryDraft, voteJury } from "./client";
 
 /** Construye una respuesta JSON con el estado HTTP indicado. */
 function jsonResponse(body: unknown, status = 200): Response {
@@ -138,6 +138,53 @@ describe("voteJury", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.message).toBe("El servidor no pudo completar la solicitud. Inténtalo de nuevo.");
+    }
+  });
+});
+
+describe("saveJuryDraft", () => {
+  it("envía el criterio y la nota al endpoint de borrador", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+
+    const result = await saveJuryDraft("2", 4);
+
+    expect(result).toEqual({ ok: true, value: null });
+    expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.jury.draft);
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST" });
+    expect(sentBody(fetchMock.mock.calls[0])).toEqual({ criterionId: "2", value: 4 });
+  });
+
+  it("traduce el rechazo cuando ya envió sus notas (409)", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "ALREADY_SUBMITTED" }, 409));
+
+    const result = await saveJuryDraft("2", 5);
+
+    expect(result).toEqual({
+      ok: false,
+      sessionExpired: false,
+      message: "Ya enviaste tus notas definitivas en esta ronda.",
+    });
+  });
+
+  it("marca la sesión vencida cuando responde 401", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
+
+    const result = await saveJuryDraft("1", 3);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.sessionExpired).toBe(true);
+    }
+  });
+
+  it("informa error de conexión cuando falla la red", async () => {
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    const result = await saveJuryDraft("1", 3);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toMatch(/No se pudo conectar/);
     }
   });
 });

@@ -2,17 +2,16 @@ import type { Decision } from "@/shared/domain/types";
 import { readAccessCode } from "@/server/auth/access-code";
 import { noSessionResponse, requireJury, startSession } from "@/server/auth/code-session";
 import { sql } from "@/server/db/client";
-import { normalizeFunctionResult } from "@/server/db/values";
 import {
   errorResponse,
   jsonResponse,
   readJsonBody,
   stateResponse,
 } from "@/server/http/responses";
-import { findJurorByCode, readJuryView, registerVote } from "./queries";
+import { findJurorByCode, readJuryView, registerVote, saveDraftNote } from "./queries";
 
 /**
- * Guarda en el borrador la nota de un criterio de la ronda en curso (RF-15). Cuerpo:
+ * Guarda en el borrador la nota de un criterio de la ronda en curso (RF-14). Cuerpo:
  * { criterionId: string, value: 1..5 }. Responde { ok: true } o un error 409 con el código.
  */
 export async function handleJuryDraft(request: Request): Promise<Response> {
@@ -25,25 +24,14 @@ export async function handleJuryDraft(request: Request): Promise<Response> {
       typeof criterionId !== "string" ||
       !/^\d+$/.test(criterionId) ||
       typeof value !== "number" ||
-      !Number.isInteger(value)
+      !Number.isInteger(value) ||
+      value < 1 ||
+      value > 5
     ) {
       return errorResponse(400, "INVALID_NOTE");
     }
 
-    const [round] = await sql<{ id_ronda: string }>`
-      select id_ronda::text as id_ronda
-        from ronda
-       where estado in ('ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')
-       order by numero
-       limit 1`;
-    if (round === undefined) {
-      return errorResponse(409, "ROUND_NOT_GRADABLE");
-    }
-
-    const [row] = await sql<{ resultado: Record<string, unknown> }>`
-      select fn_guardar_borrador(${session.id}::bigint, ${round.id_ronda}::bigint,
-                                 ${criterionId}::bigint, ${value}::int) as resultado`;
-    const result = normalizeFunctionResult(row?.resultado ?? {});
+    const result = await saveDraftNote(session.id, criterionId, value);
     return result.ok ? jsonResponse({ ok: true }) : errorResponse(409, result.error ?? "DRAFT_REJECTED");
   } catch (error) {
     const noSession = noSessionResponse(error);
