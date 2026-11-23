@@ -3,53 +3,155 @@ import { resetDatabase } from "./setup-db";
 import {
   API,
   JUROR_CODES,
+  castScoreVoteByApi,
   castVoteByApi,
+  currentRoundStep,
   driveRoundToVoting,
+  readJuryCriteriaByApi,
+  runOperatorAction,
+  signInJuror,
   signInJurorByApi,
-  type ApiDecision,
+  signInOperator,
 } from "./support/round-flow";
+
+const CRITERION_SCORES = [
+  { group: "Puntaje para Problema y mercado", value: 4 },
+  { group: "Puntaje para Modelo de negocio", value: 3 },
+  { group: "Puntaje para Impacto ODS", value: 5 },
+  { group: "Puntaje para Equipo y pitch", value: 4 },
+] as const;
 
 test.describe("votacion del jurado", () => {
   test.beforeEach(async () => {
     await resetDatabase();
   });
 
-  test("four jurors vote from separate sessions and a second vote is rejected", async ({
+  test("laptop: recovers draft on reload, locks send until voting, and rejects duplicate submission", async ({
     browser,
     page,
   }) => {
     const baseURL = test.info().project.use.baseURL;
-    // Tres respaldos y un rechazo. Cada jurado usa su propio contexto, con cookies independientes.
-    const decisions: ApiDecision[] = ["BACK", "BACK", "BACK", "REJECT"];
+
+    await signInOperator(page);
+    await runOperatorAction(page, "Abrir mercado");
+    await expect(currentRoundStep(page)).toContainText("Abierta");
+
+    const context = await browser.newContext({
+      baseURL,
+      viewport: { width: 1280, height: 800 },
+    });
+    try {
+      const jurorPage = await context.newPage();
+
+      await jurorPage.goto("/jury");
+      await jurorPage.getByLabel("Código de acceso").fill("CODIGO-INVALIDO");
+      await jurorPage.getByRole("button", { name: "Entrar", exact: true }).click();
+      await expect(jurorPage.getByRole("alert")).toContainText("Ese código no existe");
+
+      await signInJuror(jurorPage, JUROR_CODES[0]);
+
+      const sendButton = jurorPage.getByRole("button", { name: "Enviar notas", exact: true });
+      await expect(sendButton).toBeDisabled();
+
+      for (const item of CRITERION_SCORES) {
+        await jurorPage
+          .getByRole("radiogroup", { name: item.group })
+          .getByRole("radio", { name: new RegExp(`^${item.value} `) })
+          .click();
+      }
+      await expect(jurorPage.getByRole("status")).toHaveText("Borrador guardado");
+
+      await jurorPage.reload();
+      await expect(
+        jurorPage.getByRole("radiogroup", { name: CRITERION_SCORES[0].group }),
+      ).toBeVisible();
+      for (const item of CRITERION_SCORES) {
+        await expect(
+          jurorPage
+            .getByRole("radiogroup", { name: item.group })
+            .getByRole("radio", { name: new RegExp(`^${item.value} `) }),
+        ).toBeChecked();
+      }
+
+      await runOperatorAction(page, "Declarar última llamada");
+      await runOperatorAction(page, "Cerrar mercado");
+      await expect(currentRoundStep(page)).toContainText("En votación");
+
+      await expect(sendButton).toBeEnabled({ timeout: 10_000 });
+      await sendButton.click();
+
+      const dialog = jurorPage.getByRole("dialog", { name: "¿Confirmas el envío de tus notas?" });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: "Confirmar envío", exact: true }).click();
+
+      await expect(jurorPage.getByText("Notas enviadas", { exact: true })).toBeVisible();
+      await expect(jurorPage.getByRole("heading", { name: "Puntaje: 4.0 / 5" })).toBeVisible();
+
+      const second = await castVoteByApi(context, "BACK");
+      expect(second.status()).toBe(409);
+      expect(((await second.json()) as { error: string }).error).toBe("DUPLICATE_VOTE");
+
+      const state = await context.request.get(API.jury.state);
+      expect(state.status()).toBe(200);
+      expect(((await state.json()) as { reveal: unknown }).reveal).toBeNull();
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("phone: supports conflict-of-interest abstention and shows revealed verdict", async ({
+    browser,
+    page,
+  }) => {
+    const baseURL = test.info().project.use.baseURL;
 
     await driveRoundToVoting(page);
 
-    for (const [index, decision] of decisions.entries()) {
-      const context = await browser.newContext({ baseURL });
-      try {
-        await signInJurorByApi(context, JUROR_CODES[index]);
+    const phoneContext = await browser.newContext({
+      baseURL,
+      viewport: { width: 390, height: 844 },
+    });
+    try {
+      const jurorPage = await phoneContext.newPage();
+      await signInJuror(jurorPage, JUROR_CODES[1]);
 
-        const vote = await castVoteByApi(context, decision);
-        expect(vote.status(), `voto del jurado ${JUROR_CODES[index]}`).toBe(200);
+      await jurorPage.getByRole("button", { name: "Declarar conflicto de interés", exact: true }).click();
+      const dialog = jurorPage.getByRole("dialog", { name: "Declarar conflicto de interés" });
+      const confirmAbstain = dialog.getByRole("button", { name: "Confirmar abstención", exact: true });
+      await expect(confirmAbstain).toBeDisabled();
 
-        const state = await context.request.get(API.jury.state);
-        expect(((await state.json()) as { screen: string }).screen).toBe("vote_registered");
+      await dialog
+        .getByRole("radio", { name: "Vínculo familiar o personal con el equipo" })
+        .click();
+      await expect(confirmAbstain).toBeEnabled();
+      await confirmAbstain.click();
 
-        // Un segundo voto de la misma sesión se rechaza con DUPLICATE_VOTE.
-        const second = await castVoteByApi(context, decision);
-        expect(second.status()).toBe(409);
-        expect(((await second.json()) as { error: string }).error).toBe("DUPLICATE_VOTE");
-      } finally {
-        await context.close();
+      await expect(jurorPage.getByText("Abstención registrada", { exact: true })).toBeVisible();
+
+      for (const code of [JUROR_CODES[0], JUROR_CODES[2], JUROR_CODES[3]]) {
+        const other = await browser.newContext({ baseURL });
+        try {
+          await signInJurorByApi(other, code);
+          const criteria = await readJuryCriteriaByApi(other);
+          const response = await castScoreVoteByApi(other, {
+            abstain: false,
+            notes: criteria.map((criterion) => ({ criterionId: criterion.id, value: 4 })),
+          });
+          expect(response.status()).toBe(200);
+        } finally {
+          await other.close();
+        }
       }
 
-      // La consola del operador consulta el estado cada 3 segundos; no requiere recargar la página.
-      const reveal = page.getByRole("button", { name: "Revelar veredicto", exact: true });
-      if (index < decisions.length - 1) {
-        await expect(reveal).toBeDisabled();
-      } else {
-        await expect(reveal).toBeEnabled({ timeout: 10_000 });
-      }
+      const revealButton = page.getByRole("button", { name: "Revelar veredicto", exact: true });
+      await expect(revealButton).toBeEnabled({ timeout: 10_000 });
+      await revealButton.click();
+
+      await expect(jurorPage.getByText("1.4x", { exact: true })).toBeVisible({ timeout: 10_000 });
+      await expect(jurorPage.getByText("4.0 / 5", { exact: true }).first()).toBeVisible();
+      await expect(jurorPage.getByText("Se abstuvo", { exact: true }).first()).toBeVisible();
+    } finally {
+      await phoneContext.close();
     }
   });
 });
