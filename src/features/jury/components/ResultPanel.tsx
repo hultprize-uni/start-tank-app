@@ -61,7 +61,10 @@ export function ResultPanel({ reveal, criteria }: ResultPanelProps) {
               <span className={scoreToneClass(juror)}>{scoreSummaryText(juror)}</span>
             </div>
 
-            {juror.submitted && !juror.abstained && criteria.length > 0 && (
+            {juror.submitted &&
+              !juror.abstained &&
+              criteria.length > 0 &&
+              Object.keys(juror.notes).length > 0 && (
               <ul className={styles.criteriaNotes} aria-label={`Notas de ${juror.label}`}>
                 {criteria.map((criterion) => {
                   const note = juror.notes[criterion.id];
