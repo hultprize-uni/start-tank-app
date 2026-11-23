@@ -5,7 +5,14 @@ const sqlMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/server/db/client", () => ({ sql: sqlMock }));
 
-import { findJurorByCode, readJuryView, registerVote } from "./queries";
+import { findJurorByCode, readJuryView, registerVote, saveDraftNote } from "./queries";
+
+const DB_CRITERIA = [
+  { id: "1", name: "Problema y mercado", weight: "0.250", anchor_min: "A1", anchor_max: "A5" },
+  { id: "2", name: "Modelo de negocio", weight: "0.250", anchor_min: "B1", anchor_max: "B5" },
+  { id: "3", name: "Impacto ODS", weight: "0.250", anchor_min: "C1", anchor_max: "C5" },
+  { id: "4", name: "Equipo y pitch", weight: "0.250", anchor_min: "D1", anchor_max: "D5" },
+];
 
 beforeEach(() => {
   sqlMock.mockReset();
@@ -34,16 +41,51 @@ describe("readJuryView", () => {
     await expect(readJuryView("99")).resolves.toBeNull();
   });
 
-  it("muestra el voto registrado del jurado en la ronda en votación", async () => {
+  it("recupera el borrador guardado en la ronda abierta y no consulta notas ajenas", async () => {
     setupSql(sqlMock, {
+      "from borrador_nota": [
+        { id_criterio: "1", valor: 4 },
+        { id_criterio: "4", valor: 5 },
+      ],
+      "from veredicto v": [],
       "where id_jurado": [{ id: "2", nombre: "Jurado de ejemplo 2" }],
-      "where r.id_ronda": [{ descripcion: "Monitoreo de cultivos." }],
-      "from veredicto v": [{ id_ronda: "1", decision: "RESPALDA" }],
+      "from criterio": DB_CRITERIA,
+      "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "ABIERTA" }],
+      "from jurado j": [
+        { id_jurado: "1", nombre: "Jurado 1", enviado: false, se_abstiene: false, puntaje: null },
+        { id_jurado: "2", nombre: "Jurado 2", enviado: false, se_abstiene: false, puntaje: null },
+      ],
+      "where r.id_ronda": [{ descripcion: "Monitoreo de cultivos.", logo_url: null }],
+      "select count(*)::int as total from jurado": [{ total: 2 }],
+    });
+
+    const vm = await readJuryView("2");
+
+    expect(vm).toMatchObject({
+      screen: "grading",
+      phase: "open",
+      draftNotes: { "1": 4, "4": 5 },
+      reveal: null,
+    });
+    expect(executedSql(sqlMock)).not.toContain("from nota_criterio");
+  });
+
+  it("muestra el envío propio en votación sin consultar ni exponer notas de otros jurados", async () => {
+    setupSql(sqlMock, {
+      "from borrador_nota": [],
+      "from nota_criterio nc": [
+        { id_criterio: "1", valor: 4 },
+        { id_criterio: "2", valor: 3 },
+      ],
+      "from veredicto v": [{ id_ronda: "1", se_abstiene: false, puntaje: "3.500" }],
+      "where id_jurado": [{ id: "2", nombre: "Jurado de ejemplo 2" }],
+      "from criterio": DB_CRITERIA,
       "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "EN_VOTACION" }],
       "from jurado j": [
-        { id_jurado: "1", nombre: "Jurado de ejemplo 1", enviado: true, se_abstiene: false, puntaje: "4.000" },
-        { id_jurado: "2", nombre: "Jurado de ejemplo 2", enviado: true, se_abstiene: false, puntaje: "2.000" },
+        { id_jurado: "1", nombre: "Jurado 1", enviado: true, se_abstiene: false, puntaje: "4.750" },
+        { id_jurado: "2", nombre: "Jurado 2", enviado: true, se_abstiene: false, puntaje: "3.500" },
       ],
+      "where r.id_ronda": [{ descripcion: "Monitoreo de cultivos.", logo_url: null }],
       "select count(*)::int as total from jurado": [{ total: 2 }],
     });
 
@@ -51,24 +93,30 @@ describe("readJuryView", () => {
 
     expect(vm).toMatchObject({
       screen: "vote_registered",
-      jurorLabel: "Jurado de ejemplo 2",
-      ownVote: "REJECT",
-      round: { description: "Monitoreo de cultivos." },
+      ownVerdict: { abstained: false, score: 3.5, notes: { "1": 4, "2": 3 } },
       votes: { emitted: 2, total: 2 },
+      reveal: null,
     });
-    expect(JSON.stringify(vm)).not.toContain("BACK");
+    expect(JSON.stringify(vm)).not.toContain("4.75");
   });
 
-  it("publica el veredicto de la ronda liquidada con las decisiones de todos los jurados", async () => {
+  it("publica el veredicto de la ronda liquidada con puntaje, multiplicador y notas de todos", async () => {
     setupSql(sqlMock, {
-      "where id_jurado": [{ id: "2", nombre: "Jurado de ejemplo 2" }],
-      "where r.id_ronda": [{ descripcion: null }],
-      "from veredicto v": [{ id_ronda: "1", decision: "RESPALDA" }],
-      "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "LIQUIDADA", multiplicador: "1.20" }],
-      "from jurado j": [
-        { id_jurado: "1", nombre: "Jurado de ejemplo 1", enviado: true, se_abstiene: false, puntaje: "4.000" },
-        { id_jurado: "2", nombre: "Jurado de ejemplo 2", enviado: true, se_abstiene: false, puntaje: "2.000" },
+      "from nota_criterio nc": [
+        { id_jurado: "1", id_criterio: "1", valor: 5 },
+        { id_jurado: "2", id_criterio: "1", valor: 3 },
       ],
+      "from veredicto v": [{ id_ronda: "1", se_abstiene: false, puntaje: "3.500" }],
+      "where id_jurado": [{ id: "2", nombre: "Jurado de ejemplo 2" }],
+      "from criterio": DB_CRITERIA,
+      "from ronda r": [
+        { ...DB_OPEN_ROUND_ROW, estado: "LIQUIDADA", multiplicador: "1.400", puntaje_jurado: "4.0000" },
+      ],
+      "from jurado j": [
+        { id_jurado: "1", nombre: "Jurado 1", enviado: true, se_abstiene: false, puntaje: "4.500" },
+        { id_jurado: "2", nombre: "Jurado 2", enviado: true, se_abstiene: false, puntaje: "3.500" },
+      ],
+      "where r.id_ronda": [{ descripcion: null, logo_url: null }],
       "select count(*)::int as total from jurado": [{ total: 2 }],
     });
 
@@ -78,49 +126,93 @@ describe("readJuryView", () => {
       screen: "result",
       phase: "result",
       reveal: {
-        multiplier: 1.2,
-        votes: [
-          { label: "Jurado 1", isOwn: false, decision: "BACK" },
-          { label: "Jurado 2", isOwn: true, decision: "REJECT" },
+        startupScore: 4,
+        multiplier: 1.4,
+        jurors: [
+          { label: "Jurado 1", isOwn: false, submitted: true, abstained: false, score: 4.5, notes: { "1": 5 } },
+          { label: "Jurado 2", isOwn: true, submitted: true, abstained: false, score: 3.5, notes: { "1": 3 } },
         ],
       },
     });
   });
 });
 
-describe("registerVote", () => {
-  it("no llama a fn_registrar_voto cuando no hay ronda activa", async () => {
+describe("saveDraftNote", () => {
+  it("rechaza el borrador si no hay ronda calificable", async () => {
+    setupSql(sqlMock, { "from ronda": [] });
+
+    await expect(saveDraftNote("2", "1", 4)).resolves.toEqual({
+      ok: false,
+      error: "ROUND_NOT_GRADABLE",
+    });
+    expect(executedSql(sqlMock)).not.toContain("fn_guardar_borrador");
+  });
+
+  it("invoca fn_guardar_borrador y traduce el resultado", async () => {
     setupSql(sqlMock, {
-      "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "PROGRAMADA" }],
+      "from ronda": [{ id_ronda: "3" }],
+      fn_guardar_borrador: [{ resultado: { ok: true } }],
     });
 
-    await expect(registerVote("2", "BACK")).resolves.toEqual({
-      ok: false,
-      error: "ROUND_NOT_VOTING",
+    await expect(saveDraftNote("2", "1", 5)).resolves.toEqual({ ok: true });
+  });
+});
+
+describe("registerVote", () => {
+  it("no llama a fn_registrar_voto cuando la ronda no está en votación", async () => {
+    setupSql(sqlMock, {
+      "from ronda r": [{ ...DB_OPEN_ROUND_ROW, estado: "ABIERTA" }],
     });
+
+    await expect(
+      registerVote("2", { abstain: false, notes: [{ criterionId: "1", value: 4 }] }),
+    ).resolves.toEqual({ ok: false, error: "ROUND_NOT_VOTING" });
     expect(executedSql(sqlMock)).not.toContain("fn_registrar_voto");
   });
 
-  it("envía el voto a la ronda activa con el valor de la base de datos y devuelve el resultado", async () => {
+  it("envía las notas en jsonb a fn_registrar_voto y devuelve el puntaje", async () => {
     setupSql(sqlMock, {
       "from ronda r": [{ ...DB_OPEN_ROUND_ROW, id_ronda: "3", estado: "EN_VOTACION" }],
-      fn_registrar_voto: [{ resultado: { ok: true } }],
+      fn_registrar_voto: [{ resultado: { ok: true, puntaje: 4.25 } }],
     });
 
-    await expect(registerVote("2", "ABSTAIN")).resolves.toEqual({ ok: true });
+    const result = await registerVote("2", {
+      abstain: false,
+      notes: [
+        { criterionId: "1", value: 5 },
+        { criterionId: "2", value: 4 },
+        { criterionId: "3", value: 4 },
+        { criterionId: "4", value: 4 },
+      ],
+    });
 
-    const lastCall = sqlMock.mock.calls.find(([strings]) =>
+    expect(result).toEqual({ ok: true, score: 4.25 });
+    const call = sqlMock.mock.calls.find(([strings]) =>
       (strings as TemplateStringsArray).join("?").includes("fn_registrar_voto"),
     );
-    expect(lastCall?.slice(1)).toEqual(["2", "3", "SE_ABSTIENE"]);
+    expect(call?.slice(1)).toEqual([
+      "2",
+      "3",
+      false,
+      JSON.stringify([
+        { id_criterio: 1, valor: 5 },
+        { id_criterio: 2, valor: 4 },
+        { id_criterio: 3, valor: 4 },
+        { id_criterio: 4, valor: 4 },
+      ]),
+    ]);
   });
 
-  it("traduce el código de error de la función SQL", async () => {
+  it("envía la abstención y traduce el código de error de la función SQL", async () => {
     setupSql(sqlMock, {
       "from ronda r": [{ ...DB_OPEN_ROUND_ROW, id_ronda: "3", estado: "EN_VOTACION" }],
       fn_registrar_voto: [{ resultado: { ok: false, error: "VOTO_DUPLICADO" } }],
     });
 
-    await expect(registerVote("2", "BACK")).resolves.toEqual({ ok: false, error: "DUPLICATE_VOTE" });
+    await expect(registerVote("2", { abstain: true })).resolves.toEqual({
+      ok: false,
+      error: "DUPLICATE_VOTE",
+      score: null,
+    });
   });
 });

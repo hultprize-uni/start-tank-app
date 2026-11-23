@@ -1,24 +1,56 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   padding: 24px 24px 32px;
   border-radius: 18px 18px 18px 96px;
 }
 
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
 .multiplier {
-  margin: 0;
+  margin: 4px 0 0;
   font-family: var(--font-display);
-  font-size: 72px;
+  font-size: 64px;
   font-weight: 900;
   line-height: 0.9;
   letter-spacing: -0.04em;
 }
 
+.scoreSummary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.startupScore {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--fg-1);
+}
+
+.scorePct {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--st-cyan-light);
+}
+
 .votes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -26,13 +58,56 @@
 
 .vote {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background: var(--bg-band);
   font-size: 14px;
-  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.voteTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.jurorLabel {
+  color: var(--fg-1);
+}
+
+.criteriaNotes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line-1);
+  list-style: none;
+}
+
+.criterionNote {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.criterionName {
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.criterionValue {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 900;
   color: var(--fg-1);
 }
 
@@ -42,6 +117,10 @@
 
 .reject {
   color: var(--st-pink-light);
+}
+
+.neutral {
+  color: var(--fg-2);
 }
 
 .abstain {
@@ -57,5 +136,5 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
-  color: var(--fg-3);
+  color: var(--fg-2);
 }

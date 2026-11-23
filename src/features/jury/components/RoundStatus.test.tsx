@@ -10,11 +10,13 @@ afterEach(() => {
 });
 
 const ROUND = {
+  id: "2",
   number: 2,
   total: 5,
   startupName: "AguaClara",
   sdg: "ODS 6",
   description: "Filtros comunitarios de agua.",
+  logoUrl: null,
 };
 
 describe("RoundStatus", () => {

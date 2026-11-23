@@ -47,3 +47,7 @@
 .abstain {
   color: var(--st-yellow);
 }
+
+.neutral {
+  color: var(--fg-2);
+}

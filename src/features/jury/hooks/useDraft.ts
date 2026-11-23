@@ -8,13 +8,13 @@ export type DraftStatus = "idle" | "saving" | "saved" | "error";
 
 export interface UseDraftOptions {
   roundId: string | null;
-  serverNotes: Readonly<Record<string, ScoreValue>>;
+  serverNotes: Readonly<Partial<Record<string, ScoreValue>>>;
   saveNote: (criterionId: string, value: ScoreValue) => Promise<JuryResult>;
   onSessionExpired: (message: string) => void;
 }
 
 export interface UseDraftResult {
-  scores: Readonly<Record<string, ScoreValue>>;
+  scores: Readonly<Partial<Record<string, ScoreValue>>>;
   status: DraftStatus;
   errorMessage: string | null;
   hasRecoveredDraft: boolean;
@@ -63,7 +63,7 @@ export function useDraft({
   }, [roundId, resetDraft]);
 
   const scores = useMemo(() => {
-    const merged: Record<string, ScoreValue> = { ...serverNotes };
+    const merged: Partial<Record<string, ScoreValue>> = { ...serverNotes };
     for (const [key, value] of Object.entries(localOverrides)) {
       if (value !== undefined) {
         merged[key] = value;

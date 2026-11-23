@@ -11,7 +11,7 @@ interface ConfirmSendSheetProps {
   open: boolean;
   startupName: string;
   criteria: readonly Criterion[];
-  scores: Readonly<Record<string, ScoreValue>>;
+  scores: Readonly<Partial<Record<string, ScoreValue>>>;
   submitting: boolean;
   onClose: () => void;
   onConfirm: () => void;

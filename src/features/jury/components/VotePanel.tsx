@@ -1,73 +1,124 @@
-import { SegmentedChoice, Toast, Button } from "@/shared/ui";
-import type { Decision } from "@/shared/domain/types";
-import type { JuryActions, JuryVoteView } from "../types";
-import { DECISION_COPY, DECISION_ORDER } from "./copy";
-import { VoteConfirmDialog } from "./VoteConfirmDialog";
-import styles from "./VotePanel.module.css";
+"use client";
 
-/** Valor del grupo cuando ninguna decisión está elegida. No corresponde a ninguna opción. */
-const NO_CHOICE = "";
+import type { Criterion } from "@/shared/domain/types";
+import { Button, Toast } from "@/shared/ui";
+import type {
+  CriteriaScores,
+  DraftSaveStatus,
+  JuryActions,
+  JuryPhase,
+  JuryVoteUiState,
+} from "../types";
+import { AbstainSheet } from "./AbstainSheet";
+import { ConfirmSendSheet } from "./ConfirmSendSheet";
+import { CriteriaCard } from "./CriteriaCard";
+import { ScoreSummary } from "./ScoreSummary";
+import styles from "./VotePanel.module.css";
 
 interface VotePanelProps {
   startupName: string;
-  vote: JuryVoteView;
+  phase: JuryPhase;
+  criteria: readonly Criterion[];
+  draftNotes: CriteriaScores;
+  draftStatus: DraftSaveStatus;
+  draftError: string | null;
+  vote: JuryVoteUiState;
   actions: JuryActions;
 }
 
-/** Ronda en votación: elección de la decisión y confirmación del voto definitivo. */
-export function VotePanel({ startupName, vote, actions }: VotePanelProps) {
-  const hasDraft = vote.draft !== null;
+/**
+ * Panel de calificación por criterios (RF-14 a RF-16): permite guardar notas en borrador desde
+ * que abre el mercado y habilita el envío definitivo o la abstención durante la votación.
+ */
+export function VotePanel({
+  startupName,
+  phase,
+  criteria,
+  draftNotes,
+  draftStatus,
+  draftError,
+  vote,
+  actions,
+}: VotePanelProps) {
+  const canSubmit = phase === "voting";
+  const errorMessage = vote.errorMessage ?? draftError;
+  const hasRecoveredDraft = Object.keys(draftNotes).length > 0;
 
   return (
-    <section className={styles.panel} aria-labelledby="votar-titulo">
-      <h2 id="votar-titulo" className={styles.title}>
-        ¿Respaldas a {startupName}?
-      </h2>
+    <section className={styles.panel} aria-labelledby="calificar-titulo">
+      <div className={styles.intro}>
+        <h2 id="calificar-titulo" className={styles.title}>
+          Califica a {startupName}
+        </h2>
+        <p className={styles.lead}>
+          {canSubmit
+            ? "La votación está abierta. Revisa tus cuatro notas y envíalas o declara conflicto de interés."
+            : "Califica mientras expone. Cada nota se guarda en borrador automáticamente."}
+        </p>
+      </div>
 
-      <SegmentedChoice<Decision | typeof NO_CHOICE>
-        label="Decisión de voto"
-        value={vote.draft ?? NO_CHOICE}
-        disabled={vote.submitting}
-        className={styles.choices}
-        options={DECISION_ORDER.map((decision) => ({
-          value: decision,
-          label: (
-            <span className={styles.option}>
-              <span className={styles.optionTitle}>{DECISION_COPY[decision].choice}</span>
-              <span className={styles.optionText}>{DECISION_COPY[decision].description}</span>
-            </span>
-          ),
-        }))}
-        onChange={(value) => {
-          if (value !== NO_CHOICE) actions.selectDecision(value);
-        }}
-      />
+      <div className={styles.grid}>
+        {criteria.map((criterion, index) => (
+          <CriteriaCard
+            key={criterion.id}
+            index={index}
+            criterion={criterion}
+            value={draftNotes[criterion.id] ?? null}
+            disabled={vote.submitting}
+            onChange={(value) => actions.setScore(criterion.id, value)}
+          />
+        ))}
+      </div>
 
-      <p className={styles.note}>El voto es definitivo. Solo puedes votar una vez por ronda.</p>
+      <div className={styles.abstainRow}>
+        <Button
+          variant="ghost"
+          size="md"
+          disabled={!canSubmit || vote.submitting}
+          onClick={actions.openAbstain}
+        >
+          Declarar conflicto de interés
+        </Button>
+        {!canSubmit && (
+          <span className={styles.abstainHint}>
+            Disponible cuando el operador habilite la votación.
+          </span>
+        )}
+      </div>
 
-      <Button
-        size="lg"
-        fullWidth
-        disabled={!hasDraft || vote.submitting}
-        onClick={actions.requestConfirm}
-      >
-        Confirmar voto
-      </Button>
-
-      {vote.errorMessage !== null && (
+      {errorMessage !== null && (
         <Toast tone="negative" role="alert">
-          {vote.errorMessage}
+          {errorMessage}
         </Toast>
       )}
 
-      {vote.confirming && vote.draft !== null && (
-        <VoteConfirmDialog
-          decision={vote.draft}
-          submitting={vote.submitting}
-          onCancel={actions.cancelConfirm}
-          onConfirm={actions.confirmVote}
-        />
-      )}
+      <ScoreSummary
+        criteria={criteria}
+        scores={draftNotes}
+        canSubmit={canSubmit}
+        submitting={vote.submitting}
+        draftStatus={draftStatus}
+        hasRecoveredDraft={hasRecoveredDraft}
+        onRequestSend={actions.openConfirmSend}
+      />
+
+      <ConfirmSendSheet
+        open={vote.sheet === "confirm_send"}
+        startupName={startupName}
+        criteria={criteria}
+        scores={draftNotes}
+        submitting={vote.submitting}
+        onClose={actions.closeSheet}
+        onConfirm={actions.confirmSend}
+      />
+
+      <AbstainSheet
+        open={vote.sheet === "abstain"}
+        startupName={startupName}
+        submitting={vote.submitting}
+        onClose={actions.closeSheet}
+        onConfirm={actions.confirmAbstain}
+      />
     </section>
   );
 }

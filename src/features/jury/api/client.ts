@@ -1,8 +1,7 @@
-import type { Decision } from "@/shared/domain/types";
 import { SERVER_ERROR_MESSAGE, OFFLINE_MESSAGE, requestJson } from "@/shared/lib/http-client";
 import { API_ROUTES } from "@/shared/lib/api-routes";
 import type { ScoreValue } from "../criteria";
-import type { JuryViewModel } from "../types";
+import type { JuryViewModel, JuryVotePayload } from "../types";
 
 /** Mensaje cuando la sesión del jurado ha dejado de ser válida. */
 export const JURY_SESSION_EXPIRED_MESSAGE = "Tu sesión venció. Ingresa tu código de nuevo.";
@@ -13,10 +12,11 @@ const LOGIN_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 const VOTE_MESSAGES: Readonly<Record<string, string>> = {
-  INVALID_DECISION: "Elige una decisión antes de confirmar.",
+  INVALID_NOTES: "Completa las cuatro notas del 1 al 5 antes de enviar.",
+  INCOMPLETE_NOTES: "Debes calificar todos los criterios antes de enviar.",
   ROUND_NOT_FOUND: "No hay una ronda activa para votar.",
-  ROUND_NOT_VOTING: "La votación de esta ronda ya no está abierta.",
-  DUPLICATE_VOTE: "Ya registraste tu voto en esta ronda.",
+  ROUND_NOT_VOTING: "La votación de esta ronda aún no está abierta o ya cerró.",
+  DUPLICATE_VOTE: "Ya registraste tu envío definitivo en esta ronda.",
   JUROR_NOT_FOUND: "Tu acceso ya no es válido. Ingresa tu código de nuevo.",
 };
 
@@ -86,14 +86,19 @@ export async function saveJuryDraft(criterionId: string, value: ScoreValue): Pro
   return { ok: false, sessionExpired: false, message };
 }
 
-/** Registra el voto definitivo del jurado en la ronda activa. */
-export async function voteJury(decision: Decision): Promise<JuryResult> {
-  const response = await requestJson<{ ok: boolean }>(API_ROUTES.jury.vote, {
-    method: "POST",
-    body: { decision },
-  });
+/** Registra las notas definitivas o la abstención del jurado en la ronda en votación (RF-15, RF-16). */
+export async function submitJuryVote(
+  payload: JuryVotePayload,
+): Promise<JuryResult<{ score: number | null }>> {
+  const response = await requestJson<{ ok: boolean; score?: number | null }>(
+    API_ROUTES.jury.vote,
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
   if (response.ok) {
-    return { ok: true, value: null };
+    return { ok: true, value: { score: response.data.score ?? null } };
   }
   if (response.offline) {
     return { ok: false, sessionExpired: false, message: OFFLINE_MESSAGE };

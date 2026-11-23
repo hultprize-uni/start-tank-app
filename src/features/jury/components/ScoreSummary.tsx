@@ -10,7 +10,7 @@ import styles from "./ScoreSummary.module.css";
 
 interface ScoreSummaryProps {
   criteria: readonly Criterion[];
-  scores: Readonly<Record<string, ScoreValue>>;
+  scores: Readonly<Partial<Record<string, ScoreValue>>>;
   canSubmit: boolean;
   submitting: boolean;
   draftStatus: DraftStatus;

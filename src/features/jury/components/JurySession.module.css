@@ -15,14 +15,7 @@
   min-width: 0;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.column {
+.contentStack {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -35,10 +28,5 @@
     grid-template-columns: 272px minmax(0, 1fr);
     gap: 28px;
     align-items: start;
-  }
-
-  .grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 32px;
   }
 }

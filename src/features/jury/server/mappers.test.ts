@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RoundRow, RoundVoteRow } from "@/server/db/rounds";
 import type { RoundState } from "@/shared/domain/types";
+import { DEFAULT_JURY_CRITERIA } from "../criteria";
 import { buildJuryView, resolveCurrentRound, type JuryData } from "./mappers";
 
 /** Fila de ronda con valores por defecto que cada prueba sobrescribe. */
@@ -33,14 +34,18 @@ function event(states: readonly RoundState[]): RoundRow[] {
   return states.map((estado, index) => round({ numero: index + 1, estado }));
 }
 
-function vote(id: string, name: string, decision: RoundVoteRow["decision"]): RoundVoteRow {
+function vote(
+  id: string,
+  name: string,
+  options: { enviado: boolean; se_abstiene?: boolean; puntaje?: string | null },
+): RoundVoteRow {
   return {
     id_jurado: id,
     nombre: name,
-    enviado: decision !== null,
-    se_abstiene: decision === "ABSTAIN",
-    puntaje: null,
-    decision,
+    enviado: options.enviado,
+    se_abstiene: options.se_abstiene ?? false,
+    puntaje: options.puntaje ?? null,
+    decision: null,
   };
 }
 
@@ -84,9 +89,10 @@ describe("resolveCurrentRound", () => {
 });
 
 describe("buildJuryView", () => {
-  const base: Omit<JuryData, "rounds" | "votes" | "ownVotes" | "description"> = {
+  const base: Pick<JuryData, "jurorId" | "name" | "criteria" | "totalJurors"> = {
     jurorId: "2",
     name: "Jurado de ejemplo 2",
+    criteria: DEFAULT_JURY_CRITERIA,
     totalJurors: 4,
   };
 
@@ -95,14 +101,17 @@ describe("buildJuryView", () => {
       ...base,
       rounds: event(["SCHEDULED", "SCHEDULED"]),
       votes: [],
-      ownVotes: [],
+      ownVerdicts: [],
+      draftNotes: [],
+      ownRoundNotes: [],
+      revealedNotes: [],
       description: null,
     });
     expect(vm).toMatchObject({
       screen: "waiting",
       phase: "scheduled",
       jurorLabel: "Jurado de ejemplo 2",
-      round: { number: 1, total: 2 },
+      round: { id: "1", number: 1, total: 2 },
     });
   });
 
@@ -111,82 +120,130 @@ describe("buildJuryView", () => {
       ...base,
       rounds: [],
       votes: [],
-      ownVotes: [],
+      ownVerdicts: [],
+      draftNotes: [],
+      ownRoundNotes: [],
+      revealedNotes: [],
       description: null,
     });
     expect(vm).toMatchObject({ screen: "waiting", phase: "final", round: null });
   });
 
-  it("muestra la votación hasta que el jurado registra su voto", () => {
-    const rounds = [round({ numero: 3, estado: "VOTING", startup_nombre: "EduRuta" })];
-    const noVote = buildJuryView({
-      ...base,
-      rounds,
-      votes: [vote("2", "Jurado de ejemplo 2", null), vote("1", "Jurado de ejemplo 1", "BACK")],
-      ownVotes: [],
-      description: "Rutas de aprendizaje.",
-    });
-    const withVote = buildJuryView({
-      ...base,
-      rounds,
-      votes: [vote("2", "Jurado de ejemplo 2", "REJECT"), vote("1", "Jurado de ejemplo 1", "BACK")],
-      ownVotes: [],
-      description: "Rutas de aprendizaje.",
-    });
-
-    expect(noVote).toMatchObject({
-      screen: "voting",
-      ownVote: null,
-      round: { number: 3, total: 1, startupName: "EduRuta", description: "Rutas de aprendizaje." },
-      votes: { emitted: 1, total: 4 },
-    });
-    expect(withVote).toMatchObject({
-      screen: "vote_registered",
-      ownVote: "REJECT",
-      votes: { emitted: 2, total: 4 },
-    });
-  });
-
-  it("no expone el sentido de los votos de otros jurados durante la votación", () => {
+  it("muestra la grilla con el borrador recuperado mientras la ronda es calificable", () => {
     const vm = buildJuryView({
       ...base,
-      rounds: [round({ numero: 3, estado: "VOTING" })],
-      votes: [vote("1", "Jurado de ejemplo 1", "BACK"), vote("2", "Jurado de ejemplo 2", null)],
-      ownVotes: [],
-      description: null,
+      rounds: [round({ numero: 2, estado: "OPEN", startup_nombre: "AguaClara" })],
+      votes: [],
+      ownVerdicts: [],
+      draftNotes: [
+        { id_criterio: "1", valor: 4 },
+        { id_criterio: "3", valor: 5 },
+      ],
+      ownRoundNotes: [],
+      revealedNotes: [],
+      description: "Filtros comunitarios.",
+      logoUrl: "https://example.test/agua.png",
     });
-    expect(vm.reveal).toBeNull();
-    expect(JSON.stringify(vm)).not.toContain("BACK");
+
+    expect(vm.screen).toBe("grading");
+    expect(vm.phase).toBe("open");
+    expect(vm.draftNotes).toEqual({ "1": 4, "3": 5 });
+    expect(vm.round).toMatchObject({
+      id: "2",
+      number: 2,
+      startupName: "AguaClara",
+      description: "Filtros comunitarios.",
+      logoUrl: "https://example.test/agua.png",
+    });
   });
 
-  it("publica los votos y el multiplicador al liquidar la ronda", () => {
-    const rounds = event(["SETTLED", "SETTLED", "SETTLED", "SETTLED", "SETTLED"]);
-    rounds[4] = { ...rounds[4], multiplicador: "1.35" };
+  it("cambia a vote_registered cuando el jurado ya envió en la ronda en votación", () => {
+    const rounds = [round({ numero: 3, estado: "VOTING", startup_nombre: "EduRuta" })];
     const vm = buildJuryView({
       ...base,
       rounds,
       votes: [
-        vote("1", "Jurado de ejemplo 1", "BACK"),
-        vote("2", "Jurado de ejemplo 2", "REJECT"),
-        vote("3", "Jurado de ejemplo 3", "ABSTAIN"),
+        vote("1", "Jurado 1", { enviado: true, puntaje: "4.500" }),
+        vote("2", "Jurado 2", { enviado: true, puntaje: "3.750" }),
       ],
-      ownVotes: [{ id_ronda: "5", decision: "REJECT" }],
+      ownVerdicts: [{ id_ronda: "3", se_abstiene: false, puntaje: "3.750" }],
+      draftNotes: [],
+      ownRoundNotes: [
+        { id_criterio: "1", valor: 4 },
+        { id_criterio: "2", valor: 4 },
+        { id_criterio: "3", valor: 4 },
+        { id_criterio: "4", valor: 3 },
+      ],
+      revealedNotes: [],
+      description: "Rutas de aprendizaje.",
+    });
+
+    expect(vm.screen).toBe("vote_registered");
+    expect(vm.ownVerdict).toEqual({
+      abstained: false,
+      score: 3.75,
+      notes: { "1": 4, "2": 4, "3": 4, "4": 3 },
+    });
+    expect(vm.votes).toEqual({ emitted: 2, total: 4 });
+  });
+
+  it("no expone las notas ni los puntajes de otros jurados antes de liquidar", () => {
+    const vm = buildJuryView({
+      ...base,
+      rounds: [round({ numero: 3, estado: "VOTING" })],
+      votes: [
+        vote("1", "Jurado 1", { enviado: true, puntaje: "4.750" }),
+        vote("2", "Jurado 2", { enviado: false }),
+      ],
+      ownVerdicts: [],
+      draftNotes: [],
+      ownRoundNotes: [],
+      revealedNotes: [{ id_jurado: "1", id_criterio: "1", valor: 5 }],
+      description: null,
+    });
+
+    expect(vm.reveal).toBeNull();
+    expect(vm.votes).toEqual({ emitted: 1, total: 4 });
+    expect(JSON.stringify(vm)).not.toContain("4.75");
+  });
+
+  it("publica el puntaje de la startup, el multiplicador y las notas de los 4 jurados al liquidar", () => {
+    const rounds = event(["SETTLED", "SETTLED", "SETTLED", "SETTLED", "SETTLED"]);
+    rounds[4] = { ...rounds[4], multiplicador: "1.400", puntaje_jurado: "4.0000" };
+    const vm = buildJuryView({
+      ...base,
+      rounds,
+      votes: [
+        vote("1", "Jurado 1", { enviado: true, puntaje: "4.250" }),
+        vote("2", "Jurado 2", { enviado: true, puntaje: "3.750" }),
+        vote("3", "Jurado 3", { enviado: true, se_abstiene: true, puntaje: null }),
+        vote("4", "Jurado 4", { enviado: false }),
+      ],
+      ownVerdicts: [{ id_ronda: "5", se_abstiene: false, puntaje: "3.750" }],
+      draftNotes: [],
+      ownRoundNotes: [],
+      revealedNotes: [
+        { id_jurado: "1", id_criterio: "1", valor: 5 },
+        { id_jurado: "2", id_criterio: "1", valor: 4 },
+      ],
       description: null,
     });
 
     expect(vm.screen).toBe("result");
     expect(vm.reveal).toEqual({
-      multiplier: 1.35,
+      startupScore: 4,
+      multiplier: 1.4,
       isLastRound: true,
-      votes: [
-        { label: "Jurado 1", isOwn: false, decision: "BACK" },
-        { label: "Jurado 2", isOwn: true, decision: "REJECT" },
-        { label: "Jurado 3", isOwn: false, decision: "ABSTAIN" },
+      jurors: [
+        { label: "Jurado 1", isOwn: false, submitted: true, abstained: false, score: 4.25, notes: { "1": 5 } },
+        { label: "Jurado 2", isOwn: true, submitted: true, abstained: false, score: 3.75, notes: { "1": 4 } },
+        { label: "Jurado 3", isOwn: false, submitted: true, abstained: true, score: null, notes: {} },
+        { label: "Jurado 4", isOwn: false, submitted: false, abstained: false, score: null, notes: {} },
       ],
     });
   });
 
-  it("construye el recorrido con el voto propio de las rondas terminadas", () => {
+  it("construye el recorrido con el resumen propio de las rondas terminadas", () => {
     const vm = buildJuryView({
       ...base,
       rounds: [
@@ -195,19 +252,22 @@ describe("buildJuryView", () => {
         round({ numero: 3, estado: "VOTING", startup_nombre: "EduRuta" }),
         round({ numero: 4, estado: "SCHEDULED", startup_nombre: "SolRed" }),
       ],
-      votes: [vote("2", "Jurado de ejemplo 2", null)],
-      ownVotes: [
-        { id_ronda: "1", decision: "BACK" },
-        { id_ronda: "2", decision: "ABSTAIN" },
+      votes: [vote("2", "Jurado 2", { enviado: false })],
+      ownVerdicts: [
+        { id_ronda: "1", se_abstiene: false, puntaje: "4.250" },
+        { id_ronda: "2", se_abstiene: true, puntaje: null },
       ],
+      draftNotes: [],
+      ownRoundNotes: [],
+      revealedNotes: [],
       description: null,
     });
 
     expect(vm.rail).toEqual([
-      { number: 1, startupName: "AgroSense", status: "settled", ownDecision: "BACK" },
-      { number: 2, startupName: "AguaClara", status: "settled", ownDecision: "ABSTAIN" },
-      { number: 3, startupName: "EduRuta", status: "current", ownDecision: null },
-      { number: 4, startupName: "SolRed", status: "pending", ownDecision: null },
+      { number: 1, startupName: "AgroSense", status: "settled", ownVerdict: { abstained: false, score: 4.25 } },
+      { number: 2, startupName: "AguaClara", status: "settled", ownVerdict: { abstained: true, score: null } },
+      { number: 3, startupName: "EduRuta", status: "current", ownVerdict: null },
+      { number: 4, startupName: "SolRed", status: "pending", ownVerdict: null },
     ]);
   });
 });

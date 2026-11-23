@@ -9,18 +9,35 @@ interface JuryBodyProps {
   actions: JuryActions;
 }
 
-/** Elige la pantalla de la columna principal según la fase y el voto propio. */
+/** Elige la pantalla principal según la fase de la ronda y el envío propio. */
 export function JuryBody({ state, actions }: JuryBodyProps) {
   const { screen, phase, round } = state;
 
-  if (screen === "voting" && round !== null) {
-    return <VotePanel startupName={round.startupName} vote={state.vote} actions={actions} />;
+  if (screen === "grading" && round !== null && phase !== null) {
+    return (
+      <VotePanel
+        startupName={round.startupName}
+        phase={phase}
+        criteria={state.criteria}
+        draftNotes={state.draftNotes}
+        draftStatus={state.draftStatus}
+        draftError={state.draftError}
+        vote={state.vote}
+        actions={actions}
+      />
+    );
   }
-  if (screen === "vote_registered" && state.ownVote !== null) {
-    return <VoteRegistered ownVote={state.ownVote} votes={state.votes} />;
+  if (screen === "vote_registered" && state.ownVerdict !== null) {
+    return (
+      <VoteRegistered
+        ownVerdict={state.ownVerdict}
+        criteria={state.criteria}
+        votes={state.votes}
+      />
+    );
   }
   if (screen === "result" && state.reveal !== null) {
-    return <ResultPanel reveal={state.reveal} />;
+    return <ResultPanel reveal={state.reveal} criteria={state.criteria} />;
   }
   if (screen === "waiting" && phase !== null) {
     return <WaitingScreen phase={phase} />;

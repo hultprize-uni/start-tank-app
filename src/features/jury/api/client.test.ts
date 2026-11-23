@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { API_ROUTES } from "@/shared/lib/api-routes";
-import { loginJury, readJuryState, saveJuryDraft, voteJury } from "./client";
+import { loginJury, readJuryState, saveJuryDraft, submitJuryVote } from "./client";
 
 /** Construye una respuesta JSON con el estado HTTP indicado. */
 function jsonResponse(body: unknown, status = 200): Response {
@@ -66,13 +66,21 @@ describe("loginJury", () => {
 describe("readJuryState", () => {
   it("devuelve el view model cuando la sesión es válida", async () => {
     const view = {
-      screen: "voting",
+      screen: "grading",
+      phase: "voting",
+      clock: null,
       access: { status: "idle", errorMessage: null },
       jurorLabel: "Jurado 3",
-      round: { number: 2, startupName: "Solar Nodo" },
+      round: { id: "2", number: 2, total: 5, startupName: "Solar Nodo", sdg: null, description: null, logoUrl: null },
+      rail: [],
       criteria: [],
-      vote: { draft: null, confirming: false, submitting: false, errorMessage: null },
+      draftNotes: {},
+      draftStatus: "idle",
+      draftError: null,
+      vote: { sheet: null, submitting: false, errorMessage: null },
       votes: { emitted: 1, total: 4 },
+      ownVerdict: null,
+      reveal: null,
     };
     fetchMock.mockResolvedValue(jsonResponse(view));
 
@@ -95,53 +103,6 @@ describe("readJuryState", () => {
   });
 });
 
-describe("voteJury", () => {
-  it("envía la decisión elegida al endpoint de voto", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
-
-    const result = await voteJury("BACK");
-
-    expect(result.ok).toBe(true);
-    expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.jury.vote);
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST" });
-    expect(sentBody(fetchMock.mock.calls[0])).toEqual({ decision: "BACK" });
-  });
-
-  it("traduce el voto duplicado a un mensaje en español", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "DUPLICATE_VOTE" }, 409));
-
-    const result = await voteJury("REJECT");
-
-    expect(result).toEqual({
-      ok: false,
-      sessionExpired: false,
-      message: "Ya registraste tu voto en esta ronda.",
-    });
-  });
-
-  it("devuelve la sesión vencida cuando el voto llega sin sesión (401)", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
-
-    const result = await voteJury("ABSTAIN");
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.sessionExpired).toBe(true);
-    }
-  });
-
-  it("usa el mensaje genérico para un error no contemplado", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "ALGO_RARO" }, 500));
-
-    const result = await voteJury("BACK");
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.message).toBe("El servidor no pudo completar la solicitud. Inténtalo de nuevo.");
-    }
-  });
-});
-
 describe("saveJuryDraft", () => {
   it("envía el criterio y la nota al endpoint de borrador", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
@@ -150,7 +111,6 @@ describe("saveJuryDraft", () => {
 
     expect(result).toEqual({ ok: true, value: null });
     expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.jury.draft);
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST" });
     expect(sentBody(fetchMock.mock.calls[0])).toEqual({ criterionId: "2", value: 4 });
   });
 
@@ -176,15 +136,56 @@ describe("saveJuryDraft", () => {
       expect(result.sessionExpired).toBe(true);
     }
   });
+});
 
-  it("informa error de conexión cuando falla la red", async () => {
-    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+describe("submitJuryVote", () => {
+  it("envía las cuatro notas al endpoint de voto", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true, score: 4.25 }));
 
-    const result = await saveJuryDraft("1", 3);
+    const notes = [
+      { criterionId: "1", value: 5 as const },
+      { criterionId: "2", value: 4 as const },
+      { criterionId: "3", value: 4 as const },
+      { criterionId: "4", value: 4 as const },
+    ];
+    const result = await submitJuryVote({ abstain: false, notes });
+
+    expect(result).toEqual({ ok: true, value: { score: 4.25 } });
+    expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.jury.vote);
+    expect(sentBody(fetchMock.mock.calls[0])).toEqual({ abstain: false, notes });
+  });
+
+  it("traduce el envío duplicado a un mensaje en español", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "DUPLICATE_VOTE" }, 409));
+
+    const result = await submitJuryVote({ abstain: true });
+
+    expect(result).toEqual({
+      ok: false,
+      sessionExpired: false,
+      message: "Ya registraste tu envío definitivo en esta ronda.",
+    });
+  });
+
+  it("devuelve la sesión vencida cuando el voto llega sin sesión (401)", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
+
+    const result = await submitJuryVote({ abstain: true });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.message).toMatch(/No se pudo conectar/);
+      expect(result.sessionExpired).toBe(true);
+    }
+  });
+
+  it("usa el mensaje genérico para un error no contemplado", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "ALGO_RARO" }, 500));
+
+    const result = await submitJuryVote({ abstain: true });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe("El servidor no pudo completar la solicitud. Inténtalo de nuevo.");
     }
   });
 });

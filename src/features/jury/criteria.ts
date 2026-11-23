@@ -1,5 +1,4 @@
 import type { Criterion } from "@/shared/domain/types";
-import type { JuryCriterion } from "./types";
 
 /** Nota entera válida del 1 al 5 para calificar un criterio. */
 export type ScoreValue = 1 | 2 | 3 | 4 | 5;
@@ -68,9 +67,3 @@ export function formatScore(value: number): string {
 export function formatMultiplier(value: number): string {
   return `${value.toFixed(2).replace(/0$/, "")}x`;
 }
-
-/** @deprecated Usar DEFAULT_JURY_CRITERIA; se retira al migrar el portal en F4.10. */
-export const JURY_CRITERIA: readonly JuryCriterion[] = [
-  { id: "viability", label: "Viabilidad del negocio" },
-  { id: "sdg_impact", label: "Impacto alineado con los ODS" },
-];
