@@ -1,26 +1,36 @@
 import { readAccessCode } from "@/server/auth/access-code";
-import { noSessionResponse, requireOperator, startSession } from "@/server/auth/code-session";
+import { startSession } from "@/server/auth/code-session";
 import {
   NO_CACHE_HEADERS,
   errorResponse,
   jsonResponse,
   readJsonBody,
+  stateResponse,
 } from "@/server/http/responses";
 import { buildSettlementCsv } from "../api/export";
+import { toBalanceRow, toPositionRow } from "./mappers";
 import {
+  ACTIONS_WITH_REASON,
   API_OPERATOR_ACTIONS,
   executeManualSettlement,
   executeOperatorAction,
   findOperatorByCode,
+  readExportRows,
   readOperatorView,
   type ApiOperatorAction,
 } from "./queries";
+import { readReason, withConductor, withOperator } from "./session";
 
 /** Marca de orden de bytes para que Excel reconozca la codificación UTF-8. */
 const UTF8_BOM = "﻿";
 
 function isAction(value: unknown): value is ApiOperatorAction {
   return typeof value === "string" && (API_OPERATOR_ACTIONS as readonly string[]).includes(value);
+}
+
+/** Estado HTTP de un código de negocio: falta de permiso 403, el resto 409. */
+function businessStatus(code: string): number {
+  return code === "FORBIDDEN" ? 403 : 409;
 }
 
 /**
@@ -43,110 +53,101 @@ export async function handleOperatorLogin(request: Request): Promise<Response> {
   return response;
 }
 
-/** Devuelve el view model de la consola del operador para la sesión vigente. */
-export async function handleOperatorState(): Promise<Response> {
-  try {
-    await requireOperator();
-    const view = await readOperatorView();
+/** Devuelve el view model de la consola, con la hora del servidor, para la sesión vigente. */
+export function handleOperatorState(): Promise<Response> {
+  return withOperator(async (operatorId) => {
+    const view = await readOperatorView(operatorId);
     if (view === null) {
       return errorResponse(404, "NO_ROUNDS");
     }
-    return jsonResponse(view);
-  } catch (error) {
-    const noSession = noSessionResponse(error);
-    if (noSession !== null) return noSession;
-    throw error;
-  }
+    return stateResponse(view);
+  });
 }
 
 /**
- * Ejecuta una acción de control de ronda en nombre del operador. Solo la sesión del rol operador
- * puede invocar esta ruta: un jurado recibe 401 aunque conozca la URL. Las transiciones se validan
- * en las funciones SQL y cada acción válida queda registrada en accion_ronda.
+ * Ejecuta una acción de ronda: POST { action, reason? }. Solo el conductor (RF-05). Las anulaciones
+ * exigen motivo (RF-10); REVEAL con motivo revela con los jurados presentes (RF-18). Las
+ * transiciones se validan en SQL y cada acción válida queda en accion_ronda con su motivo (RF-09).
  */
-export async function handleOperatorAction(request: Request): Promise<Response> {
-  try {
-    const session = await requireOperator();
-
+export function handleOperatorAction(request: Request): Promise<Response> {
+  return withConductor(async (operatorId) => {
     const body = await readJsonBody(request);
     const action = body?.action;
     if (!isAction(action)) {
       return errorResponse(400, "INVALID_ACTION");
     }
-
-    const result = await executeOperatorAction(session.id, action);
-    if (!result.ok) {
-      return errorResponse(409, result.error ?? "ACTION_REJECTED");
+    const reason = readReason(body?.reason);
+    if (ACTIONS_WITH_REASON.has(action) && reason === null) {
+      return errorResponse(400, "REASON_REQUIRED");
     }
-    return jsonResponse({ ok: true, state: result.state ?? null });
-  } catch (error) {
-    const noSession = noSessionResponse(error);
-    if (noSession !== null) return noSession;
-    throw error;
-  }
+
+    const result = await executeOperatorAction(operatorId, action, reason);
+    if (!result.ok) {
+      const code = result.error ?? "ACTION_REJECTED";
+      return errorResponse(businessStatus(code), code);
+    }
+    return jsonResponse({
+      ok: true,
+      state: result.state ?? null,
+      multiplier: result.multiplier ?? null,
+    });
+  });
 }
 
-/** Valor mínimo y máximo de respaldos aceptados por la liquidación manual (jurado de cuatro miembros). */
-const MIN_MANUAL_BACKS = 0;
-const MAX_MANUAL_BACKS = 4;
+/** Puntaje mínimo y máximo que acepta la liquidación manual. */
+const MIN_MANUAL_SCORE = 1;
+const MAX_MANUAL_SCORE = 5;
 
 /**
- * Liquida la ronda activa en modo manual. Solo la sesión del rol operador puede invocar esta ruta.
- * Los códigos de negocio de fn_liquidar_manual se devuelven con estado 409; una respuesta correcta
- * devuelve 200 con el jsonb de la función.
+ * Liquida la ronda en curso a mano: POST { score, reason }. El puntaje de 1 a 5 lo cuenta el
+ * conductor; el motivo es obligatorio. Los códigos de fn_liquidar_manual se devuelven tal cual.
  */
-export async function handleOperatorManualSettlement(request: Request): Promise<Response> {
-  try {
-    const session = await requireOperator();
-
+export function handleOperatorManualSettlement(request: Request): Promise<Response> {
+  return withConductor(async (operatorId) => {
     const body = await readJsonBody(request);
-    const respaldos = body?.respaldos;
+    const score = body?.score;
     if (
-      typeof respaldos !== "number" ||
-      !Number.isInteger(respaldos) ||
-      respaldos < MIN_MANUAL_BACKS ||
-      respaldos > MAX_MANUAL_BACKS
+      typeof score !== "number" ||
+      !Number.isFinite(score) ||
+      score < MIN_MANUAL_SCORE ||
+      score > MAX_MANUAL_SCORE
     ) {
-      return errorResponse(400, "RESPALDOS_INVALIDOS");
+      return errorResponse(400, "PUNTAJE_INVALIDO");
+    }
+    const reason = readReason(body?.reason);
+    if (reason === null) {
+      return errorResponse(400, "MOTIVO_REQUERIDO");
     }
 
-    const result = await executeManualSettlement(session.id, respaldos);
+    const result = await executeManualSettlement(operatorId, score, reason);
     if (result.ok !== true) {
       const code = typeof result.error === "string" ? result.error : "ACCION_RECHAZADA";
-      return errorResponse(409, code);
+      return errorResponse(code === "SIN_PERMISO" ? 403 : 409, code);
     }
     return jsonResponse(result);
-  } catch (error) {
-    const noSession = noSessionResponse(error);
-    if (noSession !== null) return noSession;
-    throw error;
-  }
+  });
 }
 
 /**
- * Exporta en CSV los saldos de los asistentes y sus posiciones por ronda. El archivo se entrega
- * como descarga solo a la sesión del rol operador.
+ * Exporta en CSV los saldos y las posiciones de los asistentes (RF-31). Es una lectura: la puede
+ * descargar el conductor y el soporte.
  */
-export async function handleOperatorExport(): Promise<Response> {
-  try {
-    await requireOperator();
-    const view = await readOperatorView();
-    if (view === null) {
-      return errorResponse(404, "NO_ROUNDS");
-    }
+export function handleOperatorExport(): Promise<Response> {
+  return withOperator(async () => {
+    const rows = await readExportRows();
+    const csv = buildSettlementCsv({
+      balances: rows.balances.map(toBalanceRow),
+      positions: rows.positions.map(toPositionRow),
+    });
 
     const date = new Date().toISOString().slice(0, 10);
-    return new Response(UTF8_BOM + buildSettlementCsv(view), {
+    return new Response(UTF8_BOM + csv, {
       status: 200,
       headers: {
         ...NO_CACHE_HEADERS,
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="liquidacion-${date}.csv"`,
+        "Content-Disposition": `attachment; filename="saldos-posiciones-${date}.csv"`,
       },
     });
-  } catch (error) {
-    const noSession = noSessionResponse(error);
-    if (noSession !== null) return noSession;
-    throw error;
-  }
+  });
 }

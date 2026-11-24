@@ -20,7 +20,9 @@ function toCsvLine(values: (string | number | null)[]): string {
  * Genera el CSV de saldos y posiciones a partir del view model.
  * El archivo contiene dos bloques separados por una línea vacía.
  */
-export function buildSettlementCsv(viewModel: OperatorViewModel): string {
+export function buildSettlementCsv(
+  viewModel: Pick<OperatorViewModel, "balances" | "positions">,
+): string {
   const lines: string[] = [
     toCsvLine(["Saldos por asistente"]),
     toCsvLine(["asistente_id", "asistente", "saldo_coins"]),

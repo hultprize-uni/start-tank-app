@@ -1,122 +1,99 @@
-// @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { useOperatorState, type OperatorStateApi } from "./mock";
+import { MOCK_OPERATOR_CODE, MOCK_REHEARSAL_CODE, MOCK_SUPPORT_CODE, mockServer } from "./mock";
 
 /*
- * Pruebas del estado de muestra de la consola. Usan relojes simulados para avanzar el temporizador
- * de la última llamada sin esperar en tiempo real.
+ * El servidor de muestra debe aplicar las mismas reglas que la API, para que la consola se
+ * desarrolle contra un contrato fiel con NEXT_PUBLIC_USE_MOCKS=true.
  */
 
-beforeEach(() => {
-  vi.useFakeTimers({ now: new Date("2026-11-26T15:00:00.000Z") });
-});
+const T0 = Date.parse("2026-11-26T19:30:00.000Z");
 
-afterEach(() => {
-  vi.useRealTimers();
-});
-
-/** Renderiza el estado de muestra y devuelve un acceso estable a su última versión. */
-function setup() {
-  const { result } = renderHook(() => useOperatorState());
-  const current = (): OperatorStateApi => result.current;
-  return { current, result };
+function stateAt(now: number) {
+  const response = mockServer.state(now);
+  if (!response.ok) throw new Error(`state ${response.code}`);
+  return response.data;
 }
 
-describe("useOperatorState (muestra)", () => {
-  it("inicia con la ronda 2 en votación y tres votos emitidos", () => {
-    const { current } = setup();
+beforeEach(() => {
+  mockServer.logout();
+});
 
-    expect(current().viewModel.round).toMatchObject({ number: 2, status: "VOTING" });
-    expect(current().viewModel.jurors.filter((juror) => juror.emitted)).toHaveLength(3);
-    expect(current().viewModel.actions.find((action) => action.id === "reveal")).toMatchObject({
-      enabled: false,
-      blockedReason: "Bloqueado: falta 1 voto",
+describe("mockServer", () => {
+  it("exige sesión y rechaza códigos inválidos", () => {
+    expect(mockServer.state(T0)).toMatchObject({ ok: false, status: 401 });
+    expect(mockServer.login("NOPE")).toMatchObject({ ok: false, code: "INVALID_CODE" });
+  });
+
+  it("el soporte solo lee (RF-05)", () => {
+    mockServer.login(MOCK_SUPPORT_CODE);
+    expect(stateAt(Date.now()).operator.role).toBe("SUPPORT");
+    expect(mockServer.action("LAST_CALL", null)).toMatchObject({ ok: false, status: 403 });
+    expect(mockServer.balance("1", 500, "x")).toMatchObject({ ok: false, status: 403 });
+  });
+
+  it("recorre la ronda: última llamada que se cierra sola, votación y rescate", () => {
+    mockServer.login(MOCK_OPERATOR_CODE);
+    const t = Date.now();
+    expect(stateAt(t).round).toMatchObject({ number: 2, status: "OPEN" });
+
+    expect(mockServer.action("LAST_CALL", null, t).ok).toBe(true);
+    // Cierre automático al vencer la última llamada (RF-08).
+    expect(stateAt(t + 61_000).round.status).toBe("CLOSED");
+
+    expect(mockServer.action("ENABLE_VOTING", null, t + 62_000).ok).toBe(true);
+    // A los 30 s enviaron los jurados 1, 2 y 4; el 3 está desconectado.
+    const voting = stateAt(t + 92_000);
+    expect(voting.jurors.map((juror) => juror.status)).toEqual(["sent", "sent", "drafting", "sent"]);
+    expect(voting.mainAction?.enabled).toBe(false);
+    expect(voting.canRescue).toBe(true);
+
+    expect(mockServer.action("REVEAL", null, t + 92_000)).toMatchObject({ code: "PENDING_VOTES" });
+    const rescued = mockServer.action("REVEAL", "Jurado 3 sin conexión", t + 92_000);
+    expect(rescued.ok).toBe(true);
+    const settled = stateAt(t + 93_000);
+    expect(settled.rounds[1].status).toBe("SETTLED");
+    expect(settled.log[0]).toMatchObject({
+      label: "Reveló con los jurados presentes",
+      reason: "Jurado 3 sin conexión",
     });
   });
 
-  it("desbloquea el veredicto al emitir el último voto y calcula el multiplicador", () => {
-    const { current } = setup();
-
-    act(() => current().simulateJurorVote("jurado-4"));
-    act(() => current().runAction("reveal"));
-
-    expect(current().viewModel.round).toMatchObject({ status: "SETTLED", multiplier: 1.4 });
-    expect(current().viewModel.standings.map((standing) => standing.roundNumber)).toEqual([2, 1]);
-    expect(current().viewModel.rounds[1]).toMatchObject({ status: "SETTLED", multiplier: 1.4 });
+  it("pausa y reanuda conservando los segundos (RF-07)", () => {
+    mockServer.login(MOCK_OPERATOR_CODE);
+    const t = Date.now();
+    mockServer.action("LAST_CALL", null, t);
+    mockServer.action("PAUSE", null, t + 30_000);
+    const paused = stateAt(t + 50_000);
+    expect(paused.clock).toMatchObject({ paused: true, pausedSeconds: 30 });
+    mockServer.action("RESUME", null, t + 50_000);
+    expect(stateAt(t + 50_000).clock.phaseEndsAt).toBe(new Date(t + 80_000).toISOString());
   });
 
-  it("cierra la última llamada automáticamente al llegar el temporizador a cero", () => {
-    const { current } = setup();
-
-    act(() => current().simulateJurorVote("jurado-4"));
-    act(() => current().runAction("reveal"));
-    act(() => current().runAction("next"));
-    act(() => current().runAction("open"));
-    act(() => current().runAction("last_call"));
-
-    expect(current().viewModel.round.status).toBe("LAST_CALL");
-    expect(current().viewModel.market.lastCallRemaining).toBe(60);
-
-    act(() => {
-      vi.advanceTimersByTime(30_000);
+  it("bloquea la configuración con una ronda abierta (RF-28)", () => {
+    mockServer.login(MOCK_OPERATOR_CODE);
+    expect(mockServer.updateConfig({ kind: "setting", key: "tope_ronda", value: 0.25 })).toMatchObject({
+      ok: false,
+      code: "ROUND_OPEN",
     });
-    expect(current().viewModel.market.lastCallRemaining).toBe(30);
-    expect(current().viewModel.round.status).toBe("LAST_CALL");
-
-    act(() => {
-      vi.advanceTimersByTime(31_000);
-    });
-    expect(current().viewModel.round.status).toBe("VOTING");
-    expect(current().viewModel.market.lastCallRemaining).toBeNull();
-    expect(current().viewModel.log[1].label).toBe("Cierre automático de la última llamada");
   });
 
-  it("deshace la última acción de mercado antes de la votación", () => {
-    const { current } = setup();
-
-    act(() => current().simulateJurorVote("jurado-4"));
-    act(() => current().runAction("reveal"));
-    act(() => current().runAction("next"));
-    act(() => current().runAction("open"));
-    act(() => current().runAction("last_call"));
-    expect(current().viewModel.canUndo).toBe(true);
-
-    act(() => current().undo());
-    expect(current().viewModel.round.status).toBe("OPEN");
-    expect(current().viewModel.market.lastCallRemaining).toBeNull();
+  it("antes del evento: inicia con el checklist en verde y luego bloquea el ensayo (RF-29)", () => {
+    mockServer.login(MOCK_REHEARSAL_CODE);
+    const preflight = mockServer.preflight();
+    expect(preflight.ok && preflight.data.ready).toBe(true);
+    expect(mockServer.updateConfig({ kind: "setting", key: "tope_ronda", value: 0.25 }).ok).toBe(true);
+    expect(mockServer.startEvent().ok).toBe(true);
+    expect(mockServer.rehearsal()).toMatchObject({ ok: false, code: "EVENT_STARTED" });
   });
 
-  it("liquida con el número de jurados que respaldan en modo manual", () => {
-    const { current } = setup();
-
-    act(() => current().setManualMode(true));
-    expect(current().viewModel.manualMode).toEqual({ enabled: true, backs: 2 });
-    expect(current().viewModel.actions.find((action) => action.id === "reveal")).toMatchObject({
-      enabled: true,
-      blockedReason: null,
-    });
-
-    act(() => current().setManualBacks(4));
-    act(() => current().runAction("reveal"));
-
-    expect(current().viewModel.round).toMatchObject({ status: "SETTLED", multiplier: 1.8 });
-    expect(current().viewModel.log[0].label).toBe("Liquidación manual");
-  });
-
-  it("anula la ronda en votación con el modo elegido y la marca como anulada", () => {
-    const { current } = setup();
-
-    expect(current().viewModel.canCancel).toBe(true);
-    act(() => current().cancelRound("settle_1x"));
-
-    expect(current().viewModel.round).toMatchObject({
-      status: "CANCELLED",
-      multiplier: null,
-      cancelMode: "settle_1x",
-    });
-    expect(current().viewModel.rounds[1].status).toBe("CANCELLED");
-    expect(current().viewModel.standings.map((standing) => standing.roundNumber)).toEqual([1]);
+  it("ajusta saldos con motivo y no deja saldos negativos (RF-11)", () => {
+    mockServer.login(MOCK_OPERATOR_CODE);
+    expect(mockServer.balance("1", 500, "")).toMatchObject({ code: "REASON_REQUIRED" });
+    expect(mockServer.balance("1", -1_000_000, "x")).toMatchObject({ code: "NEGATIVE_BALANCE" });
+    const before = stateAt(Date.now()).balances.find((row) => row.attendeeId === "1");
+    const result = mockServer.balance("1", 500, "Error del sistema");
+    expect(result.ok && result.data.balance).toBe((before?.balance ?? 0) + 500);
+    expect(stateAt(Date.now()).log[0]).toMatchObject({ label: "Ajustó un saldo" });
   });
 });

@@ -5,8 +5,11 @@ import { expect, type Browser, type BrowserContext, type Page } from "@playwrigh
  * por rol y texto accesible de las pantallas reales. Los códigos son los de db/seed.sql.
  */
 
-/** Código de acceso del operador de ejemplo. */
+/** Código de acceso del conductor de ejemplo. */
 export const OPERATOR_CODE = "OPE-EJ-001";
+
+/** Código de acceso del operador de soporte de ejemplo (solo lectura). */
+export const SUPPORT_CODE = "OPE-EJ-002";
 
 /** Códigos de acceso de los cuatro jurados de ejemplo. */
 export const JUROR_CODES = ["JUR-EJ-001", "JUR-EJ-002", "JUR-EJ-003", "JUR-EJ-004"] as const;
@@ -20,9 +23,14 @@ export const API = {
     vote: "/api/jury/vote",
   },
   operator: {
+    login: "/api/operator/login",
     state: "/api/operator/state",
     action: "/api/operator/action",
     export: "/api/operator/export",
+    balance: "/api/operator/balance",
+    config: "/api/operator/config",
+    manualMode: "/api/operator/manual-mode",
+    attendees: "/api/operator/attendees",
   },
   screen: "/api/screen",
   participant: {
@@ -30,10 +38,10 @@ export const API = {
   },
 } as const;
 
-/** Abre la consola del operador e ingresa con el código de acceso. */
-export async function signInOperator(page: Page): Promise<void> {
+/** Abre la consola del operador e ingresa con el código de acceso (por defecto, el conductor). */
+export async function signInOperator(page: Page, code: string = OPERATOR_CODE): Promise<void> {
   await page.goto("/operator");
-  await page.getByLabel("Código de acceso").fill(OPERATOR_CODE);
+  await page.getByLabel("Código de acceso").fill(code);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Controles del operador" })).toBeVisible({
     timeout: 20_000,
@@ -41,32 +49,30 @@ export async function signInOperator(page: Page): Promise<void> {
 }
 
 /**
- * Ejecuta una acción de la lista del operador y espera a que quede marcada como hecha. Los nombres
- * corresponden a las etiquetas visibles de ActionsPanel.
+ * Ejecuta el paso de la ronda con el botón principal y espera a que la consola pase al siguiente:
+ * el botón principal muestra solo el paso válido (RF-06), así que el pulsado desaparece.
  */
 export async function runOperatorAction(page: Page, label: string): Promise<void> {
-  await page.getByRole("button", { name: label, exact: true }).click();
-  await expect(
-    page
-      .getByRole("listitem")
-      .filter({ has: page.getByRole("button", { name: label, exact: true }) })
-      .getByText("Hecho"),
-  ).toBeVisible();
+  const button = page.getByRole("button", { name: label, exact: true });
+  await button.click();
+  await expect(button).toBeHidden({ timeout: 10_000 });
 }
 
-/** Lleva la ronda de ejemplo a votación: abre el mercado, declara la última llamada y cierra. */
+/** Lleva la ronda de ejemplo a votación: abre, anuncia la última llamada, cierra y habilita el voto. */
 export async function driveRoundToVoting(page: Page): Promise<void> {
   await signInOperator(page);
   await runOperatorAction(page, "Abrir mercado");
-  await runOperatorAction(page, "Declarar última llamada");
+  await runOperatorAction(page, "Anunciar última llamada");
   await runOperatorAction(page, "Cerrar mercado");
-  await expect(currentRoundStep(page)).toContainText("En votación");
+  await runOperatorAction(page, "Habilitar votación");
+  // La consola consulta el estado cada 3 s: con 5 s de margen fallaba de vez en cuando.
+  await expect(currentRoundStep(page)).toContainText("Revelar", { timeout: 15_000 });
 }
 
-/** Elemento que marca el estado actual de la ronda en la línea de estados del operador. */
+/** Paso actual de la ronda en la línea de pasos de la consola. */
 export function currentRoundStep(page: Page) {
   return page
-    .getByRole("navigation", { name: "Estados de la ronda" })
+    .getByRole("navigation", { name: "Pasos de la ronda" })
     .locator('[aria-current="step"]');
 }
 

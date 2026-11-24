@@ -2,31 +2,26 @@
 
 import { Button } from "@/shared/ui";
 
-import { PENDING_API_NOTE } from "../labels";
-
 import { ManualSettlementPanel } from "./ManualSettlementPanel";
 import panel from "./Panel.module.css";
 
 interface ControlsPanelProps {
-  canUndo: boolean;
-  canCancel: boolean;
   canManualSettle: boolean;
-  /** Indica si la consola opera contra la API, donde deshacer aún no existe. */
-  apiPending: boolean;
-  onUndo: () => void;
-  onOpenCancel: () => void;
+  /** Solo el conductor liquida a mano; el soporte puede exportar. */
+  canWrite: boolean;
   onExport: () => void;
+  onManualSettle: (
+    score: number,
+    reason: string,
+  ) => Promise<{ multiplier: number } | { error: string }>;
 }
 
-/** Controles del operador: deshacer, anular, exportar y liquidación manual. */
+/** Controles del operador: exportación de saldos y liquidación manual (RF-31, tarea 5.6). */
 export function ControlsPanel({
-  canUndo,
-  canCancel,
   canManualSettle,
-  apiPending,
-  onUndo,
-  onOpenCancel,
+  canWrite,
   onExport,
+  onManualSettle,
 }: ControlsPanelProps) {
   return (
     <section className={panel.panel} aria-labelledby="controles-operador">
@@ -37,31 +32,14 @@ export function ControlsPanel({
       </div>
       <div className={panel.controls}>
         <div className={panel.controlItem}>
-          <Button
-            variant="ghost"
-            disabled={!canUndo}
-            aria-describedby={apiPending ? "nota-deshacer" : undefined}
-            onClick={onUndo}
-          >
-            Deshacer última acción
-          </Button>
-          {apiPending ? (
-            <p id="nota-deshacer" className={panel.note}>
-              {PENDING_API_NOTE}
-            </p>
-          ) : null}
-        </div>
-        <div className={panel.controlItem}>
-          <Button variant="danger" disabled={!canCancel} onClick={onOpenCancel}>
-            Anular ronda…
-          </Button>
-        </div>
-        <div className={panel.controlItem}>
           <Button variant="ghost" onClick={onExport}>
-            Exportar saldos
+            Exportar saldos y posiciones
           </Button>
+          <p className={panel.note}>CSV con el saldo de cada asistente y sus posiciones por ronda.</p>
         </div>
-        <ManualSettlementPanel available={canManualSettle} />
+        {canWrite ? (
+          <ManualSettlementPanel available={canManualSettle} onSettle={onManualSettle} />
+        ) : null}
       </div>
     </section>
   );

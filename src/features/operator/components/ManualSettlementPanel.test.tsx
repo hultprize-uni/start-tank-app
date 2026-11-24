@@ -1,80 +1,62 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import { submitManualSettlement } from "../api/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ManualSettlementPanel } from "./ManualSettlementPanel";
-
-vi.mock("../api/client", () => ({ submitManualSettlement: vi.fn() }));
-
-const submit = vi.mocked(submitManualSettlement);
-
-beforeEach(() => {
-  submit.mockReset();
-});
 
 afterEach(cleanup);
 
 describe("ManualSettlementPanel", () => {
-  it("no se muestra fuera de los estados CERRADA y EN_VOTACION", () => {
-    render(<ManualSettlementPanel available={false} />);
-
-    expect(screen.queryByRole("button", { name: "Liquidar a mano" })).toBeNull();
-    expect(screen.queryByRole("radiogroup", { name: "Respaldos del jurado" })).toBeNull();
+  it("no se muestra fuera de los estados cerrada y en votación", () => {
+    render(<ManualSettlementPanel available={false} onSettle={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /Liquidar a mano/ })).toBeNull();
   });
 
-  it("ofrece las opciones de 0 a 4 respaldos y no muestra la nota Pendiente de API", () => {
-    render(<ManualSettlementPanel available />);
-
-    const group = screen.getByRole("radiogroup", { name: "Respaldos del jurado" });
-    expect(group).toBeInTheDocument();
-    expect(screen.getAllByRole("radio")).toHaveLength(5);
-    expect(screen.queryByText("Pendiente de API")).toBeNull();
-  });
-
-  it("pide confirmación antes de llamar al cliente y no liquida al cancelar", async () => {
+  it("muestra el multiplicador que resulta del puntaje", async () => {
     const user = userEvent.setup();
-    render(<ManualSettlementPanel available />);
+    render(<ManualSettlementPanel available onSettle={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: "Liquidar a mano" }));
-    expect(
-      screen.getByText(/¿Confirmas liquidar la ronda con 0 de 4 respaldos\?/),
-    ).toBeInTheDocument();
+    const score = screen.getByLabelText("Puntaje de la startup (1 a 5)");
+    await user.clear(score);
+    await user.type(score, "4");
 
-    await user.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect(submit).not.toHaveBeenCalled();
+    expect(screen.getByText("Multiplicador resultante: 1.4x")).toBeInTheDocument();
   });
 
-  it("llama al cliente con los respaldos elegidos y muestra el resultado", async () => {
+  it("exige el motivo y confirma antes de liquidar", async () => {
     const user = userEvent.setup();
-    submit.mockResolvedValue({ ok: true, value: { multiplicador: 1.4, fraccionRespaldo: 0.75 } });
-    render(<ManualSettlementPanel available />);
+    const onSettle = vi.fn().mockResolvedValue({ multiplier: 1.4 });
+    render(<ManualSettlementPanel available onSettle={onSettle} />);
 
-    await user.click(screen.getByRole("radio", { name: "3" }));
-    await user.click(screen.getByRole("button", { name: "Liquidar a mano" }));
+    const score = screen.getByLabelText("Puntaje de la startup (1 a 5)");
+    await user.clear(score);
+    await user.type(score, "4");
+    await user.click(screen.getByRole("button", { name: /Liquidar a mano/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("Escribe el motivo para continuar.")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Motivo (queda en el log)"), "Falla del portal");
+    await user.click(screen.getByRole("button", { name: /Liquidar a mano/ }));
+    expect(screen.getByRole("dialog", { name: "Confirmar liquidación manual" })).toBeInTheDocument();
+    expect(onSettle).not.toHaveBeenCalled();
+
     await user.click(screen.getByRole("button", { name: "Liquidar ronda" }));
 
-    await waitFor(() => expect(submit).toHaveBeenCalledWith(3));
-    expect(await screen.findByText("Ronda liquidada con multiplicador 1.400x.")).toBeInTheDocument();
+    expect(onSettle).toHaveBeenCalledWith(4, "Falla del portal");
+    expect(await screen.findByRole("status")).toHaveTextContent("Ronda liquidada a mano con 1.4x.");
   });
 
-  it("muestra el motivo del rechazo en español cuando la liquidación falla", async () => {
+  it("muestra el rechazo del servidor", async () => {
     const user = userEvent.setup();
-    submit.mockResolvedValue({
-      ok: false,
-      sessionExpired: false,
-      message: "La ronda ya fue liquidada. No es posible liquidarla de nuevo.",
-    });
-    render(<ManualSettlementPanel available />);
+    const onSettle = vi.fn().mockResolvedValue({ error: "La ronda ya fue liquidada." });
+    render(<ManualSettlementPanel available onSettle={onSettle} />);
 
-    await user.click(screen.getByRole("button", { name: "Liquidar a mano" }));
+    await user.type(screen.getByLabelText("Motivo (queda en el log)"), "x");
+    await user.click(screen.getByRole("button", { name: /Liquidar a mano/ }));
     await user.click(screen.getByRole("button", { name: "Liquidar ronda" }));
 
-    expect(
-      await screen.findByText("La ronda ya fue liquidada. No es posible liquidarla de nuevo."),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("La ronda ya fue liquidada.");
   });
 });
