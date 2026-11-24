@@ -460,8 +460,8 @@
   letter-spacing: -0.03em;
 }
 
-#programa .sectionTitle,
-#plataforma .sectionTitle {
+:global(#programa) .sectionTitle,
+:global(#plataforma) .sectionTitle {
   margin-top: 0;
 }
 

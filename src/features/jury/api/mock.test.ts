@@ -66,29 +66,33 @@ describe("advanceMockWorld", () => {
     expect(advanceMockWorld(worldAt(last)).stepIndex).toBe(0);
   });
 
-  it("descarta el borrador al salir de la votación", () => {
-    const voting = stepOf("voting", 0);
-    const draft = { draft: "BACK" as const, confirming: true, submitting: false, errorMessage: null };
-
-    expect(advanceMockWorld(worldAt(voting, { vote: draft })).vote.draft).toBeNull();
+  it("conserva el borrador al pasar de open a last_call dentro de la misma ronda", () => {
+    const open = stepOf("open", 0);
+    const next = advanceMockWorld(worldAt(open, { draftNotes: { 0: { "1": 4 } } }));
+    expect(next.draftNotes[0]).toEqual({ "1": 4 });
   });
 
-  it("reinicia los votos propios al comenzar una nueva vuelta", () => {
+  it("reinicia borradores y envíos propios al comenzar una nueva vuelta", () => {
     const last = MOCK_TIMELINE.length - 1;
-    const world = worldAt(last, { ownVotes: { 0: "BACK" } });
-    expect(advanceMockWorld(world).ownVotes).toEqual({});
+    const world = worldAt(last, {
+      draftNotes: { 0: { "1": 4 } },
+      ownVerdicts: { 0: { abstained: false, score: 4, notes: { "1": 4 } } },
+    });
+    const next = advanceMockWorld(world);
+    expect(next.draftNotes).toEqual({});
+    expect(next.ownVerdicts).toEqual({});
   });
 });
 
 describe("buildMockView", () => {
   it.each([
     ["scheduled", 0, "waiting"],
-    ["open", 0, "waiting"],
-    ["last_call", 0, "waiting"],
-    ["closed", 0, "waiting"],
+    ["open", 0, "grading"],
+    ["last_call", 0, "grading"],
+    ["closed", 0, "grading"],
     ["cancelled", 2, "waiting"],
     ["final", -1, "waiting"],
-    ["voting", 0, "voting"],
+    ["voting", 0, "grading"],
     ["result", 0, "result"],
   ] as const)("muestra la pantalla de la fase %s de la ronda %i", (phase, round, screen) => {
     const view = buildMockView(worldAt(stepOf(phase, round)));
@@ -100,34 +104,52 @@ describe("buildMockView", () => {
     expect(view).toMatchObject({ screen: "access", phase: null, jurorLabel: null });
   });
 
-  it("registra el voto del jurado y cuenta cuatro votos emitidos", () => {
+  it("registra el envío del jurado y cuenta cuatro envíos emitidos", () => {
     const view = buildMockView(
-      worldAt(stepOf("voting", 0), { ownVotes: { 0: "REJECT" } }),
+      worldAt(stepOf("voting", 0), {
+        ownVerdicts: {
+          0: { abstained: false, score: 4, notes: { "1": 4, "2": 4, "3": 4, "4": 4 } },
+        },
+      }),
     );
     expect(view).toMatchObject({
       screen: "vote_registered",
-      ownVote: "REJECT",
+      ownVerdict: { abstained: false, score: 4 },
       votes: { emitted: 4, total: 4 },
     });
   });
 
-  it("publica el veredicto con el multiplicador y los cuatro votos al liquidar", () => {
-    const view = buildMockView(worldAt(stepOf("result", 0), { ownVotes: { 0: "BACK" } }));
-    expect(view.reveal).toEqual({
-      multiplier: MOCK_ROUNDS[0].multiplier,
+  it("publica el veredicto con el puntaje, el multiplicador y las notas de los cuatro jurados", () => {
+    const view = buildMockView(
+      worldAt(stepOf("result", 0), {
+        ownVerdicts: {
+          0: { abstained: false, score: 4, notes: { "1": 4, "2": 4, "3": 4, "4": 4 } },
+        },
+      }),
+    );
+    expect(view.reveal).toMatchObject({
       isLastRound: false,
-      votes: [
-        { label: "Jurado 1", isOwn: false, decision: "BACK" },
-        { label: "Jurado 2", isOwn: true, decision: "BACK" },
-        { label: "Jurado 3", isOwn: false, decision: "BACK" },
-        { label: "Jurado 4", isOwn: false, decision: "REJECT" },
-      ],
+      startupScore: expect.any(Number),
+      multiplier: expect.any(Number),
+    });
+    expect(view.reveal?.jurors).toHaveLength(4);
+    expect(view.reveal?.jurors[1]).toMatchObject({
+      label: "Jurado 2",
+      isOwn: true,
+      submitted: true,
+      abstained: false,
+      score: 4,
     });
   });
 
-  it("marca como settled las rondas terminadas con el voto propio", () => {
+  it("marca como settled las rondas terminadas con el puntaje propio", () => {
     const view = buildMockView(
-      worldAt(stepOf("voting", 3), { ownVotes: { 0: "BACK", 1: "REJECT" } }),
+      worldAt(stepOf("voting", 3), {
+        ownVerdicts: {
+          0: { abstained: false, score: 4.25, notes: {} },
+          1: { abstained: true, score: null, notes: {} },
+        },
+      }),
     );
     expect(view.rail.map((item) => item.status)).toEqual([
       "settled",
@@ -136,6 +158,7 @@ describe("buildMockView", () => {
       "current",
       "pending",
     ]);
-    expect(view.rail[1].ownDecision).toBe("REJECT");
+    expect(view.rail[0].ownVerdict).toEqual({ abstained: false, score: 4.25 });
+    expect(view.rail[1].ownVerdict).toEqual({ abstained: true, score: null });
   });
 });

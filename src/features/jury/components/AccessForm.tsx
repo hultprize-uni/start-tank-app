@@ -54,10 +54,10 @@ export function AccessForm({ access, onSubmit }: AccessFormProps) {
         <BrandLogo variant="horizontal" alt="Start Tank" className={styles.mobileLogo} />
         <p className={styles.eyebrow}>Portal del jurado</p>
         <h1 id={titleId} className={styles.title}>
-          Tu voto define el retorno.
+          Tu calificación define el retorno.
         </h1>
         <p className={styles.lead}>
-          Ingresa con tu código personal. Este portal solo registra votos.
+          Ingresa con tu código personal. El equipo organizador te entrega tu código de jurado.
         </p>
 
         <form className={styles.form} onSubmit={handleSubmit} noValidate>

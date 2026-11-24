@@ -19,6 +19,7 @@ export const API = {
   jury: {
     login: "/api/jury/login",
     state: "/api/jury/state",
+    draft: "/api/jury/draft",
     vote: "/api/jury/vote",
   },
   operator: {
@@ -74,23 +75,68 @@ export function currentRoundStep(page: Page) {
     .locator('[aria-current="step"]');
 }
 
-/**
- * Ingresa un jurado con su código mediante la ruta de la API que usa el formulario de /jury. El
- * formulario de la pantalla del jurado acepta solo cuatro dígitos y los códigos de db/seed.sql no
- * los cumplen, por lo que las pruebas no pueden ingresar por la interfaz. La cookie de sesión queda
- * en el contexto del navegador.
- */
+/** Abre el portal del jurado e ingresa por la interfaz con su código personal. */
+export async function signInJuror(page: Page, code: string): Promise<void> {
+  await page.goto("/jury");
+  await page.getByLabel("Código de acceso").fill(code);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Estado de la ronda" })).toBeVisible({
+    timeout: 20_000,
+  });
+}
+
+/** Ingresa un jurado con su código mediante la ruta de la API y conserva la cookie en el contexto. */
 export async function signInJurorByApi(context: BrowserContext, code: string): Promise<void> {
   const response = await context.request.post(API.jury.login, { data: { code } });
   expect(response.status(), `ingreso del jurado ${code}`).toBe(200);
 }
 
-/** Decisiones de la API para el voto del jurado. */
+/** Carga aceptada por el endpoint /api/jury/vote. */
+export type ScoreVotePayload =
+  | { abstain: true }
+  | { abstain: false; notes: { criterionId: string; value: number }[] };
+
+/** Guarda una nota en borrador mediante la API con la sesión del contexto indicado. */
+export async function saveDraftByApi(
+  context: BrowserContext,
+  criterionId: string,
+  value: number,
+) {
+  return context.request.post(API.jury.draft, { data: { criterionId, value } });
+}
+
+/** Envía notas por criterio o abstención mediante la API con la sesión del contexto indicado. */
+export async function castScoreVoteByApi(
+  context: BrowserContext,
+  payload: ScoreVotePayload,
+) {
+  return context.request.post(API.jury.vote, { data: payload });
+}
+
+/** Lee los criterios de calificación vigentes desde el estado del jurado. */
+export async function readJuryCriteriaByApi(
+  context: BrowserContext,
+): Promise<{ id: string }[]> {
+  const state = await context.request.get(API.jury.state);
+  expect(state.status()).toBe(200);
+  const body = (await state.json()) as { criteria: { id: string }[] };
+  return body.criteria;
+}
+
+/** Decisiones equivalentes heredadas para las pruebas de liquidación existentes. */
 export type ApiDecision = "BACK" | "REJECT" | "ABSTAIN";
 
-/** Emite un voto mediante la API con la sesión del contexto indicado. */
+/** Emite un voto equivalente (5 en todo para BACK, 1 en todo para REJECT) mediante la API. */
 export async function castVoteByApi(context: BrowserContext, decision: ApiDecision) {
-  return context.request.post(API.jury.vote, { data: { decision } });
+  if (decision === "ABSTAIN") {
+    return castScoreVoteByApi(context, { abstain: true });
+  }
+  const criteria = await readJuryCriteriaByApi(context);
+  const value = decision === "BACK" ? 5 : 1;
+  return castScoreVoteByApi(context, {
+    abstain: false,
+    notes: criteria.map((criterion) => ({ criterionId: criterion.id, value })),
+  });
 }
 
 /** Emite un voto por cada decisión, cada uno desde un contexto de navegador separado. */

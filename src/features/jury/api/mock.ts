@@ -1,36 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Decision } from "@/shared/domain/types";
-import { JURY_CRITERIA } from "../criteria";
+import { calcScoreVerdict, juryScore } from "@/shared/domain/verdict";
+import { DEFAULT_JURY_CRITERIA, type ScoreValue } from "../criteria";
 import type {
+  CriteriaScores,
   JuryActions,
   JuryAccessView,
   JuryPhase,
   JuryRailItem,
+  JuryRevealJuror,
   JuryViewModel,
-  JuryVoteView,
+  JuryVoteUiState,
+  OwnVerdictView,
 } from "../types";
-import { screenOf } from "../view-rules";
+import { isGradablePhase, screenOf } from "../view-rules";
 
-/** Número de jurados que emiten voto en cada ronda. */
+/** Número de jurados que emiten envío en cada ronda. */
 export const MOCK_JURY_TOTAL = 4;
 
 /** Retardo simulado de la validación del código, en milisegundos. */
 const MOCK_ACCESS_DELAY_MS = 600;
 
-/** Retardo simulado del envío del voto, en milisegundos. */
+/** Retardo simulado del envío definitivo, en milisegundos. */
 const MOCK_SUBMIT_DELAY_MS = 500;
 
 /** Mensaje cuando el código simulado no coincide con ningún jurado. */
-export const MOCK_CODE_ERROR = "El código no es válido. Revísalo e inténtalo de nuevo.";
+export const MOCK_CODE_ERROR =
+  "Ese código no existe. Revísalo con el equipo organizador e inténtalo de nuevo.";
 
-/** Ronda simulada con los votos de los otros jurados y el multiplicador de la liquidación. */
+type FourNotes = readonly [ScoreValue, ScoreValue, ScoreValue, ScoreValue];
+
+/** Ronda simulada con las notas de los otros jurados (null si se abstuvo). */
 interface MockRound {
   startupName: string;
   sdg: string;
   description: string;
-  multiplier: number;
-  /** Decisiones de los otros tres jurados, en orden de jurado. */
-  others: readonly Decision[];
+  othersNotes: readonly (FourNotes | null)[];
 }
 
 export const MOCK_ROUNDS: readonly MockRound[] = [
@@ -38,36 +42,47 @@ export const MOCK_ROUNDS: readonly MockRound[] = [
     startupName: "AgroSense",
     sdg: "ODS 2",
     description: "Monitoreo de cultivos con sensores de bajo costo para pequeños productores.",
-    multiplier: 1.4,
-    others: ["BACK", "BACK", "REJECT"],
+    othersNotes: [
+      [4, 4, 5, 4],
+      [4, 3, 4, 4],
+      [3, 4, 4, 3],
+    ],
   },
   {
     startupName: "AguaClara",
     sdg: "ODS 6",
     description: "Filtros comunitarios de agua con seguimiento de calidad en tiempo real.",
-    multiplier: 1.2,
-    others: ["BACK", "REJECT", "BACK"],
+    othersNotes: [
+      [4, 4, 4, 4],
+      [3, 4, 3, 4],
+      [4, 3, 5, 4],
+    ],
   },
   {
     startupName: "EduRuta",
     sdg: "ODS 4",
     description: "Rutas de aprendizaje personalizadas para estudiantes de educación básica.",
-    multiplier: 0.8,
-    others: ["REJECT", "REJECT", "BACK"],
+    othersNotes: [
+      [2, 3, 3, 2],
+      [3, 2, 3, 2],
+      [4, 3, 4, 3],
+    ],
   },
   {
     startupName: "SolRed",
     sdg: "ODS 7",
     description: "Microrredes solares para comunidades sin acceso estable a la electricidad.",
-    multiplier: 1.6,
-    others: ["BACK", "BACK", "BACK"],
+    othersNotes: [
+      [5, 4, 5, 5],
+      [4, 5, 5, 4],
+      [5, 5, 4, 5],
+    ],
   },
   {
     startupName: "SaludCerca",
     sdg: "ODS 3",
     description: "Telemedicina de primer contacto para zonas rurales.",
-    multiplier: 1,
-    others: ["BACK", "ABSTAIN", "REJECT"],
+    othersNotes: [[4, 3, 4, 3], null, [3, 3, 4, 3]],
   },
 ];
 
@@ -82,8 +97,8 @@ export interface MockStep {
 function roundSteps(round: number, cancelled: boolean): MockStep[] {
   const head: MockStep[] = [
     { round, phase: "scheduled", duration: 2500 },
-    { round, phase: "open", duration: 2500 },
-    { round, phase: "last_call", duration: 2500 },
+    { round, phase: "open", duration: 6000 },
+    { round, phase: "last_call", duration: 3000 },
     { round, phase: "closed", duration: 2000 },
   ];
   if (cancelled) return [...head, { round, phase: "cancelled", duration: 5000 }];
@@ -95,8 +110,8 @@ function roundSteps(round: number, cancelled: boolean): MockStep[] {
 }
 
 /**
- * Línea de tiempo que recorre todas las fases del prototipo: la segunda ronda se anula y, al final,
- * el evento se cierra. Después vuelve a comenzar.
+ * Línea de tiempo que recorre todas las fases del prototipo: la tercera ronda se anula y, al
+ * final, el evento se cierra. Después vuelve a comenzar.
  */
 export const MOCK_TIMELINE: readonly MockStep[] = [
   ...roundSteps(0, false),
@@ -113,16 +128,17 @@ export interface MockWorld {
   /** Índice del jurado de la sesión, o nulo mientras no ingresa. */
   juror: number | null;
   access: JuryAccessView;
-  /** Votos propios por índice de ronda. Se reinicia al comenzar la línea de tiempo. */
-  ownVotes: Partial<Record<number, Decision>>;
-  vote: JuryVoteView;
+  /** Borradores guardados por índice de ronda. */
+  draftNotes: Partial<Record<number, CriteriaScores>>;
+  /** Envíos propios por índice de ronda. Se reinicia al comenzar la línea de tiempo. */
+  ownVerdicts: Partial<Record<number, OwnVerdictView>>;
+  vote: JuryVoteUiState;
 }
 
 const IDLE_ACCESS: JuryAccessView = { status: "idle", errorMessage: null };
 
-const IDLE_VOTE: JuryVoteView = {
-  draft: null,
-  confirming: false,
+const IDLE_VOTE: JuryVoteUiState = {
+  sheet: null,
   submitting: false,
   errorMessage: null,
 };
@@ -131,7 +147,8 @@ export const INITIAL_MOCK_WORLD: MockWorld = {
   stepIndex: 0,
   juror: null,
   access: IDLE_ACCESS,
-  ownVotes: {},
+  draftNotes: {},
+  ownVerdicts: {},
   vote: IDLE_VOTE,
 };
 
@@ -147,13 +164,31 @@ export function parseMockCode(code: string): number | null {
 /** Avanza la simulación al siguiente paso de la línea de tiempo. */
 export function advanceMockWorld(world: MockWorld): MockWorld {
   const stepIndex = (world.stepIndex + 1) % MOCK_TIMELINE.length;
-  const phase = MOCK_TIMELINE[stepIndex].phase;
+  const nextStep = MOCK_TIMELINE[stepIndex];
+  const sameRound = nextStep.round === MOCK_TIMELINE[world.stepIndex].round;
   return {
     ...world,
     stepIndex,
-    ownVotes: stepIndex === 0 ? {} : world.ownVotes,
-    vote: phase === "voting" ? world.vote : IDLE_VOTE,
+    draftNotes: stepIndex === 0 ? {} : world.draftNotes,
+    ownVerdicts: stepIndex === 0 ? {} : world.ownVerdicts,
+    vote: sameRound && isGradablePhase(nextStep.phase) ? world.vote : IDLE_VOTE,
   };
+}
+
+function toCriteriaScores(notes: FourNotes): CriteriaScores {
+  const scores: CriteriaScores = {};
+  DEFAULT_JURY_CRITERIA.forEach((criterion, index) => {
+    scores[criterion.id] = notes[index];
+  });
+  return scores;
+}
+
+function computeScoreFromScores(notes: CriteriaScores): number | null {
+  const items = DEFAULT_JURY_CRITERIA.flatMap((criterion) => {
+    const value = notes[criterion.id];
+    return value === undefined ? [] : [{ value, weight: criterion.weight }];
+  });
+  return items.length === DEFAULT_JURY_CRITERIA.length ? juryScore(items) : null;
 }
 
 /** Recorrido de rondas de la simulación, con las rondas terminadas y la vigente. */
@@ -167,11 +202,54 @@ function mockRail(roundIndex: number, phase: JuryPhase, world: MockWorld): JuryR
     if (finished) status = "settled";
     else if (index === roundIndex) status = "current";
 
+    const own = finished ? world.ownVerdicts[index] : undefined;
     return {
       number: index + 1,
       startupName: round.startupName,
       status,
-      ownDecision: finished ? (world.ownVotes[index] ?? null) : null,
+      ownVerdict: own ? { abstained: own.abstained, score: own.score } : null,
+    };
+  });
+}
+
+function revealedJurors(
+  juror: number,
+  ownVerdict: OwnVerdictView | null,
+  othersNotes: readonly (FourNotes | null)[],
+): JuryRevealJuror[] {
+  let otherIndex = 0;
+  return Array.from({ length: MOCK_JURY_TOTAL }, (_, index) => {
+    const isOwn = index === juror;
+    if (isOwn) {
+      return {
+        label: `Jurado ${index + 1}`,
+        isOwn: true,
+        submitted: ownVerdict !== null,
+        abstained: ownVerdict?.abstained ?? false,
+        score: ownVerdict?.score ?? null,
+        notes: ownVerdict?.notes ?? {},
+      };
+    }
+
+    const other = othersNotes[otherIndex++] ?? null;
+    if (other === null) {
+      return {
+        label: `Jurado ${index + 1}`,
+        isOwn: false,
+        submitted: true,
+        abstained: true,
+        score: null,
+        notes: {},
+      };
+    }
+    const notes = toCriteriaScores(other);
+    return {
+      label: `Jurado ${index + 1}`,
+      isOwn: false,
+      submitted: true,
+      abstained: false,
+      score: computeScoreFromScores(notes),
+      notes,
     };
   });
 }
@@ -187,72 +265,83 @@ export function buildMockView(world: MockWorld): JuryViewModel {
   const base: JuryViewModel = {
     screen: "access",
     phase: null,
+    clock: null,
     access: world.access,
     jurorLabel: null,
     round: null,
     rail: [],
-    criteria: JURY_CRITERIA,
+    criteria: DEFAULT_JURY_CRITERIA,
+    draftNotes: {},
+    draftStatus: "idle",
+    draftError: null,
     vote: world.vote,
     votes: { emitted: 0, total: MOCK_JURY_TOTAL },
-    ownVote: null,
+    ownVerdict: null,
     reveal: null,
   };
   if (world.juror === null) return base;
 
-  const ownVote = round ? (world.ownVotes[roundIndex] ?? null) : null;
+  const ownVerdict = round ? (world.ownVerdicts[roundIndex] ?? null) : null;
+  const draftNotes = round && ownVerdict === null ? (world.draftNotes[roundIndex] ?? {}) : {};
+  const jurors = round ? revealedJurors(world.juror, ownVerdict, round.othersNotes) : [];
+  const verdictSummary = calcScoreVerdict(jurors.map((j) => (j.submitted && !j.abstained ? j.score : null)));
+
   const reveal =
     step.phase === "result" && round
       ? {
-          multiplier: round.multiplier,
+          startupScore: verdictSummary?.score ?? null,
+          multiplier: verdictSummary?.multiplier ?? null,
           isLastRound: roundIndex === MOCK_ROUNDS.length - 1,
-          votes: revealedVotes(world.juror, ownVote, round.others),
+          jurors,
         }
       : null;
 
+  const now = Date.now();
+  const hasTimer =
+    step.phase === "open" ||
+    step.phase === "last_call" ||
+    step.phase === "voting" ||
+    step.phase === "result";
+
   return {
     ...base,
-    screen: screenOf(step.phase, ownVote),
+    screen: screenOf(step.phase, ownVerdict !== null),
     phase: step.phase,
+    clock: hasTimer
+      ? {
+          serverTime: new Date(now).toISOString(),
+          phaseEndsAt: new Date(now + step.duration).toISOString(),
+          paused: false,
+          pausedSeconds: null,
+        }
+      : null,
     jurorLabel: `Jurado ${world.juror + 1}`,
     round: round
       ? {
+          id: String(roundIndex + 1),
           number: roundIndex + 1,
           total: MOCK_ROUNDS.length,
           startupName: round.startupName,
           sdg: round.sdg,
           description: round.description,
+          logoUrl: null,
         }
       : null,
     rail: mockRail(roundIndex, step.phase, world),
+    draftNotes,
+    draftStatus: Object.keys(draftNotes).length > 0 ? "saved" : "idle",
     votes: {
-      emitted: round ? MOCK_JURY_TOTAL - 1 + (ownVote === null ? 0 : 1) : 0,
+      emitted: round ? MOCK_JURY_TOTAL - 1 + (ownVerdict === null ? 0 : 1) : 0,
       total: MOCK_JURY_TOTAL,
     },
-    ownVote,
+    ownVerdict,
     reveal,
   };
 }
 
-/** Votos publicados al liquidar: el del jurado de la sesión y los de los otros tres. */
-function revealedVotes(
-  juror: number,
-  ownVote: Decision | null,
-  others: readonly Decision[],
-): { label: string; isOwn: boolean; decision: Decision | null }[] {
-  let other = 0;
-  return Array.from({ length: MOCK_JURY_TOTAL }, (_, index) => {
-    const isOwn = index === juror;
-    return {
-      label: `Jurado ${index + 1}`,
-      isOwn,
-      decision: isOwn ? ownVote : (others[other++] ?? null),
-    };
-  });
-}
-
 /**
  * Hook de estado simulado del portal del jurado. Recorre la línea de tiempo del prototipo y
- * conserva el voto del jurado. Reemplazar su uso por la API real no cambia la interfaz.
+ * conserva el borrador y los envíos del jurado.
  */
 export function useJuryStateMock(): { state: JuryViewModel; actions: JuryActions } {
   const [world, setWorld] = useState<MockWorld>(INITIAL_MOCK_WORLD);
@@ -293,39 +382,90 @@ export function useJuryStateMock(): { state: JuryViewModel; actions: JuryActions
     [schedule],
   );
 
-  const selectDecision = useCallback((decision: Decision) => {
+  const setScore = useCallback((criterionId: string, value: ScoreValue) => {
+    setWorld((prev) => {
+      const step = MOCK_TIMELINE[prev.stepIndex];
+      if (step.round < 0 || !isGradablePhase(step.phase) || prev.ownVerdicts[step.round]) {
+        return prev;
+      }
+      const existing = prev.draftNotes[step.round] ?? {};
+      return {
+        ...prev,
+        draftNotes: {
+          ...prev.draftNotes,
+          [step.round]: { ...existing, [criterionId]: value },
+        },
+        vote: { ...prev.vote, errorMessage: null },
+      };
+    });
+  }, []);
+
+  const openConfirmSend = useCallback(() => {
     setWorld((prev) => ({
       ...prev,
-      vote: { ...prev.vote, draft: decision, confirming: false, errorMessage: null },
+      vote: { ...prev.vote, sheet: "confirm_send", errorMessage: null },
     }));
   }, []);
 
-  const requestConfirm = useCallback(() => {
-    setWorld((prev) =>
-      prev.vote.draft === null ? prev : { ...prev, vote: { ...prev.vote, confirming: true } },
-    );
+  const openAbstain = useCallback(() => {
+    setWorld((prev) => ({
+      ...prev,
+      vote: { ...prev.vote, sheet: "abstain", errorMessage: null },
+    }));
   }, []);
 
-  const cancelConfirm = useCallback(() => {
-    setWorld((prev) => ({ ...prev, vote: { ...prev.vote, confirming: false } }));
+  const closeSheet = useCallback(() => {
+    setWorld((prev) => ({ ...prev, vote: { ...prev.vote, sheet: null } }));
   }, []);
 
-  const confirmVote = useCallback(() => {
-    setWorld((prev) =>
-      prev.vote.draft === null
-        ? prev
-        : { ...prev, vote: { ...prev.vote, submitting: true, errorMessage: null } },
-    );
+  const confirmSend = useCallback(() => {
+    setWorld((prev) => ({
+      ...prev,
+      vote: { ...prev.vote, submitting: true, errorMessage: null },
+    }));
     schedule(() => {
       setWorld((prev) => {
-        const decision = prev.vote.draft;
         const step = MOCK_TIMELINE[prev.stepIndex];
-        if (decision === null || step.phase !== "voting") {
+        const notes = prev.draftNotes[step.round] ?? {};
+        const score = computeScoreFromScores(notes);
+        if (step.phase !== "voting" || score === null) {
           return { ...prev, vote: IDLE_VOTE };
         }
+        const nextDrafts = { ...prev.draftNotes };
+        delete nextDrafts[step.round];
         return {
           ...prev,
-          ownVotes: { ...prev.ownVotes, [step.round]: decision },
+          draftNotes: nextDrafts,
+          ownVerdicts: {
+            ...prev.ownVerdicts,
+            [step.round]: { abstained: false, score, notes },
+          },
+          vote: IDLE_VOTE,
+        };
+      });
+    }, MOCK_SUBMIT_DELAY_MS);
+  }, [schedule]);
+
+  const confirmAbstain = useCallback(() => {
+    setWorld((prev) => ({
+      ...prev,
+      vote: { ...prev.vote, submitting: true, errorMessage: null },
+    }));
+    schedule(() => {
+      setWorld((prev) => {
+        const step = MOCK_TIMELINE[prev.stepIndex];
+        if (step.phase !== "voting") {
+          return { ...prev, vote: IDLE_VOTE };
+        }
+        const nextDrafts = { ...prev.draftNotes };
+        delete nextDrafts[step.round];
+        return {
+          ...prev,
+          draftNotes: nextDrafts,
+          ownVerdicts: {
+            ...prev.ownVerdicts,
+            [step.round]: { abstained: true, score: null, notes: {} },
+          },
           vote: IDLE_VOTE,
         };
       });
@@ -338,6 +478,15 @@ export function useJuryStateMock(): { state: JuryViewModel; actions: JuryActions
 
   return {
     state: buildMockView(world),
-    actions: { submitCode, selectDecision, requestConfirm, cancelConfirm, confirmVote, logout },
+    actions: {
+      submitCode,
+      setScore,
+      openConfirmSend,
+      openAbstain,
+      closeSheet,
+      confirmSend,
+      confirmAbstain,
+      logout,
+    },
   };
 }

@@ -1,20 +1,20 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   box-sizing: border-box;
-  padding: 32px 24px;
-  border: 1px solid color-mix(in srgb, var(--positive) 50%, transparent);
-  border-radius: 28px;
-  background: color-mix(in srgb, var(--positive) 8%, transparent);
+  padding: 28px 22px;
+  border: 1px solid color-mix(in srgb, var(--positive) 45%, transparent);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--positive) 7%, transparent);
 }
 
 .decision {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 34px;
+  font-size: 32px;
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.05;
   letter-spacing: -0.02em;
 }
 
@@ -23,6 +23,38 @@
   font-size: 14px;
   line-height: 1.55;
   color: var(--fg-2);
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.noteRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-1);
+  border-radius: 12px;
+  background: var(--bg-band);
+  font-size: 13px;
+}
+
+.noteName {
+  font-weight: 600;
+  color: var(--fg-2);
+}
+
+.noteValue {
+  font-weight: 800;
+  color: var(--fg-1);
+  text-align: right;
 }
 
 .count {

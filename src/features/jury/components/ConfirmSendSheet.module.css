@@ -1,0 +1,75 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-1);
+  border-radius: 12px;
+  background: var(--bg-page);
+  font-size: 13px;
+}
+
+.criterion {
+  font-weight: 600;
+  color: var(--fg-2);
+}
+
+.value {
+  font-weight: 800;
+  color: var(--fg-1);
+  text-align: right;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-band));
+}
+
+.totalLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg-2);
+}
+
+.totalScore {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--fg-1);
+}
+
+.warning {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warning);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 4px;
+}

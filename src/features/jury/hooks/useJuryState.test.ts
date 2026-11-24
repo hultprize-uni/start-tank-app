@@ -3,32 +3,50 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 
 afterEach(cleanup);
-import { loginJury, readJuryState, voteJury } from "../api/client";
+import {
+  loginJury,
+  logoutJury,
+  readJuryState,
+  saveJuryDraft,
+  submitJuryVote,
+} from "../api/client";
 import { MOCK_CODE_ERROR, MOCK_TIMELINE, useJuryStateMock } from "../api/mock";
 import type { JuryViewModel } from "../types";
 import { INITIAL_JURY_STATE, mergeJuryState, useJuryStateApi } from "./useJuryState";
 
 vi.mock("../api/client", () => ({
   loginJury: vi.fn(),
+  logoutJury: vi.fn(),
   readJuryState: vi.fn(),
-  voteJury: vi.fn(),
+  saveJuryDraft: vi.fn(),
+  submitJuryVote: vi.fn(),
 }));
 
-/** Vista del servidor con el jurado en votación y sin voto propio. */
+/** Vista del servidor con el jurado en votación y sin envío propio. */
 const VOTING_VIEW: JuryViewModel = {
   ...INITIAL_JURY_STATE,
-  screen: "voting",
+  screen: "grading",
   phase: "voting",
   jurorLabel: "Jurado 2",
-  round: { number: 1, total: 5, startupName: "AgroSense", sdg: "ODS 2", description: null },
+  round: {
+    id: "1",
+    number: 1,
+    total: 5,
+    startupName: "AgroSense",
+    sdg: "ODS 2",
+    description: null,
+    logoUrl: null,
+  },
   votes: { emitted: 1, total: 4 },
 };
 
 beforeEach(() => {
   vi.mocked(loginJury).mockReset();
+  vi.mocked(logoutJury).mockReset();
   vi.mocked(readJuryState).mockReset();
-  vi.mocked(voteJury).mockReset();
-  // Por defecto, el estado responde 401: no hay sesión vigente al montar.
+  vi.mocked(saveJuryDraft).mockReset();
+  vi.mocked(submitJuryVote).mockReset();
+  vi.mocked(saveJuryDraft).mockResolvedValue({ ok: true, value: null });
   vi.mocked(readJuryState).mockResolvedValue({
     ok: false,
     sessionExpired: true,
@@ -41,31 +59,35 @@ afterEach(() => {
 });
 
 describe("mergeJuryState", () => {
-  it("conserva el borrador mientras la ronda sigue en votación", () => {
+  it("conserva el diálogo abierto mientras la ronda sigue en calificación", () => {
     const prev: JuryViewModel = {
       ...VOTING_VIEW,
-      vote: { draft: "BACK", confirming: true, submitting: false, errorMessage: null },
+      vote: { sheet: "confirm_send", submitting: false, errorMessage: null },
     };
-    expect(mergeJuryState(prev, VOTING_VIEW).vote.draft).toBe("BACK");
+    expect(mergeJuryState(prev, VOTING_VIEW).vote.sheet).toBe("confirm_send");
   });
 
-  it("descarta el borrador cuando la fase cambia", () => {
+  it("cierra los diálogos cuando la ronda pasa a resultado", () => {
     const prev: JuryViewModel = {
       ...VOTING_VIEW,
-      vote: { draft: "BACK", confirming: false, submitting: false, errorMessage: null },
+      vote: { sheet: "confirm_send", submitting: false, errorMessage: null },
     };
     const result = mergeJuryState(prev, { ...VOTING_VIEW, screen: "result", phase: "result" });
-    expect(result.vote.draft).toBeNull();
+    expect(result.vote.sheet).toBeNull();
   });
 });
 
 describe("useJuryStateApi", () => {
-  it("restaura la sesión vigente al montar, sin pedir el código de nuevo", async () => {
-    vi.mocked(readJuryState).mockResolvedValue({ ok: true, value: VOTING_VIEW });
+  it("restaura la sesión vigente y el borrador al montar sin pedir el código de nuevo", async () => {
+    vi.mocked(readJuryState).mockResolvedValue({
+      ok: true,
+      value: { ...VOTING_VIEW, draftNotes: { "1": 4, "2": 5 } },
+    });
     const { result } = renderHook(() => useJuryStateApi());
 
     await waitFor(() => expect(result.current.state.jurorLabel).toBe("Jurado 2"));
-    expect(result.current.state.screen).toBe("voting");
+    expect(result.current.state.screen).toBe("grading");
+    expect(result.current.state.draftNotes).toEqual({ "1": 4, "2": 5 });
     expect(loginJury).not.toHaveBeenCalled();
   });
 
@@ -92,7 +114,7 @@ describe("useJuryStateApi", () => {
     vi.mocked(loginJury).mockResolvedValue({
       ok: false,
       sessionExpired: false,
-      message: "El código no es válido.",
+      message: "Ese código no existe.",
     });
     const { result } = renderHook(() => useJuryStateApi());
 
@@ -101,7 +123,7 @@ describe("useJuryStateApi", () => {
     await waitFor(() =>
       expect(result.current.state.access).toEqual({
         status: "error",
-        errorMessage: "El código no es válido.",
+        errorMessage: "Ese código no existe.",
       }),
     );
     expect(result.current.state.jurorLabel).toBeNull();
@@ -122,32 +144,78 @@ describe("useJuryStateApi", () => {
     expect(result.current.state.jurorLabel).toBeNull();
   });
 
-  it("registra el voto confirmado y actualiza la pantalla", async () => {
+  it("guarda el borrador de cada criterio y envía las cuatro notas confirmadas", async () => {
     vi.mocked(loginJury).mockResolvedValue({ ok: true, value: null });
     vi.mocked(readJuryState).mockResolvedValue({ ok: true, value: VOTING_VIEW });
-    vi.mocked(voteJury).mockResolvedValue({ ok: true, value: null });
+    vi.mocked(submitJuryVote).mockResolvedValue({ ok: true, value: { score: 4.25 } });
     const { result } = renderHook(() => useJuryStateApi());
     act(() => result.current.actions.submitCode("JUR-2"));
     await waitFor(() => expect(result.current.state.jurorLabel).toBe("Jurado 2"));
 
-    act(() => result.current.actions.selectDecision("BACK"));
-    act(() => result.current.actions.requestConfirm());
-    expect(result.current.state.vote.confirming).toBe(true);
+    act(() => {
+      result.current.actions.setScore("1", 5);
+      result.current.actions.setScore("2", 4);
+      result.current.actions.setScore("3", 4);
+      result.current.actions.setScore("4", 4);
+    });
+    await waitFor(() => expect(saveJuryDraft).toHaveBeenCalledTimes(4));
+
+    act(() => result.current.actions.openConfirmSend());
+    expect(result.current.state.vote.sheet).toBe("confirm_send");
+
     vi.mocked(readJuryState).mockResolvedValue({
       ok: true,
-      value: { ...VOTING_VIEW, screen: "vote_registered", ownVote: "BACK" },
+      value: {
+        ...VOTING_VIEW,
+        screen: "vote_registered",
+        ownVerdict: { abstained: false, score: 4.25, notes: { "1": 5, "2": 4, "3": 4, "4": 4 } },
+      },
     });
-    act(() => result.current.actions.confirmVote());
+    act(() => result.current.actions.confirmSend());
 
-    expect(voteJury).toHaveBeenCalledWith("BACK");
+    expect(submitJuryVote).toHaveBeenCalledWith({
+      abstain: false,
+      notes: [
+        { criterionId: "1", value: 5 },
+        { criterionId: "2", value: 4 },
+        { criterionId: "3", value: 4 },
+        { criterionId: "4", value: 4 },
+      ],
+    });
     await waitFor(() => expect(result.current.state.screen).toBe("vote_registered"));
-    expect(result.current.state.ownVote).toBe("BACK");
+    expect(result.current.state.ownVerdict?.score).toBe(4.25);
   });
 
-  it("conserva el error del voto rechazado y permite reintentar", async () => {
+  it("registra la abstención por conflicto de interés sin enviar motivo", async () => {
     vi.mocked(loginJury).mockResolvedValue({ ok: true, value: null });
     vi.mocked(readJuryState).mockResolvedValue({ ok: true, value: VOTING_VIEW });
-    vi.mocked(voteJury).mockResolvedValue({
+    vi.mocked(submitJuryVote).mockResolvedValue({ ok: true, value: { score: null } });
+    const { result } = renderHook(() => useJuryStateApi());
+    act(() => result.current.actions.submitCode("JUR-2"));
+    await waitFor(() => expect(result.current.state.jurorLabel).toBe("Jurado 2"));
+
+    act(() => result.current.actions.openAbstain());
+    expect(result.current.state.vote.sheet).toBe("abstain");
+
+    vi.mocked(readJuryState).mockResolvedValue({
+      ok: true,
+      value: {
+        ...VOTING_VIEW,
+        screen: "vote_registered",
+        ownVerdict: { abstained: true, score: null, notes: {} },
+      },
+    });
+    act(() => result.current.actions.confirmAbstain());
+
+    expect(submitJuryVote).toHaveBeenCalledWith({ abstain: true });
+    await waitFor(() => expect(result.current.state.screen).toBe("vote_registered"));
+    expect(result.current.state.ownVerdict?.abstained).toBe(true);
+  });
+
+  it("conserva el error del envío rechazado y permite reintentar", async () => {
+    vi.mocked(loginJury).mockResolvedValue({ ok: true, value: null });
+    vi.mocked(readJuryState).mockResolvedValue({ ok: true, value: VOTING_VIEW });
+    vi.mocked(submitJuryVote).mockResolvedValue({
       ok: false,
       sessionExpired: false,
       message: "La votación ya cerró.",
@@ -156,16 +224,13 @@ describe("useJuryStateApi", () => {
     act(() => result.current.actions.submitCode("JUR-2"));
     await waitFor(() => expect(result.current.state.jurorLabel).toBe("Jurado 2"));
 
-    act(() => result.current.actions.selectDecision("REJECT"));
-    act(() => result.current.actions.requestConfirm());
-    act(() => result.current.actions.confirmVote());
+    act(() => result.current.actions.confirmAbstain());
 
     await waitFor(() =>
       expect(result.current.state.vote.errorMessage).toBe("La votación ya cerró."),
     );
     expect(result.current.state.vote).toMatchObject({
-      draft: "REJECT",
-      confirming: false,
+      sheet: null,
       submitting: false,
       errorMessage: "La votación ya cerró.",
     });
@@ -187,7 +252,7 @@ describe("useJuryStateMock", () => {
     expect(result.current.state.jurorLabel).toBeNull();
   });
 
-  it("recorre la votación simulada hasta registrar el voto del jurado", () => {
+  it("recorre la calificación simulada desde borrador hasta el envío definitivo", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useJuryStateMock());
     act(() => result.current.actions.submitCode("JUR-3"));
@@ -196,22 +261,40 @@ describe("useJuryStateMock", () => {
     });
     expect(result.current.state.jurorLabel).toBe("Jurado 3");
 
-    const votingStart = MOCK_TIMELINE.findIndex((step) => step.phase === "voting");
-    for (const step of MOCK_TIMELINE.slice(0, votingStart)) {
+    const openStart = MOCK_TIMELINE.findIndex((step) => step.phase === "open");
+    for (const step of MOCK_TIMELINE.slice(0, openStart)) {
       act(() => {
         vi.advanceTimersByTime(step.duration);
       });
     }
-    expect(result.current.state.screen).toBe("voting");
+    expect(result.current.state.screen).toBe("grading");
 
-    act(() => result.current.actions.selectDecision("BACK"));
-    act(() => result.current.actions.requestConfirm());
-    act(() => result.current.actions.confirmVote());
+    act(() => {
+      result.current.actions.setScore("1", 4);
+      result.current.actions.setScore("2", 5);
+      result.current.actions.setScore("3", 4);
+      result.current.actions.setScore("4", 3);
+    });
+
+    const votingStart = MOCK_TIMELINE.findIndex((step) => step.phase === "voting");
+    for (const step of MOCK_TIMELINE.slice(openStart, votingStart)) {
+      act(() => {
+        vi.advanceTimersByTime(step.duration);
+      });
+    }
+    expect(result.current.state.draftNotes).toEqual({ "1": 4, "2": 5, "3": 4, "4": 3 });
+
+    act(() => result.current.actions.openConfirmSend());
+    act(() => result.current.actions.confirmSend());
     act(() => {
       vi.advanceTimersByTime(500);
     });
 
     expect(result.current.state.screen).toBe("vote_registered");
-    expect(result.current.state.ownVote).toBe("BACK");
+    expect(result.current.state.ownVerdict).toEqual({
+      abstained: false,
+      score: 4,
+      notes: { "1": 4, "2": 5, "3": 4, "4": 3 },
+    });
   });
 });

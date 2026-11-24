@@ -1,5 +1,4 @@
 import type { JuryActions, JuryViewModel } from "../types";
-import { CriteriaCard } from "./CriteriaCard";
 import { HistoryPanel } from "./HistoryPanel";
 import { JuryBody } from "./JuryBody";
 import { JuryMobileHeader } from "./JuryMobileHeader";
@@ -15,8 +14,8 @@ interface JurySessionProps {
 }
 
 /**
- * Sesión del jurado ingresado: recorrido del evento, estado de la ronda y pantalla vigente. En
- * laptop se muestra en dos columnas; en pantallas estrechas, en una sola.
+ * Sesión del jurado ingresado: barra lateral con el recorrido de rondas, barra de fase con reloj
+ * del servidor, tarjeta de la startup en escena y área principal de calificación o resultado.
  */
 export function JurySession({ jurorLabel, state, actions }: JurySessionProps) {
   const { phase, round } = state;
@@ -28,22 +27,12 @@ export function JurySession({ jurorLabel, state, actions }: JurySessionProps) {
       <div className={styles.main}>
         <JuryMobileHeader jurorLabel={jurorLabel} onLogout={actions.logout} />
         <h1 className="visually-hidden">Portal del jurado</h1>
+        {phase !== null && <RoundStatus phase={phase} round={round} clock={state.clock} />}
 
-        <div className={styles.grid}>
-          <div className={styles.column}>
-            {phase !== null && <RoundStatus phase={phase} round={round} />}
-            {round !== null && (
-              <>
-                <StartupCard round={round} />
-                <CriteriaCard criteria={state.criteria} />
-              </>
-            )}
-          </div>
-
-          <div className={styles.column}>
-            <JuryBody state={state} actions={actions} />
-            <HistoryPanel rail={state.rail} />
-          </div>
+        <div className={styles.contentStack}>
+          {round !== null && <StartupCard round={round} />}
+          <JuryBody state={state} actions={actions} />
+          <HistoryPanel rail={state.rail} />
         </div>
       </div>
     </div>
