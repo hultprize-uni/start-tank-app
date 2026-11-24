@@ -65,7 +65,8 @@ export async function driveRoundToVoting(page: Page): Promise<void> {
   await runOperatorAction(page, "Anunciar última llamada");
   await runOperatorAction(page, "Cerrar mercado");
   await runOperatorAction(page, "Habilitar votación");
-  await expect(currentRoundStep(page)).toContainText("Revelar");
+  // La consola consulta el estado cada 3 s: con 5 s de margen fallaba de vez en cuando.
+  await expect(currentRoundStep(page)).toContainText("Revelar", { timeout: 15_000 });
 }
 
 /** Paso actual de la ronda en la línea de pasos de la consola. */

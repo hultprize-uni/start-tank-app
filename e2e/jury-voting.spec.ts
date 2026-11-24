@@ -34,7 +34,8 @@ test.describe("votacion del jurado", () => {
 
     await signInOperator(page);
     await runOperatorAction(page, "Abrir mercado");
-    await expect(currentRoundStep(page)).toContainText("Abierta");
+    // La línea de pasos muestra el siguiente paso, no el estado: tras abrir, toca anunciar la última llamada.
+    await expect(currentRoundStep(page)).toContainText("Última llamada", { timeout: 15_000 });
 
     const context = await browser.newContext({
       baseURL,
@@ -77,9 +78,10 @@ test.describe("votacion del jurado", () => {
         ).toBeChecked();
       }
 
-      await runOperatorAction(page, "Declarar última llamada");
+      await runOperatorAction(page, "Anunciar última llamada");
       await runOperatorAction(page, "Cerrar mercado");
-      await expect(currentRoundStep(page)).toContainText("En votación");
+      await runOperatorAction(page, "Habilitar votación");
+      await expect(currentRoundStep(page)).toContainText("Revelar", { timeout: 15_000 });
 
       await expect(sendButton).toBeEnabled({ timeout: 10_000 });
       await sendButton.click();
