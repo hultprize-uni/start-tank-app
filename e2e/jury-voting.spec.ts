@@ -46,7 +46,10 @@ test.describe("votacion del jurado", () => {
       await jurorPage.goto("/jury");
       await jurorPage.getByLabel("Código de acceso").fill("CODIGO-INVALIDO");
       await jurorPage.getByRole("button", { name: "Entrar", exact: true }).click();
-      await expect(jurorPage.getByRole("alert")).toContainText("Ese código no existe");
+      // Next.js agrega su propio anunciador de rutas con role="alert"; se filtra por el texto.
+      await expect(
+        jurorPage.getByRole("alert").filter({ hasText: "Ese código no existe" }),
+      ).toBeVisible();
 
       await signInJuror(jurorPage, JUROR_CODES[0]);
 
@@ -120,9 +123,8 @@ test.describe("votacion del jurado", () => {
       const confirmAbstain = dialog.getByRole("button", { name: "Confirmar abstención", exact: true });
       await expect(confirmAbstain).toBeDisabled();
 
-      await dialog
-        .getByRole("radio", { name: "Vínculo familiar o personal con el equipo" })
-        .click();
+      // El radio está oculto visualmente y su texto lo cubre: se hace clic en el texto, como el usuario.
+      await dialog.getByText("Vínculo familiar o personal con el equipo", { exact: true }).click();
       await expect(confirmAbstain).toBeEnabled();
       await confirmAbstain.click();
 
