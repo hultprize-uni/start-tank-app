@@ -57,10 +57,11 @@ test.describe("votacion del jurado", () => {
       await expect(sendButton).toBeDisabled();
 
       for (const item of CRITERION_SCORES) {
+        // El radio está oculto visualmente y su etiqueta lo cubre: force evita el chequeo de visibilidad.
         await jurorPage
           .getByRole("radiogroup", { name: item.group })
           .getByRole("radio", { name: new RegExp(`^${item.value} `) })
-          .click();
+          .check({ force: true });
       }
       await expect(jurorPage.getByRole("status")).toHaveText("Borrador guardado");
 
