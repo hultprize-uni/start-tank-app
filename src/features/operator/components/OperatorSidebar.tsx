@@ -3,20 +3,33 @@
 import { BrandLogo, Button } from "@/shared/ui";
 
 import { ROUND_STATUS_LABELS, formatMultiplier } from "../labels";
-import type { RoundSummaryView } from "../types";
+import type { OperatorRole, RoundSummaryView } from "../types";
 
-import styles from "./OperatorConsole.module.css";
+import styles from "./Admin.module.css";
+
+/** Secciones de la consola, en el orden del menú. */
+export const OPERATOR_SECTIONS = [
+  { id: "consola", label: "Consola" },
+  { id: "salud", label: "Salud y alertas" },
+  { id: "asistentes", label: "Asistentes" },
+  { id: "log", label: "Log de acciones" },
+  { id: "configuracion", label: "Configuración" },
+  { id: "antes", label: "Antes del evento" },
+] as const;
+
+export type OperatorSection = (typeof OPERATOR_SECTIONS)[number]["id"];
 
 interface OperatorSidebarProps {
-  rounds: RoundSummaryView[];
-  /** Número de la ronda que controla el operador. */
+  role: OperatorRole;
+  operatorName: string;
+  section: OperatorSection;
+  onSection: (section: OperatorSection) => void;
+  rounds: readonly RoundSummaryView[];
   currentRound: number;
-  connectedAttendees: number;
   onLogout: () => void;
 }
 
-/** Texto de estado de una ronda en la lista lateral. */
-function summaryTextOf(round: RoundSummaryView, currentRound: number): string {
+function roundSummary(round: RoundSummaryView, currentRound: number): string {
   if (round.status === "CANCELLED") return "Anulada";
   if (round.status === "SETTLED") {
     return round.multiplier === null ? "Liquidada" : formatMultiplier(round.multiplier);
@@ -25,46 +38,66 @@ function summaryTextOf(round: RoundSummaryView, currentRound: number): string {
   return "Pendiente";
 }
 
-/** Barra lateral con el evento, los asistentes conectados y la lista de rondas. En pantallas estrechas se reduce a una franja superior. */
+/** Barra lateral: marca, rol (RF-03), menú de secciones, rondas y salida. */
 export function OperatorSidebar({
+  role,
+  operatorName,
+  section,
+  onSection,
   rounds,
   currentRound,
-  connectedAttendees,
   onLogout,
 }: OperatorSidebarProps) {
+  const conductor = role === "CONDUCTOR";
   return (
-    <aside className={styles.sidebar} aria-label="Evento y rondas">
-      <div className={styles.brandRow}>
-        <BrandLogo variant="horizontal" className={styles.brandLogo} />
-      </div>
-      <p className={styles.eventMeta}>Shark Tank Universitario · 26 Nov · Auditorio CTIC</p>
-      <p className={styles.connected}>
-        <span className={styles.roundsTitle}>Conectados</span>
-        <span className="st-num">{connectedAttendees}</span>
+    <aside className={styles.sidebar} aria-label="Consola del admin">
+      <BrandLogo variant="horizontal" className={styles.brandLogo} />
+      <p className={styles.roleChip}>
+        <span className={`${styles.roleName} ${conductor ? "" : styles.roleSupport}`}>
+          {conductor ? "Conductor" : "Soporte"}
+        </span>
+        <span>{conductor ? "Ejecuta acciones" : "Solo lectura"}</span>
       </p>
-      <div>
-        <h2 className={styles.roundsTitle}>Rondas</h2>
-        <ol className={styles.roundList}>
-          {rounds.map((round) => (
-            <li
-              key={round.number}
-              className={styles.roundItem}
-              aria-current={round.number === currentRound ? "true" : undefined}
-            >
-              <span className={styles.roundNumber}>{round.number}</span>
-              <span className={styles.roundName}>
-                <span>{round.startupName}</span>
-                <span className={styles.roundSummary}>
-                  {summaryTextOf(round, currentRound)}
-                </span>
-              </span>
+      <p className={styles.rowMeta}>{operatorName}</p>
+
+      <nav aria-label="Secciones">
+        <ul className={styles.nav}>
+          {OPERATOR_SECTIONS.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className={styles.navButton}
+                aria-current={section === item.id ? "page" : undefined}
+                onClick={() => onSection(item.id)}
+              >
+                {item.label}
+              </button>
             </li>
           ))}
-        </ol>
+        </ul>
+      </nav>
+
+      <ol className={styles.sidebarRounds} aria-label="Rondas del evento">
+        {rounds.map((round) => (
+          <li
+            key={round.number}
+            className={styles.sidebarRound}
+            aria-current={round.number === currentRound ? "true" : undefined}
+          >
+            <span className={styles.sidebarRoundNumber}>{round.number}</span>
+            <span className={styles.sidebarRoundName}>
+              <span>{round.startupName}</span>
+              <span className={styles.sidebarRoundSummary}>{roundSummary(round, currentRound)}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      <div className={styles.sidebarFooter}>
+        <Button variant="ghost" onClick={onLogout}>
+          Cerrar sesión
+        </Button>
       </div>
-      <Button variant="ghost" onClick={onLogout}>
-        Salir
-      </Button>
     </aside>
   );
 }

@@ -1,51 +1,35 @@
 import { StatBlock } from "@/shared/ui";
 
-import { formatCoins, formatMultiplier } from "../labels";
+import { formatCoins } from "../labels";
 import type { MarketView } from "../types";
 
-import panel from "./Panel.module.css";
+import styles from "./Admin.module.css";
 
 interface MarketPanelProps {
   market: MarketView;
-  /** Multiplicador de la ronda. Es null mientras la ronda no esté liquidada. */
-  multiplier: number | null;
 }
 
-/** Resumen del mercado de la ronda: precio en vivo, monto acumulado, inversores y multiplicador. */
-export function MarketPanel({ market, multiplier }: MarketPanelProps) {
+/** Porcentaje de la sala conectada que ya invirtió en la ronda. */
+export function investedShare(market: MarketView): number {
+  if (market.totalAttendees === 0) return 0;
+  return Math.round((market.uniqueInvestors / market.totalAttendees) * 100);
+}
+
+/** Lectura en vivo del mercado de la ronda (RF-26): monto, precio, inversores y sala que invirtió. */
+export function MarketPanel({ market }: MarketPanelProps) {
   return (
-    <section className={panel.panel} aria-labelledby="mercado-ronda">
-      <div className={panel.header}>
-        <h2 id="mercado-ronda" className={panel.title}>
-          Mercado
-        </h2>
+    <section aria-label="Mercado de la ronda" className={styles.stats}>
+      <div className={styles.stat}>
+        <StatBlock label="Monto acumulado" value={`${formatCoins(market.accumulated)} IC`} size="lg" />
       </div>
-      <div className={panel.statGrid}>
-        <StatBlock label="Precio en vivo" value={formatCoins(market.price)} size="lg" />
-        <StatBlock
-          label="Acumulado"
-          value={
-            <>
-              {formatCoins(market.accumulated)} <span className={panel.muted}>coins</span>
-            </>
-          }
-          size="lg"
-        />
-        <StatBlock
-          label="Inversores únicos"
-          value={
-            <>
-              {formatCoins(market.uniqueInvestors)}{" "}
-              <span className={panel.muted}>de {formatCoins(market.connectedAttendees)}</span>
-            </>
-          }
-          size="lg"
-        />
-        <StatBlock
-          label="Multiplicador"
-          value={multiplier === null ? "—" : formatMultiplier(multiplier)}
-          size="lg"
-        />
+      <div className={styles.stat}>
+        <StatBlock label="Precio" value={market.price.toFixed(1)} size="lg" />
+      </div>
+      <div className={styles.stat}>
+        <StatBlock label="Inversores únicos" value={formatCoins(market.uniqueInvestors)} size="lg" />
+      </div>
+      <div className={styles.stat}>
+        <StatBlock label="Sala que invirtió" value={`${investedShare(market)}%`} size="lg" />
       </div>
     </section>
   );

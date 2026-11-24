@@ -416,6 +416,26 @@ sequenceDiagram
 9. Si la aplicación no responde por más de 90 segundos, el conductor activa el modo manual: congela el ranking en el último corte liquidado y la pantalla lo marca.
 10. Tras la última ronda, el conductor cierra el evento y se calculan la ganadora, el top 3 y el mejor ojo.
 
+**Contrato de las rutas del admin (F5)**
+
+Todas exigen la cookie del rol operador (401 sin ella). Las escrituras exigen además el rol `CONDUCTOR` y responden 403 al soporte; las funciones SQL repiten la validación. Los errores de negocio responden 409 con `{ error: código }`.
+
+| Ruta | Método | Cuerpo o parámetros | Respuesta |
+|---|---|---|---|
+| `operator/state` | GET | | View model de la consola con `serverTime`, rol, reloj de la fase, paso válido, jurados sin notas y log con motivo |
+| `operator/action` | POST | `{ action, reason? }`. Acciones: `OPEN`, `LAST_CALL`, `CLOSE`, `ENABLE_VOTING`, `PAUSE`, `RESUME`, `ADD_MINUTE`, `REVEAL`, `CANCEL_REFUND`, `CANCEL_SETTLE_1X`. Las anulaciones exigen `reason`; `REVEAL` con `reason` revela con los presentes | `{ ok, state, multiplier }` |
+| `operator/manual-settlement` | POST | `{ score: 1..5, reason }` | jsonb de `fn_liquidar_manual` |
+| `operator/balance` | POST | `{ userId, amount, reason }` | `{ ok, balance }` |
+| `operator/attendees` | GET | `?q=` nombre o correo | `{ items, online, total }` con saldo, posición por patrimonio, última conexión y última inversión |
+| `operator/health` | GET | | `{ signals, alerts, dbLatencyMs, attendeesOnline, attendeesTotal }`. Un jurado cuenta como desconectado a los 45 s |
+| `operator/manual-mode` | POST | `{ enabled, reason? }` | `{ ok, manualMode }` |
+| `operator/config` | GET / POST | POST `{ kind: "setting", key, value }`, `{ kind: "startup", ... }`, `{ kind: "juror", ... }` o `{ kind: "criteria", items }`. Se rechaza con una ronda en curso (`ROUND_OPEN`) | GET: parámetros, startups, jurados (sin códigos para el soporte) y criterios |
+| `operator/preflight` | GET / POST | POST inicia el evento solo con el checklist en verde | GET `{ ready, eventStarted, items }` |
+| `operator/close-event` | POST | Exige todas las rondas terminadas | `EventCloseSummary` (proceso de F7; 501 mientras no exista) |
+| `operator/rehearsal` | POST | Se rechaza con el evento iniciado (`EVENT_STARTED`) | proceso de F7; 501 mientras no exista |
+
+El paso "Siguiente startup" del botón principal equivale a Abrir mercado de la ronda que sigue: al liquidar, la consola pasa a la siguiente ronda programada. Las acciones de administración (configuración, modo manual, inicio del evento) se registran en `accion_ronda` con su motivo, igual que el ajuste de saldo.
+
 ### 3.5 Sistema completo
 
 Cubre una ronda de principio a fin con las cuatro vistas y la base de datos como centro.

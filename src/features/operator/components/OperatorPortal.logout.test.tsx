@@ -12,25 +12,29 @@ vi.mock("@/shared/lib/env", () => ({ USE_MOCKS: false }));
 
 vi.mock("../hooks/useOperatorState", () => ({
   useOperatorState: () => ({
-    viewModel: {},
+    viewModel: {
+      operator: { name: "Diego", role: "CONDUCTOR" },
+      round: { number: 1 },
+      rounds: [],
+      event: { manualMode: false, lastSettledRound: null },
+      canRescue: false,
+      log: [],
+    },
     notice: null,
-    runAction: vi.fn(),
-    undo: vi.fn(),
-    cancelRound: vi.fn(),
-    setManualMode: vi.fn(),
-    setManualBacks: vi.fn(),
-    simulateJurorVote: vi.fn(),
+    clearNotice: vi.fn(),
+    lastOkAt: Date.now(),
+    run: vi.fn(),
+    busy: false,
+    refresh: vi.fn(),
     exportCsv: vi.fn(),
   }),
 }));
 
-vi.mock("./OperatorConsole", () => ({
-  OperatorConsole: ({ onLogout }: { onLogout: () => void }) => (
-    <button type="button" onClick={onLogout}>
-      Salir
-    </button>
-  ),
+vi.mock("../hooks/useHealth", () => ({
+  useHealth: () => ({ health: null, alerts: [] }),
 }));
+
+vi.mock("./OperatorConsole", () => ({ OperatorConsole: () => <p>Consola</p> }));
 
 const fetchMock = vi.fn();
 
@@ -55,20 +59,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("OperatorPortal: boton Salir", () => {
-  it("llama al endpoint de cierre de sesion y vuelve a la pantalla de acceso", async () => {
+describe("OperatorPortal: Cerrar sesión", () => {
+  it("llama al endpoint de cierre de sesión y vuelve a la pantalla de acceso", async () => {
     render(<OperatorPortal />);
-    const salir = await screen.findByRole("button", { name: "Salir" });
+    const salir = await screen.findByRole("button", { name: "Cerrar sesión" });
 
     await userEvent.click(salir);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Entrar" })).toBeInTheDocument(),
     );
-    const logoutCalls = fetchMock.mock.calls.filter(
-      ([url]) => url === API_ROUTES.operator.logout,
-    );
+    const logoutCalls = fetchMock.mock.calls.filter(([url]) => url === API_ROUTES.operator.logout);
     expect(logoutCalls).toHaveLength(1);
     expect(logoutCalls[0][1]).toMatchObject({ method: "POST" });
+  });
+
+  it("navega entre las secciones del menú", async () => {
+    render(<OperatorPortal />);
+    const log = await screen.findByRole("button", { name: "Log de acciones" });
+
+    await userEvent.click(log);
+
+    expect(log).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("heading", { name: "Log de acciones" })).toBeInTheDocument();
   });
 });

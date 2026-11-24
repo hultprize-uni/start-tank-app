@@ -17,5 +17,6 @@ export {
   handleOperatorManualMode,
   handleOperatorPreflight,
   handleOperatorRehearsal,
+  handleOperatorStartEvent,
 } from "./server/admin";
 export type { OperatorViewModel } from "./types";

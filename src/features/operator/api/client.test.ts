@@ -1,104 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { API_ROUTES } from "@/shared/lib/api-routes";
-import type { OperatorActionView, OperatorViewModel } from "../types";
+
+vi.mock("@/shared/lib/env", () => ({ USE_MOCKS: false }));
+
 import {
-  executeOperatorAction,
+  actionBody,
+  adjustBalance,
   readOperatorState,
-  loginOperator,
+  runOperatorCommand,
+  searchAttendees,
 } from "./client";
 
-/** Construye una respuesta JSON con el estado HTTP indicado. */
+const fetchMock = vi.fn();
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
   });
 }
-
-/** Lista de acciones de la ronda con el estado indicado para cada acción. */
-function actions(options: {
-  reveal: Pick<OperatorActionView, "enabled" | "blockedReason">;
-  lastCallEnabled: boolean;
-  closeEnabled: boolean;
-}): OperatorActionView[] {
-  return [
-    { id: "open", label: "Abrir mercado", done: true, enabled: false, blockedReason: null },
-    {
-      id: "last_call",
-      label: "Última llamada",
-      done: false,
-      enabled: options.lastCallEnabled,
-      blockedReason: null,
-    },
-    {
-      id: "close",
-      label: "Cerrar mercado",
-      done: false,
-      enabled: options.closeEnabled,
-      blockedReason: null,
-    },
-    { id: "reveal", label: "Revelar veredicto", done: false, ...options.reveal },
-    {
-      id: "next",
-      label: "Siguiente startup",
-      done: false,
-      enabled: false,
-      blockedReason: "Avanza al abrir la siguiente ronda.",
-    },
-  ];
-}
-
-/** Vista del operador para pruebas, con la ronda en votación y el estado de acciones indicado. */
-function view(options: {
-  reveal: Pick<OperatorActionView, "enabled" | "blockedReason">;
-  canCancel?: boolean;
-  state?: OperatorViewModel["round"]["status"];
-  lastCallEnabled?: boolean;
-  closeEnabled?: boolean;
-}): OperatorViewModel {
-  return {
-    round: {
-      number: 2,
-      total: 5,
-      startupName: "Solar Nodo",
-      status: options.state ?? "VOTING",
-      multiplier: null,
-      cancelMode: null,
-    },
-    rounds: [],
-    actions: actions({
-      reveal: options.reveal,
-      lastCallEnabled: options.lastCallEnabled ?? false,
-      closeEnabled: options.closeEnabled ?? false,
-    }),
-    jurors: [],
-    market: {
-      accumulated: 0,
-      uniqueInvestors: 0,
-      connectedAttendees: 0,
-      price: 100,
-      lastCallRemaining: null,
-    },
-    standings: [],
-    log: [],
-    canUndo: false,
-    canCancel: options.canCancel ?? true,
-    canManualSettle: false,
-    manualMode: { enabled: false, backs: 0 },
-    balances: [],
-    positions: [],
-  };
-}
-
-/** Cuerpos de las llamadas a la ruta de acciones, en orden. */
-function sentActions(fetchMock: ReturnType<typeof vi.fn>): unknown[] {
-  return fetchMock.mock.calls
-    .filter((lastCall) => String(lastCall[0]) === API_ROUTES.operator.action)
-    .map((lastCall) => JSON.parse(String((lastCall[1] as RequestInit).body)).action);
-}
-
-const fetchMock = vi.fn();
 
 beforeEach(() => {
   fetchMock.mockReset();
@@ -109,139 +30,71 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("loginOperator", () => {
-  it("devuelve null cuando el código es aceptado", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ ok: true, name: "op.1" }));
-
-    await expect(loginOperator("CODIGO-REAL")).resolves.toBeNull();
-    expect(fetchMock.mock.calls[0][0]).toBe(API_ROUTES.operator.login);
-  });
-
-  it("devuelve el mensaje de error cuando el código es rechazado (401)", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_CODE" }, 401));
-
-    await expect(loginOperator("incorrecto")).resolves.toBe(
-      "El código no es válido. Verifica el código de acceso del operador.",
-    );
-  });
-});
-
-describe("readOperatorState", () => {
-  it("marca la sesión como vencida ante un 401", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
-
-    const result = await readOperatorState();
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.sessionExpired).toBe(true);
-    }
-  });
-
-  it("informa que no hay rondas cuando la API responde 404", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "NO_ROUNDS" }, 404));
-
-    const result = await readOperatorState();
-
-    expect(result).toEqual({
-      ok: false,
-      sessionExpired: false,
-      message: "No hay rondas configuradas para el evento.",
+describe("actionBody", () => {
+  it("traduce cada comando a la acción de la API", () => {
+    expect(actionBody({ type: "step", id: "last_call" })).toEqual({ action: "LAST_CALL" });
+    expect(actionBody({ type: "step", id: "enable_voting" })).toEqual({ action: "ENABLE_VOTING" });
+    expect(actionBody({ type: "timer", command: "add_minute" })).toEqual({ action: "ADD_MINUTE" });
+    expect(actionBody({ type: "rescue", reason: "Jurado 3 caído" })).toEqual({
+      action: "REVEAL",
+      reason: "Jurado 3 caído",
+    });
+    expect(actionBody({ type: "cancel", mode: "settle_1x", reason: "Falla" })).toEqual({
+      action: "CANCEL_SETTLE_1X",
+      reason: "Falla",
     });
   });
 });
 
-describe("executeOperatorAction: reveal", () => {
-  it("no envía nada mientras falten votos y devuelve el motivo del servidor", async () => {
-    const result = await executeOperatorAction(
-      "reveal",
-      view({ reveal: { enabled: false, blockedReason: "Faltan 2 voto(s)" } }),
-    );
+describe("runOperatorCommand", () => {
+  it("envía la acción y devuelve el multiplicador", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true, state: "SETTLED", multiplier: 1.4 }));
 
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(result).toEqual({ ok: false, sessionExpired: false, message: "Faltan 2 voto(s)" });
+    const result = await runOperatorCommand({ type: "rescue", reason: "Jurado 3 caído" });
+
+    expect(result).toEqual({ ok: true, value: { multiplier: 1.4 } });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(API_ROUTES.operator.action);
+    expect(JSON.parse(String(init.body))).toEqual({ action: "REVEAL", reason: "Jurado 3 caído" });
   });
 
-  it("envía REVEAL cuando los cuatro votos están emitidos", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ ok: true, state: "SETTLED" }));
+  it("explica en español el rechazo por rol", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "FORBIDDEN" }, 403));
 
-    const result = await executeOperatorAction(
-      "reveal",
-      view({ reveal: { enabled: true, blockedReason: null } }),
-    );
+    const result = await runOperatorCommand({ type: "step", id: "close" });
 
-    expect(result.ok).toBe(true);
-    expect(sentActions(fetchMock)).toEqual(["REVEAL"]);
+    expect(result).toMatchObject({ ok: false, sessionExpired: false });
+    expect(!result.ok && result.message).toMatch(/soporte/);
   });
 
-  it("no revela cuando el estado de la ronda aún no está cargado", async () => {
-    const result = await executeOperatorAction("reveal", null);
+  it("marca la sesión vencida con 401", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
+    await expect(readOperatorState()).resolves.toMatchObject({ ok: false, sessionExpired: true });
+  });
 
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.ok).toBe(false);
+  it("indica fuera de línea si falla la red", async () => {
+    fetchMock.mockRejectedValue(new TypeError("offline"));
+    const result = await runOperatorCommand({ type: "timer", command: "pause" });
+    expect(result).toMatchObject({ ok: false, sessionExpired: false });
   });
 });
 
-describe("executeOperatorAction: close and cancel", () => {
-  it("habilita la votación después de cerrar el mercado", async () => {
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse({ ok: true, state: "CLOSED" }))
-      .mockResolvedValueOnce(jsonResponse({ ok: true, state: "VOTING" }));
-
-    const result = await executeOperatorAction(
-      "close",
-      view({
-        reveal: { enabled: false, blockedReason: null },
-        state: "OPEN",
-        closeEnabled: true,
-      }),
-    );
-
-    expect(result.ok).toBe(true);
-    expect(sentActions(fetchMock)).toEqual(["CLOSE", "ENABLE_VOTING"]);
+describe("asistentes", () => {
+  it("codifica la búsqueda en la URL", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ items: [], online: 0, total: 0 }));
+    await searchAttendees("diego p");
+    expect(fetchMock.mock.calls[0][0]).toBe(`${API_ROUTES.operator.attendees}?q=diego%20p`);
   });
 
-  it("envía la variante de anulación elegida por el operador", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ ok: true, state: "CANCELLED" }));
-
-    await executeOperatorAction(
-      "cancel_settle_1x",
-      view({ reveal: { enabled: false, blockedReason: null } }),
-    );
-
-    expect(sentActions(fetchMock)).toEqual(["CANCEL_SETTLE_1X"]);
-  });
-
-  it("traduce una transición rechazada por el servidor (409)", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "TRANSITION_NOT_ALLOWED" }, 409));
-
-    const result = await executeOperatorAction(
-      "last_call",
-      view({ reveal: { enabled: false, blockedReason: null }, lastCallEnabled: true }),
-    );
-
-    expect(result).toEqual({
-      ok: false,
-      sessionExpired: false,
-      message: "La acción no está permitida en el estado actual de la ronda.",
+  it("envía el ajuste con su motivo", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true, balance: 7500 }));
+    const result = await adjustBalance("7", 500, "Error del sistema");
+    expect(result).toEqual({ ok: true, value: { balance: 7500 } });
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(String(init.body))).toEqual({
+      userId: "7",
+      amount: 500,
+      reason: "Error del sistema",
     });
-  });
-
-  it("marca la sesión como vencida cuando una acción llega sin sesión (401)", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "INVALID_SESSION" }, 401));
-
-    const result = await executeOperatorAction(
-      "close",
-      view({
-        reveal: { enabled: false, blockedReason: null },
-        state: "OPEN",
-        closeEnabled: true,
-      }),
-    );
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.sessionExpired).toBe(true);
-    }
   });
 });

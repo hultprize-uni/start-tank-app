@@ -1,85 +1,61 @@
-"use client";
+import { ProgressBar } from "@/shared/ui";
 
-import { Button, ProgressBar } from "@/shared/ui";
-
-import type { JurorSense, JurorVoteView } from "../types";
+import { JUROR_STATUS_LABELS, formatAgo, formatJuryScore } from "../labels";
+import type { JurorView } from "../types";
 
 import panel from "./Panel.module.css";
+import styles from "./Admin.module.css";
 
 interface JurorVotesPanelProps {
-  jurors: JurorVoteView[];
-  canSimulateVote: boolean;
-  onSimulateVote: (jurorId: string) => void;
+  jurors: readonly JurorView[];
 }
 
-const SENSE_LABELS: Record<JurorSense, string> = {
-  backs: "Respalda",
-  rejects: "Rechaza",
-  abstains: "Se abstiene",
-};
-
 /**
- * Votos del jurado. Antes de revelar solo se muestra si el voto fue emitido; el sentido aparece
- * al revelar o liquidar la ronda.
+ * Jurados en vivo (RF-17, RF-26): conexión, y si están pendientes, calificando, con notas enviadas
+ * o sin notas por abstención. La nota solo aparece después de revelar (RNF-11).
  */
-export function JurorVotesPanel({ jurors, canSimulateVote, onSimulateVote }: JurorVotesPanelProps) {
-  const emittedCount = jurors.filter((juror) => juror.emitted).length;
+export function JurorVotesPanel({ jurors }: JurorVotesPanelProps) {
+  const sent = jurors.filter((juror) => juror.status === "sent" || juror.status === "abstained").length;
 
   return (
-    <section className={panel.panel} aria-labelledby="votos-jurado">
+    <section className={panel.panel} aria-labelledby="jurados-ronda">
       <div className={panel.header}>
-        <h2 id="votos-jurado" className={panel.title}>
-          Votos del jurado
+        <h2 id="jurados-ronda" className={panel.title}>
+          Jurados
         </h2>
         <span className={panel.muted}>
-          {emittedCount} de {jurors.length} emitidos
+          {sent} de {jurors.length} enviados
         </span>
       </div>
       <ProgressBar
-        value={emittedCount}
-        max={jurors.length}
-        label="Votos emitidos"
-        valueText={`${emittedCount} de ${jurors.length} emitidos`}
+        value={sent}
+        max={Math.max(1, jurors.length)}
+        label="Envíos del jurado"
+        valueText={`${sent} de ${jurors.length} enviados`}
         tone="cyan"
       />
-      <ul className={panel.jurorGrid}>
-        {jurors.map((juror) => {
-          const cardClass = [
-            panel.jurorCard,
-            juror.emitted || juror.sense !== null ? panel.jurorCardEmitted : panel.jurorCardMissing,
-          ].join(" ");
-          return (
-            <li key={juror.id} className={cardClass}>
-              <span className={panel.jurorName}>{juror.label}</span>
-              {juror.sense !== null ? (
-                <span className={panel.jurorStatus}>{SENSE_LABELS[juror.sense]}</span>
-              ) : (
-                <span
-                  className={
-                    juror.emitted
-                      ? panel.jurorStatus
-                      : `${panel.jurorStatus} ${panel.jurorStatusMissing}`
-                  }
-                >
-                  {juror.emitted ? "Emitido" : "Falta"}
-                </span>
-              )}
-              {canSimulateVote && !juror.emitted ? (
-                <Button
-                  variant="ghost"
-                  size="md"
-                  onClick={() => onSimulateVote(juror.id)}
-                >
-                  Simular voto
-                </Button>
-              ) : null}
-            </li>
-          );
-        })}
+      <ul className={styles.jurorList}>
+        {jurors.map((juror) => (
+          <li key={juror.id} className={styles.jurorRow}>
+            <span
+              className={`${styles.jurorDot} ${juror.online ? "" : styles.jurorDotOffline}`}
+              aria-hidden="true"
+            />
+            <span>
+              <span className={styles.jurorName}>{juror.name}</span>
+              <span className={styles.jurorMeta}>
+                {juror.online ? "Conectado" : `Desconectado · ${formatAgo(juror.lastSeenSeconds)}`}
+              </span>
+            </span>
+            <span className={`${styles.jurorStatus} ${styles[`jurorStatus-${juror.status}`] ?? ""}`}>
+              {juror.score !== null
+                ? `${formatJuryScore(juror.score)} de 5`
+                : JUROR_STATUS_LABELS[juror.status]}
+            </span>
+          </li>
+        ))}
       </ul>
-      <p className={panel.note}>
-        El sentido de cada voto se muestra solo al revelar el veredicto.
-      </p>
+      <p className={panel.note}>Las notas se ocultan hasta revelar.</p>
     </section>
   );
 }

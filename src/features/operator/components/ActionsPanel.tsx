@@ -2,92 +2,51 @@
 
 import { Button } from "@/shared/ui";
 
-import type {
-  OperatorActionId,
-  OperatorActionView,
-  RoundStatus,
-} from "../types";
+import type { OperatorActionId, OperatorViewModel } from "../types";
 
-import panel from "./Panel.module.css";
+import { CloseEventPanel } from "./CloseEventPanel";
+import { MainActionButton } from "./MainActionButton";
+import styles from "./Admin.module.css";
 
 interface ActionsPanelProps {
-  actions: OperatorActionView[];
-  roundStatus: RoundStatus;
-  onRunAction: (id: OperatorActionId) => void;
+  viewModel: OperatorViewModel;
+  busy: boolean;
+  onRun: (id: OperatorActionId) => void;
+  onOpenCancel: () => void;
+  onOpenRescue: () => void;
 }
 
 /**
- * Texto de estado de una acción. Solo el paso actual muestra su motivo o su siguiente paso;
- * los pasos hechos se marcan como tales y los pendientes no muestran texto.
+ * Acciones del conductor sobre la ronda: el botón principal con el único paso válido (RF-06),
+ * Anular ronda (RF-10) y, en la votación con envíos pendientes, revelar con los presentes (RF-18).
+ * Con todas las rondas terminadas ofrece el cierre del evento (RF-30).
  */
-function noteOf(action: OperatorActionView, current: boolean, roundStatus: RoundStatus): string | null {
-  if (action.done) return "Hecho";
-  if (!current) return null;
-  if (action.blockedReason !== null) return action.blockedReason;
-  if (action.id === "close" && roundStatus === "LAST_CALL") {
-    return "Se cierra sola al llegar a 0:00";
+export function ActionsPanel({
+  viewModel,
+  busy,
+  onRun,
+  onOpenCancel,
+  onOpenRescue,
+}: ActionsPanelProps) {
+  const { mainAction } = viewModel;
+
+  if (mainAction === null) {
+    return viewModel.canCloseEvent ? <CloseEventPanel /> : null;
   }
-  return "Siguiente acción";
-}
-
-/**
- * Acciones de la ronda en orden. El veredicto permanece bloqueado hasta que voten todos los
- * jurados, y su motivo se anuncia junto al botón mediante aria-describedby.
- */
-export function ActionsPanel({ actions, roundStatus, onRunAction }: ActionsPanelProps) {
-  const currentIndex = actions.findIndex((action) => !action.done);
 
   return (
-    <section className={panel.panel} aria-labelledby="acciones-ronda">
-      <div className={panel.header}>
-        <h2 id="acciones-ronda" className={panel.title}>
-          Acciones de la ronda
-        </h2>
-      </div>
-      <ol className={panel.list}>
-        {actions.map((action, index) => {
-          const current = index === currentIndex;
-          const note = noteOf(action, current, roundStatus);
-          const noteId = `accion-${action.id}-nota`;
-          const isLocked = current && action.blockedReason !== null && action.id === "reveal";
-          const rowClass = [
-            panel.actionRow,
-            current ? panel.actionCurrent : "",
-            isLocked ? panel.actionLocked : "",
-            action.done ? panel.actionDone : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
-          const noteClass = action.done
-            ? panel.actionNoteDone
-            : action.blockedReason !== null && current
-              ? panel.actionNoteBlocked
-              : panel.note;
-
-          return (
-            <li key={action.id} className={rowClass}>
-              <span className={panel.actionIndex} aria-hidden="true">
-                {index + 1}
-              </span>
-              <div className={panel.actionMeta}>
-                {note !== null ? (
-                  <span id={noteId} className={noteClass}>
-                    {note}
-                  </span>
-                ) : null}
-              </div>
-              <Button
-                variant={action.enabled && current ? "primary" : "ghost"}
-                disabled={!action.enabled}
-                aria-describedby={note !== null ? noteId : undefined}
-                onClick={() => onRunAction(action.id)}
-              >
-                {action.label}
-              </Button>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
+    <div className={styles.mainRow}>
+      <MainActionButton action={mainAction} busy={busy} onRun={onRun} />
+      {viewModel.canRescue ? (
+        <Button variant="ghost" size="lg" disabled={busy} onClick={onOpenRescue}>
+          Revelar con presentes…
+        </Button>
+      ) : null}
+      {viewModel.canCancel ? (
+        <Button variant="danger" size="lg" disabled={busy} onClick={onOpenCancel}>
+          Anular ronda…
+        </Button>
+      ) : null}
+    </div>
   );
 }

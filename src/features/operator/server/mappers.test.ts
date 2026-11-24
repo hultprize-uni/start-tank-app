@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import type { RoundRow, RoundVoteRow } from "@/server/db/rounds";
-import { buildOperatorView, operatorReferenceRound, type OperatorData } from "./mappers";
 
-const NOW = new Date("2026-11-08T15:00:00.000Z");
+import { EVENT_CONFIG } from "@/shared/domain/config";
+import type { RoundRow } from "@/server/db/rounds";
 
-/** Fila de ronda con valores por defecto que cada prueba sobrescribe. */
+import {
+  buildOperatorViewFromRows,
+  cancelModeOf,
+  toAttendeeView,
+  toOperatorRole,
+  type OperatorData,
+} from "./mappers";
+
+const NOW = new Date("2026-11-26T19:30:00.000Z");
+
 function round(partial: Partial<RoundRow> & Pick<RoundRow, "numero" | "estado">): RoundRow {
   return {
     id_ronda: String(partial.numero),
@@ -27,202 +35,142 @@ function round(partial: Partial<RoundRow> & Pick<RoundRow, "numero" | "estado">)
   };
 }
 
-function vote(id: string, name: string, decision: RoundVoteRow["decision"]): RoundVoteRow {
+function data(extra: Partial<OperatorData> = {}): OperatorData {
   return {
-    id_jurado: id,
-    nombre: name,
-    enviado: decision !== null,
-    se_abstiene: decision === "ABSTAIN",
-    puntaje: null,
-    decision,
+    operator: { nombre: "Diego", rol: "CONDUCTOR" },
+    config: { ...EVENT_CONFIG },
+    flags: { eventStarted: true, manualMode: false },
+    rounds: [round({ numero: 1, estado: "OPEN" })],
+    firstOpenAt: null,
+    jurors: [],
+    cancelAction: null,
+    attendeesOnline: 0,
+    attendeesTotal: 0,
+    actions: [],
+    balances: [],
+    positions: [],
+    now: NOW,
+    ...extra,
   };
 }
 
-const COMPLETE_VOTES: RoundVoteRow[] = [
-  vote("1", "Jurado 1", "BACK"),
-  vote("2", "Jurado 2", "BACK"),
-  vote("3", "Jurado 3", "REJECT"),
-  vote("4", "Jurado 4", "ABSTAIN"),
-];
-
-describe("buildOperatorView", () => {
-  function operator(
-    rounds: RoundRow[],
-    extra: Partial<OperatorData> = {},
-  ): OperatorData {
-    return {
-      rounds,
-      votes: [],
-      cancelAction: null,
-      activeUsers: 0,
-      balances: [],
-      positions: [],
-      actions: [],
-      now: NOW,
-      ...extra,
-    };
-  }
-
-  it("devuelve nulo cuando no hay rondas", () => {
-    expect(buildOperatorView(operator([]))).toBeNull();
-  });
-
-  it("habilita la última llamada con la ronda abierta y mantiene bloqueado el veredicto", () => {
-    const vm = buildOperatorView(operator([round({ numero: 1, estado: "OPEN" })]));
-    const actions = Object.fromEntries((vm?.actions ?? []).map((a) => [a.id, a]));
-
-    expect(actions.last_call).toMatchObject({ enabled: true, done: false });
-    expect(actions.close).toMatchObject({ enabled: true, done: false });
-    expect(actions.open).toMatchObject({ enabled: false, done: true });
-    expect(actions.reveal).toMatchObject({ enabled: false, done: false });
-    // La anulación solo se ofrece con la ronda cerrada o en votación.
-    expect(vm?.canCancel).toBe(false);
-  });
-
-  it("indica cuántos votos faltan antes de revelar", () => {
-    const vm = buildOperatorView(
-      operator([round({ numero: 2, estado: "VOTING" })], {
-        votes: [
-          vote("1", "Jurado 1", "BACK"),
-          vote("2", "Jurado 2", "BACK"),
-          vote("3", "Jurado 3", "REJECT"),
-          vote("4", "Jurado 4", null),
-        ],
-      }),
-    );
-    const revelar = vm?.actions.find((a) => a.id === "reveal");
-
-    expect(revelar).toMatchObject({ enabled: false, blockedReason: "Bloqueado: falta 1 voto" });
-    expect(vm?.jurors.map((j) => j.sense)).toEqual([null, null, null, null]);
-  });
-
-  it("revela el sentido de los votos solo cuando la ronda está liquidada", () => {
-    const vm = buildOperatorView(
-      operator([round({ numero: 1, estado: "SETTLED", multiplicador: "1.4" })], {
-        votes: COMPLETE_VOTES,
-      }),
-    );
-
-    expect(vm?.jurors.map((j) => j.sense)).toEqual([
-      "backs",
-      "backs",
-      "rejects",
-      "abstains",
-    ]);
-    expect(vm?.round.multiplier).toBe(1.4);
-  });
-
-  it("identifica el modo de anulación registrado para la ronda", () => {
-    const vm = buildOperatorView(
-      operator([round({ numero: 4, estado: "CANCELLED", multiplicador: "1.0" })], {
-        cancelAction: "CANCEL_SETTLE_1X",
-      }),
-    );
-    expect(vm?.round.cancelMode).toBe("settle_1x");
-  });
-
-  it("muestra la siguiente ronda programada una vez liquidada la anterior", () => {
-    const rounds = [
-      round({ numero: 1, estado: "SETTLED" }),
-      round({ numero: 2, estado: "SCHEDULED", startup_nombre: "SolRed" }),
-    ];
-    expect(operatorReferenceRound(rounds)?.numero).toBe(2);
-  });
-
-  it("deja el retorno nulo mientras la posición no esté liquidada", () => {
-    const vm = buildOperatorView(
-      operator([round({ numero: 1, estado: "OPEN" })], {
-        positions: [
-          { id_usuario: "5", nombre: "Ana", numero: 1, startup_nombre: "Startup 1", monto: "2000", retorno: null },
-          { id_usuario: "5", nombre: "Ana", numero: 2, startup_nombre: "Startup 2", monto: "500", retorno: "700" },
-        ],
-      }),
-    );
-    expect(vm?.positions.map((p) => p.returnAmount)).toEqual([null, 700]);
+describe("toOperatorRole (RF-03)", () => {
+  it("solo CONDUCTOR ejecuta; cualquier otro rol es soporte", () => {
+    expect(toOperatorRole("CONDUCTOR")).toBe("CONDUCTOR");
+    expect(toOperatorRole("SOPORTE")).toBe("SUPPORT");
+    expect(toOperatorRole("OTRO")).toBe("SUPPORT");
   });
 });
 
-describe("buildOperatorView: puntajes, cuenta regresiva y registro", () => {
-  const NOW_DATE = new Date("2026-11-08T15:04:05.000Z");
+describe("cancelModeOf", () => {
+  it("traduce la anulación registrada", () => {
+    expect(cancelModeOf("CANCEL_REFUND")).toBe("refund");
+    expect(cancelModeOf("CANCEL_SETTLE_1X")).toBe("settle_1x");
+    expect(cancelModeOf(null)).toBeNull();
+  });
+});
 
-  function operator(rounds: RoundRow[], extra: Partial<OperatorData> = {}): OperatorData {
-    return {
-      rounds,
-      votes: [],
-      cancelAction: null,
-      activeUsers: 74,
-      balances: [],
-      positions: [],
-      actions: [],
-      now: NOW_DATE,
-      ...extra,
-    };
-  }
-
-  it("ordena los puntajes de las rondas liquidadas de mayor a menor y excluye las anuladas", () => {
-    const vm = buildOperatorView(
-      operator([
-        round({ numero: 1, estado: "SETTLED", multiplicador: "1.40", puntaje: "0.55", fraccion_respaldo: "0.50" }),
-        round({ numero: 2, estado: "SETTLED", multiplicador: "1.80", puntaje: "0.82", fraccion_respaldo: "0.75" }),
-        round({ numero: 3, estado: "CANCELLED", multiplicador: "1.00", puntaje: "0.90", fraccion_respaldo: null }),
-      ]),
+describe("buildOperatorViewFromRows", () => {
+  it("convierte los valores numéricos, el rol, el reloj y las duraciones", () => {
+    const view = buildOperatorViewFromRows(
+      data({
+        operator: { nombre: "Ana", rol: "SOPORTE" },
+        rounds: [
+          round({
+            numero: 1,
+            estado: "OPEN",
+            monto_acumulado: "56500.00",
+            inversores_unicos: 47,
+            precio_vivo: "128.40",
+            fase_termina_en: "2026-11-26T19:32:41.000Z",
+          }),
+        ],
+        attendeesOnline: 78,
+        attendeesTotal: 81,
+      }),
     );
-
-    expect(vm?.standings.map((s) => s.roundNumber)).toEqual([2, 1]);
-    expect(vm?.standings[0]).toMatchObject({ startupName: "Startup 2", score: 0.82, fraction: 0.75 });
+    expect(view?.operator).toEqual({ name: "Ana", role: "SUPPORT" });
+    expect(view?.market).toEqual({
+      accumulated: 56500,
+      uniqueInvestors: 47,
+      connectedAttendees: 78,
+      totalAttendees: 81,
+      price: 128.4,
+    });
+    expect(view?.clock.phaseEndsAt).toBe("2026-11-26T19:32:41.000Z");
+    expect(view?.durations.qa).toBe(EVENT_CONFIG.qaSeconds);
+    expect(view?.serverTime).toBe(NOW.toISOString());
   });
 
-  it("calcula los segundos restantes de la última llamada a partir del tiempo transcurrido", () => {
-    const enCurso = buildOperatorView(
-      operator([round({ numero: 1, estado: "LAST_CALL", segundos_ultima_llamada: 45.7 })]),
-    );
-    const agotada = buildOperatorView(
-      operator([round({ numero: 1, estado: "LAST_CALL", segundos_ultima_llamada: 75 })]),
-    );
-    const abierta = buildOperatorView(
-      operator([round({ numero: 1, estado: "OPEN", segundos_ultima_llamada: null })]),
-    );
-
-    expect(enCurso?.market.lastCallRemaining).toBe(15);
-    expect(agotada?.market.lastCallRemaining).toBe(0);
-    expect(abierta?.market.lastCallRemaining).toBeNull();
-  });
-
-  it("lista todas las rondas con su multiplicador solo cuando están liquidadas", () => {
-    const vm = buildOperatorView(
-      operator([
-        round({ numero: 1, estado: "SETTLED", multiplicador: "1.40" }),
-        round({ numero: 2, estado: "VOTING" }),
-        round({ numero: 3, estado: "SCHEDULED" }),
-      ]),
-    );
-
-    expect(vm?.rounds).toEqual([
-      { number: 1, startupName: "Startup 1", status: "SETTLED", multiplier: 1.4 },
-      { number: 2, startupName: "Startup 2", status: "VOTING", multiplier: null },
-      { number: 3, startupName: "Startup 3", status: "SCHEDULED", multiplier: null },
-    ]);
-  });
-
-  it("registra cada acción con hora HH:MM:SS, número de ronda y etiqueta visible", () => {
-    const vm = buildOperatorView(
-      operator([round({ numero: 2, estado: "VOTING" })], {
-        actions: [
-          { id_accion: "9", accion: "REVEAL", ejecutada_en: NOW_DATE, operador: "op.1", numero: 2, startup_nombre: "Startup 2" },
+  it("no expone el puntaje del jurado antes de liquidar (RNF-11)", () => {
+    const view = buildOperatorViewFromRows(
+      data({
+        rounds: [round({ numero: 1, estado: "VOTING" })],
+        jurors: [
+          {
+            id: "1",
+            name: "Jurado 1",
+            sent: true,
+            abstains: false,
+            drafting: false,
+            score: "4.250",
+            seconds_since_seen: 3,
+          },
         ],
       }),
     );
-
-    expect(vm?.log[0]).toMatchObject({ time: "10:04:05", roundNumber: 2, label: "Revelar veredicto" });
+    expect(view?.jurors[0]).toMatchObject({ status: "sent", score: null, online: true });
   });
 
-  it("permite anular solo con la ronda en votación o cerrada y deja el modo manual apagado", () => {
-    const enVotacion = buildOperatorView(operator([round({ numero: 1, estado: "VOTING" })]));
-    const abierta = buildOperatorView(operator([round({ numero: 1, estado: "OPEN" })]));
+  it("incluye el motivo de cada acción del log (RF-09)", () => {
+    const view = buildOperatorViewFromRows(
+      data({
+        actions: [
+          {
+            id_accion: "4",
+            accion: "CANCEL_REFUND",
+            ejecutada_en: "2026-11-26T20:00:00.000Z",
+            operador: "Diego",
+            numero: 2,
+            motivo: "Falla del proyector",
+          },
+        ],
+      }),
+    );
+    expect(view?.log[0]).toMatchObject({
+      roundNumber: 2,
+      operator: "Diego",
+      reason: "Falla del proyector",
+      label: "Anuló la ronda y devolvió lo invertido",
+    });
+  });
+});
 
-    expect(enVotacion?.canCancel).toBe(true);
-    expect(abierta?.canCancel).toBe(false);
-    expect(enVotacion?.manualMode).toEqual({ enabled: false, backs: 0 });
-    expect(enVotacion?.canManualSettle).toBe(false);
+describe("toAttendeeView", () => {
+  it("arma la ficha con la posición, la conexión y la última inversión", () => {
+    const view = toAttendeeView(
+      {
+        id: "7",
+        name: null,
+        email: "diego@uni.pe",
+        balance: "7000.00",
+        position: 7,
+        seconds_since_seen: 3.6,
+        last_round: 2,
+        last_startup: "AguaClara",
+        last_amount: "3000.00",
+      },
+      30,
+    );
+    expect(view).toEqual({
+      id: "7",
+      name: "Asistente 7",
+      email: "diego@uni.pe",
+      balance: 7000,
+      position: 7,
+      online: true,
+      lastSeenSeconds: 3,
+      lastInvestment: { roundNumber: 2, startupName: "AguaClara", amount: 3000 },
+    });
   });
 });

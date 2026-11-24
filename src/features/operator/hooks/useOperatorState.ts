@@ -1,39 +1,33 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+"use client";
 
-import { USE_MOCKS } from "@/shared/lib/env";
+import { useCallback, useMemo, useRef, useState } from "react";
+
+import { usePolling } from "@/shared/lib/use-polling";
+
 import {
   downloadExport,
-  executeOperatorAction,
   readOperatorState,
-  type OperatorRequest,
+  runOperatorCommand,
+  type OperatorCommand,
+  type OperatorResult,
 } from "../api/client";
-import { buildSettlementCsv, downloadCsv } from "../api/export";
-import { useOperatorState as useOperatorStateMock } from "../api/mock";
-import type { CancelMode, OperatorActionId, OperatorViewModel } from "../types";
+import { OPERATOR_POLL_MS } from "../thresholds";
+import type { OperatorViewModel } from "../types";
 
-/** Mensaje mostrado mientras la API no ofrece el modo manual. */
-export const MANUAL_MODE_PENDING_MESSAGE =
-  "Pendiente de API: el modo manual no está disponible.";
-
-/** Mensaje mostrado mientras la API no ofrece deshacer la última acción. */
-export const UNDO_PENDING_MESSAGE =
-  "Pendiente de API: deshacer la última acción no está disponible.";
-
-/** Periodo del sondeo del estado de la consola, en milisegundos. */
-export const OPERATOR_POLL_INTERVAL_MS = 3_000;
-
-/** Estado del portal del operador que consumen los componentes. */
+/** Estado de la consola que consumen los componentes. */
 export interface OperatorPortalState {
   /** Null mientras no llega la primera respuesta del servidor. */
   viewModel: OperatorViewModel | null;
-  /** Aviso visible de la última operación fallida o pendiente. Es null cuando no hay aviso. */
+  /** Aviso de la última operación fallida. Null cuando no hay aviso. */
   notice: string | null;
-  runAction: (id: OperatorActionId) => void;
-  undo: () => void;
-  cancelRound: (mode: CancelMode) => void;
-  setManualMode: (enabled: boolean) => void;
-  setManualBacks: (backs: number) => void;
-  simulateJurorVote: (jurorId: string) => void;
+  clearNotice: () => void;
+  /** Hora local (ms) de la última respuesta correcta del servidor. */
+  lastOkAt: number;
+  /** Ejecuta un comando de ronda y refresca. Devuelve el resultado para los diálogos. */
+  run: (command: OperatorCommand) => Promise<OperatorResult<{ multiplier: number | null }>>;
+  /** Indica si hay un comando en curso, para no enviar dos veces. */
+  busy: boolean;
+  refresh: () => Promise<void>;
   exportCsv: () => void;
 }
 
@@ -42,77 +36,53 @@ interface OperatorOptions {
   onSessionExpired?: () => void;
 }
 
-
 /**
- * Estado de la consola del operador conectado a la API. Sondea el estado cada
- * OPERATOR_POLL_INTERVAL_MS y notifica al portal cuando la sesión deja de ser válida.
+ * Estado de la consola del operador. Consulta el estado cada 3 segundos (sin solaparse y en pausa
+ * con la pestaña oculta) y avisa al portal cuando la sesión vence.
  */
-function useOperatorStateApi(options: OperatorOptions = {}): OperatorPortalState {
+export function useOperatorState(options: OperatorOptions = {}): OperatorPortalState {
   const [viewModel, setViewModel] = useState<OperatorViewModel | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const viewRef = useRef<OperatorViewModel | null>(null);
+  const [lastOkAt, setLastOkAt] = useState(() => Date.now());
+  const [busy, setBusy] = useState(false);
   const onExpiredRef = useRef(options.onSessionExpired);
-
-  useEffect(() => {
-    onExpiredRef.current = options.onSessionExpired;
-  });
+  onExpiredRef.current = options.onSessionExpired;
 
   const refresh = useCallback(async () => {
     const result = await readOperatorState();
     if (result.ok) {
-      viewRef.current = result.value;
       setViewModel(result.value);
+      setLastOkAt(Date.now());
       return;
     }
     if (result.sessionExpired) {
       onExpiredRef.current?.();
       return;
     }
-    setNotice(result.message);
-  }, []);
+    // Sin datos nuevos se conserva el último view model; la alerta de conexión lo indica.
+    if (viewModel === null) setNotice(result.message);
+  }, [viewModel]);
 
-  useEffect(() => {
-    void refresh();
-    const id = window.setInterval(() => void refresh(), OPERATOR_POLL_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [refresh]);
+  usePolling(refresh, OPERATOR_POLL_MS);
 
-  const execute = useCallback(
-    async (request: OperatorRequest) => {
-      const result = await executeOperatorAction(request, viewRef.current);
-      if (!result.ok && result.sessionExpired) {
-        onExpiredRef.current?.();
-        return;
+  const run = useCallback(
+    async (command: OperatorCommand) => {
+      setBusy(true);
+      try {
+        const result = await runOperatorCommand(command);
+        if (!result.ok && result.sessionExpired) {
+          onExpiredRef.current?.();
+          return result;
+        }
+        setNotice(result.ok ? null : result.message);
+        await refresh();
+        return result;
+      } finally {
+        setBusy(false);
       }
-      setNotice(result.ok ? null : result.message);
-      await refresh();
     },
     [refresh],
   );
-
-  const runAction = useCallback((id: OperatorActionId) => void execute(id), [execute]);
-
-  const cancelRound = useCallback(
-    (mode: CancelMode) =>
-      void execute(mode === "refund" ? "cancel_refund" : "cancel_settle_1x"),
-    [execute],
-  );
-
-  const undo = useCallback(() => {
-    setNotice(UNDO_PENDING_MESSAGE);
-  }, []);
-
-  const setManualMode = useCallback(() => {
-    setNotice(MANUAL_MODE_PENDING_MESSAGE);
-  }, []);
-
-  const setManualBacks = useCallback(() => {
-    setNotice(MANUAL_MODE_PENDING_MESSAGE);
-  }, []);
-
-  const simulateJurorVote = useCallback(() => {
-    // Sin equivalente en la API: la simulación de votos pertenece a los datos de muestra.
-  }, []);
 
   const exportCsv = useCallback(() => {
     void (async () => {
@@ -125,52 +95,10 @@ function useOperatorStateApi(options: OperatorOptions = {}): OperatorPortalState
     })();
   }, []);
 
+  const clearNotice = useCallback(() => setNotice(null), []);
+
   return useMemo(
-    () => ({
-      viewModel,
-      notice,
-      runAction,
-      undo,
-      cancelRound,
-      setManualMode,
-      setManualBacks,
-      simulateJurorVote,
-      exportCsv,
-    }),
-    [
-      viewModel,
-      notice,
-      runAction,
-      undo,
-      cancelRound,
-      setManualMode,
-      setManualBacks,
-      simulateJurorVote,
-      exportCsv,
-    ],
+    () => ({ viewModel, notice, clearNotice, lastOkAt, run, busy, refresh, exportCsv }),
+    [viewModel, notice, clearNotice, lastOkAt, run, busy, refresh, exportCsv],
   );
 }
-
-/** Adapta el estado de muestra al contrato del portal, con exportación local en el CSV de muestra. */
-function useOperatorStateMockAdapter(): OperatorPortalState {
-  const api = useOperatorStateMock();
-  const { viewModel } = api;
-
-  const exportCsv = useCallback(() => {
-    if (viewModel === null) return;
-    downloadCsv(
-      `start-tank-ronda-${viewModel.round.number}-saldos-posiciones.csv`,
-      buildSettlementCsv(viewModel),
-    );
-  }, [viewModel]);
-
-  return useMemo(() => ({ ...api, notice: null, exportCsv }), [api, exportCsv]);
-}
-
-/**
- * Estado del portal del operador. Usa los datos de muestra solo con NEXT_PUBLIC_USE_MOCKS=true; en
- * otro caso consume la API. La selección ocurre en tiempo de compilación.
- */
-export const useOperatorState: (options?: OperatorOptions) => OperatorPortalState = USE_MOCKS
-  ? useOperatorStateMockAdapter
-  : useOperatorStateApi;

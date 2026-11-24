@@ -1,26 +1,27 @@
-import type { Decision } from "@/shared/domain/types";
-import { EVENT_CONFIG } from "@/shared/domain/config";
-import { classifyRounds, accumulatedOf, priceOf, sortRounds, type RoundRow, type RoundVoteRow } from "@/server/db/rounds";
+import type { EventConfig } from "@/shared/domain/config";
+import { priceOf, accumulatedOf, type RoundRow } from "@/server/db/rounds";
 import { toNumber } from "@/server/db/values";
-import { OPERATOR_ACTION_LABELS } from "../labels";
+import type { EventFlags } from "@/server/db/config";
 import type {
+  AttendeeView,
   BalanceRow,
   CancelMode,
-  JurorSense,
-  JurorVoteView,
-  LogEntryView,
-  OperatorActionId,
-  OperatorActionView,
+  OperatorRole,
   OperatorViewModel,
+  PhaseDurations,
   PositionRow,
-  RoundStatus,
-  RoundSummaryView,
-  StandingView,
 } from "../types";
+import {
+  buildOperatorView,
+  type OperatorSnapshot,
+  type SnapshotAction,
+  type SnapshotJuror,
+  type SnapshotRound,
+} from "../view";
 
 /*
- * Constructor puro del view model de la consola del operador. Recibe las filas que devuelven las
- * consultas de queries.ts y no accede a la base de datos.
+ * Mapeos puros de las filas de la base al snapshot de la consola. No acceden a la base: los usa
+ * queries.ts y se prueban con filas de ejemplo.
  */
 
 /** Saldo actual de un asistente. */
@@ -44,238 +45,179 @@ export interface AttendeePositionRow {
 export interface ActionRow {
   id_accion: string;
   accion: string;
-  ejecutada_en: Date;
+  ejecutada_en: Date | string;
   operador: string;
   numero: number;
-  startup_nombre: string;
+  motivo: string | null;
+}
+
+/** Envío y conexión de un jurado en la ronda de referencia. Nunca incluye las notas por criterio. */
+export interface JurorRow {
+  id: string;
+  name: string;
+  sent: boolean;
+  abstains: boolean;
+  drafting: boolean;
+  /** Puntaje del envío. La consulta solo lo trae con la ronda liquidada. */
+  score: string | null;
+  seconds_since_seen: number | null;
+}
+
+/** Operador de la sesión. */
+export interface OperatorRow {
+  nombre: string;
+  rol: string;
+}
+
+/** Asistente con su posición por patrimonio, como lo devuelve la búsqueda. */
+export interface AttendeeRow {
+  id: string;
+  name: string | null;
+  email: string | null;
+  balance: string;
+  position: number;
+  seconds_since_seen: number | null;
+  last_round: number | null;
+  last_startup: string | null;
+  last_amount: string | null;
 }
 
 export interface OperatorData {
+  operator: OperatorRow;
+  config: EventConfig;
+  flags: EventFlags;
   rounds: readonly RoundRow[];
-  /** Votos de la ronda que controla el operador. */
-  votes: readonly RoundVoteRow[];
-  /** Acción de anulación registrada para la ronda que controla el operador, si existe. */
+  firstOpenAt: string | null;
+  jurors: readonly JurorRow[];
   cancelAction: string | null;
-  activeUsers: number;
+  attendeesOnline: number;
+  attendeesTotal: number;
+  actions: readonly ActionRow[];
   balances: readonly BalanceSnapshotRow[];
   positions: readonly AttendeePositionRow[];
-  actions: readonly ActionRow[];
-  /** Fecha de referencia para el registro de acciones y la cuenta regresiva. */
   now: Date;
 }
 
-/** Zona horaria del evento para el registro de acciones del operador. */
-const EVENT_TIME_ZONE = "America/Lima";
-
-const TIME_FORMAT = new Intl.DateTimeFormat("es-PE", {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: false,
-  timeZone: EVENT_TIME_ZONE,
-});
-
-/** Ronda que controla el operador: la activa, o la siguiente programada, o la última terminada. */
-export function operatorReferenceRound(rounds: readonly RoundRow[]): RoundRow | undefined {
-  const c = classifyRounds(rounds);
-  return c.active ?? c.pending ?? c.lastFinished ?? sortRounds(rounds)[0];
-}
-
-/** Texto del motivo de bloqueo del veredicto según los votos que faltan. */
-function revealBlockedText(pendingCount: number): string {
-  return pendingCount === 1 ? "Bloqueado: falta 1 voto" : `Bloqueado: faltan ${pendingCount} votos`;
-}
-
-/** Acciones que el operador puede disparar en cada estado de la ronda que controla. */
-function buildActions(
-  state: RoundStatus,
-  votesCast: number,
-  totalVotes: number,
-  hasFinishedRound: boolean,
-): OperatorActionView[] {
-  const pendingCount = Math.max(0, totalVotes - votesCast);
-  const revealEnabled = state === "VOTING" && pendingCount === 0 && totalVotes > 0;
-
-  const revealReason = revealEnabled
-    ? null
-    : state === "VOTING"
-      ? revealBlockedText(pendingCount)
-      : "Requiere votación habilitada.";
-
-  const row = (
-    id: OperatorActionId,
-    done: boolean,
-    enabled: boolean,
-    blockedReason: string | null,
-  ): OperatorActionView => ({ id, label: ACTION_VIEW_LABELS[id], done, enabled, blockedReason });
-
-  return [
-    row("open", state !== "SCHEDULED", state === "SCHEDULED", null),
-    row(
-      "last_call",
-      ["LAST_CALL", "CLOSED", "VOTING", "SETTLED"].includes(state),
-      state === "OPEN",
-      state === "OPEN" ? null : "Requiere la ronda abierta.",
-    ),
-    row(
-      "close",
-      ["CLOSED", "VOTING", "SETTLED"].includes(state),
-      state === "OPEN" || state === "LAST_CALL",
-      state === "OPEN" || state === "LAST_CALL" ? null : "Requiere el mercado abierto.",
-    ),
-    row("reveal", state === "SETTLED", revealEnabled, revealReason),
-    // La acción siguiente no tiene operación propia en la base de datos: avanzar de ronda
-    // ocurre al abrir la siguiente ronda. Se muestra deshabilitada para conservar el contrato.
-    row(
-      "next",
-      false,
-      false,
-      hasFinishedRound ? "Avanza al abrir la siguiente ronda." : null,
-    ),
-  ];
-}
-
-/** Etiquetas visibles de las acciones del operador, en el orden de la consola. */
-const ACTION_VIEW_LABELS: Readonly<Record<OperatorActionId, string>> = {
-  open: "Abrir mercado",
-  last_call: "Declarar última llamada",
-  close: "Cerrar mercado",
-  reveal: "Revelar veredicto",
-  next: "Siguiente startup",
-};
-
-function senseOf(decision: Decision | null, state: RoundStatus): JurorSense | null {
-  if (state !== "SETTLED" || decision === null) return null;
-  const senseMap: Readonly<Record<Decision, JurorSense>> = {
-    BACK: "backs",
-    REJECT: "rejects",
-    ABSTAIN: "abstains",
-  };
-  return senseMap[decision];
-}
-
-function timeOf(date: Date): string {
-  return TIME_FORMAT.format(date);
+/** Rol de la base (CONDUCTOR, SOPORTE) en el valor del dominio. Cualquier otro valor solo lee. */
+export function toOperatorRole(dbRole: string): OperatorRole {
+  return dbRole === "CONDUCTOR" ? "CONDUCTOR" : "SUPPORT";
 }
 
 /** Modo de anulación derivado de la acción registrada para la ronda. */
-function cancelModeOf(action: string | null): CancelMode | null {
+export function cancelModeOf(action: string | null): CancelMode | null {
   if (action === "CANCEL_REFUND") return "refund";
   if (action === "CANCEL_SETTLE_1X") return "settle_1x";
   return null;
 }
 
-/** Segundos restantes de la última llamada. Es null fuera de esa fase. */
-function lastCallRemainingOf(row: RoundRow): number | null {
-  if (row.estado !== "LAST_CALL" || row.segundos_ultima_llamada === null) return null;
-  return Math.max(0, EVENT_CONFIG.lastCallSeconds - Math.floor(row.segundos_ultima_llamada));
+export function durationsOf(config: EventConfig): PhaseDurations {
+  return {
+    pitch: config.pitchSeconds,
+    qa: config.qaSeconds,
+    lastCall: config.lastCallSeconds,
+    voting: config.votingSeconds,
+    result: config.resultSeconds,
+  };
 }
 
-/** Multiplicador liquidado de una ronda, o null mientras no esté liquidada. */
-function settledMultiplierOf(row: RoundRow): number | null {
-  if (row.estado !== "SETTLED" || row.multiplicador === null) return null;
-  return toNumber(row.multiplicador);
-}
-
-/** Lista de rondas del evento para la barra lateral. */
-function buildRoundSummaries(rounds: readonly RoundRow[]): RoundSummaryView[] {
-  return sortRounds(rounds).map((row) => ({
+export function toSnapshotRound(row: RoundRow): SnapshotRound {
+  return {
     number: row.numero,
     startupName: row.startup_nombre,
+    sdg: row.ods,
     status: row.estado,
-    multiplier: settledMultiplierOf(row),
-  }));
-}
-
-/**
- * Puntajes de las startups liquidadas. Se ordenan de mayor a menor puntaje y, ante empate, por
- * mayor fracción de respaldo, como indica el criterio de desempate del dominio.
- */
-export function buildStandings(rounds: readonly RoundRow[]): StandingView[] {
-  return sortRounds(rounds)
-    .filter((row) => row.estado === "SETTLED" && row.puntaje !== null)
-    .map(
-      (row): StandingView => ({
-        roundNumber: row.numero,
-        startupName: row.startup_nombre,
-        score: toNumber(row.puntaje),
-        fraction: row.fraccion_respaldo === null ? null : toNumber(row.fraccion_respaldo),
-      }),
-    )
-    .sort((a, b) => b.score - a.score || (b.fraction ?? 0) - (a.fraction ?? 0));
-}
-
-/**
- * Construye el view model de la consola del operador. Devuelve nulo cuando no existen rondas.
- * El sentido de los votos se revela solo cuando la ronda está SETTLED.
- */
-export function buildOperatorView(data: OperatorData): OperatorViewModel | null {
-  const current = operatorReferenceRound(data.rounds);
-  if (current === undefined) return null;
-
-  const state = current.estado as RoundStatus;
-  const c = classifyRounds(data.rounds);
-  const cast = data.votes.filter((v) => v.decision !== null).length;
-  const totalVotes = data.votes.length;
-
-  const jurors: JurorVoteView[] = data.votes.map((vote) => ({
-    id: `jurado-${vote.id_jurado}`,
-    label: vote.nombre,
-    emitted: vote.decision !== null,
-    sense: senseOf(vote.decision, state),
-  }));
-
-  const log: LogEntryView[] = data.actions.map((action) => ({
-    id: action.id_accion,
-    time: timeOf(action.ejecutada_en),
-    roundNumber: action.numero,
-    label: OPERATOR_ACTION_LABELS[action.accion] ?? action.accion,
-    operator: action.operador,
-  }));
-
-  return {
-    round: {
-      number: current.numero,
-      total: data.rounds.length,
-      startupName: current.startup_nombre,
-      status: state,
-      multiplier: settledMultiplierOf(current),
-      cancelMode: cancelModeOf(data.cancelAction),
-    },
-    rounds: buildRoundSummaries(data.rounds),
-    actions: buildActions(state, cast, totalVotes, c.lastFinished !== undefined),
-    jurors,
-    market: {
-      accumulated: accumulatedOf(current),
-      uniqueInvestors: current.inversores_unicos ?? 0,
-      // La base de datos no registra sesiones activas; se usa el número de asistentes activos.
-      connectedAttendees: data.activeUsers,
-      price: priceOf(current),
-      lastCallRemaining: lastCallRemainingOf(current),
-    },
-    standings: buildStandings(data.rounds),
-    log,
-    canUndo: false,
-    // La anulación se ofrece solo con la ronda cerrada o en votación, según el prototipo.
-    canCancel: ["CLOSED", "VOTING"].includes(state),
-    canManualSettle: false,
-    manualMode: { enabled: false, backs: 0 },
-    balances: data.balances.map(
-      (row): BalanceRow => ({
-        attendeeId: row.id_usuario,
-        attendeeName: row.nombre,
-        balance: toNumber(row.saldo_actual),
-      }),
-    ),
-    positions: data.positions.map(
-      (row): PositionRow => ({
-        attendeeId: row.id_usuario,
-        attendeeName: row.nombre,
-        round: row.numero,
-        startupName: row.startup_nombre,
-        amount: toNumber(row.monto),
-        returnAmount: row.retorno === null ? null : toNumber(row.retorno),
-      }),
-    ),
+    multiplier: row.multiplicador === null ? null : toNumber(row.multiplicador),
+    juryScore: row.puntaje_jurado === null ? null : toNumber(row.puntaje_jurado),
+    phaseEndsAt: row.fase_termina_en,
+    pausedSeconds: row.segundos_restantes_pausa,
+    accumulated: accumulatedOf(row),
+    uniqueInvestors: row.inversores_unicos ?? 0,
+    price: priceOf(row),
   };
+}
+
+export function toSnapshotJuror(row: JurorRow): SnapshotJuror {
+  return {
+    id: row.id,
+    name: row.name,
+    sent: row.sent,
+    abstains: row.abstains,
+    drafting: row.drafting,
+    score: row.score === null ? null : toNumber(row.score),
+    secondsSinceSeen: row.seconds_since_seen,
+  };
+}
+
+export function toSnapshotAction(row: ActionRow): SnapshotAction {
+  return {
+    id: row.id_accion,
+    at: row.ejecutada_en instanceof Date ? row.ejecutada_en : new Date(row.ejecutada_en),
+    roundNumber: row.numero,
+    action: row.accion,
+    operator: row.operador,
+    reason: row.motivo,
+  };
+}
+
+export function toBalanceRow(row: BalanceSnapshotRow): BalanceRow {
+  return {
+    attendeeId: row.id_usuario,
+    attendeeName: row.nombre,
+    balance: toNumber(row.saldo_actual),
+  };
+}
+
+export function toPositionRow(row: AttendeePositionRow): PositionRow {
+  return {
+    attendeeId: row.id_usuario,
+    attendeeName: row.nombre,
+    round: row.numero,
+    startupName: row.startup_nombre,
+    amount: toNumber(row.monto),
+    returnAmount: row.retorno === null ? null : toNumber(row.retorno),
+  };
+}
+
+export function toAttendeeView(row: AttendeeRow, onlineSeconds: number): AttendeeView {
+  return {
+    id: row.id,
+    name: row.name ?? `Asistente ${row.id}`,
+    email: row.email,
+    balance: toNumber(row.balance),
+    position: row.position,
+    online: row.seconds_since_seen !== null && row.seconds_since_seen < onlineSeconds,
+    lastSeenSeconds: row.seconds_since_seen === null ? null : Math.floor(row.seconds_since_seen),
+    lastInvestment:
+      row.last_round === null || row.last_startup === null
+        ? null
+        : {
+            roundNumber: row.last_round,
+            startupName: row.last_startup,
+            amount: toNumber(row.last_amount),
+          },
+  };
+}
+
+/** Convierte las filas leídas en el snapshot de la consola. */
+export function toOperatorSnapshot(data: OperatorData): OperatorSnapshot {
+  return {
+    now: data.now,
+    operator: { name: data.operator.nombre, role: toOperatorRole(data.operator.rol) },
+    flags: data.flags,
+    durations: durationsOf(data.config),
+    rounds: data.rounds.map(toSnapshotRound),
+    firstOpenAt: data.firstOpenAt,
+    jurors: data.jurors.map(toSnapshotJuror),
+    cancelMode: cancelModeOf(data.cancelAction),
+    attendeesOnline: data.attendeesOnline,
+    attendeesTotal: data.attendeesTotal,
+    actions: data.actions.map(toSnapshotAction),
+    balances: data.balances.map(toBalanceRow),
+    positions: data.positions.map(toPositionRow),
+  };
+}
+
+/** Arma el view model de la consola desde las filas. Devuelve null sin rondas. */
+export function buildOperatorViewFromRows(data: OperatorData): OperatorViewModel | null {
+  return buildOperatorView(toOperatorSnapshot(data));
 }
