@@ -789,8 +789,10 @@
 }
 
 .footerLogo {
-  width: 150px;
+  width: 128px;
   height: auto;
+  border-radius: 8px;
+  background: #fff; /* el logo está hecho para fondo blanco */
 }
 
 .footerText {

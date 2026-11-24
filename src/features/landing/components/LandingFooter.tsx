@@ -7,10 +7,10 @@ export function LandingFooter() {
     <footer className={styles.footer}>
       <div className={`${styles.container} ${styles.footerRow}`}>
         <Image
-          src="/brand/logo-hult-prize-uni.png"
-          alt="Hult Prize at UNI"
-          width={258}
-          height={95}
+          src="/brand/logo-ef-hult-prize.png"
+          alt="EF Hult Prize at UNI"
+          width={383}
+          height={261}
           className={styles.footerLogo}
         />
         <p className={styles.footerText}>Hult Prize at UNI. Universidad Nacional de Ingeniería, Lima.</p>
