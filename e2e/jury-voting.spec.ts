@@ -57,11 +57,11 @@ test.describe("votacion del jurado", () => {
       await expect(sendButton).toBeDisabled();
 
       for (const item of CRITERION_SCORES) {
-        // El radio está oculto visualmente y su etiqueta lo cubre: force evita el chequeo de visibilidad.
+        // El radio está oculto visualmente: se hace clic en su etiqueta, que es lo que ve la persona.
         await jurorPage
           .getByRole("radiogroup", { name: item.group })
-          .getByRole("radio", { name: new RegExp(`^${item.value} `) })
-          .check({ force: true });
+          .locator("label", { hasText: new RegExp(`^${item.value} `) })
+          .click();
       }
       await expect(jurorPage.getByRole("status")).toHaveText("Borrador guardado");
 
@@ -152,7 +152,10 @@ test.describe("votacion del jurado", () => {
 
       await expect(jurorPage.getByText("1.4x", { exact: true })).toBeVisible({ timeout: 10_000 });
       await expect(jurorPage.getByText("4.0 / 5", { exact: true }).first()).toBeVisible();
-      await expect(jurorPage.getByText("Se abstuvo", { exact: true }).first()).toBeVisible();
+      // El panel lateral de escritorio también dice "Se abstuvo" pero está oculto en el teléfono.
+      await expect(
+        jurorPage.getByText("Se abstuvo", { exact: true }).filter({ visible: true }).first(),
+      ).toBeVisible();
     } finally {
       await phoneContext.close();
     }
