@@ -15,11 +15,8 @@ export const NAV_SECTIONS = [
 /** Destino del CTA de ingreso de la aplicación. */
 export const LOGIN_HREF = PAGE_ROUTES.participant;
 
-/**
- * Inscripción en Luma. shortcut: sin NEXT_PUBLIC_LUMA_URL el botón lleva a la sección de
- * inscripción; definirla en el despliegue con el enlace real del evento.
- */
-export const SIGNUP_HREF = process.env.NEXT_PUBLIC_LUMA_URL || "#inscripcion";
+/** Inscripción al evento en Luma. */
+export const SIGNUP_HREF = "https://luma.com/yj5tp4fe";
 
 export const EVENT_FACTS = [
   { value: "26 nov", label: "Jueves" },
@@ -60,7 +57,7 @@ export const MULTIPLIER_BARS = [
 export interface ScheduleItem {
   time: string;
   title: string;
-  text: string;
+  text?: string;
 }
 
 export const SCHEDULE: ScheduleItem[] = [
@@ -69,9 +66,8 @@ export const SCHEDULE: ScheduleItem[] = [
   { time: "14:30", title: "Rondas 1 a 3", text: "Las tres primeras startups." },
   { time: "15:09", title: "Pausa", text: "Agua y descanso." },
   { time: "15:14", title: "Rondas 4 y 5", text: "Las dos últimas startups." },
-  { time: "15:40", title: "Premiación del Shark Tank", text: "Startup ganadora y top 3 de inversionistas." },
-  { time: "15:50", title: "Networking y dinámica express", text: "Grupos de 3 a 5 crean una idea en 20 minutos." },
-  { time: "16:50", title: "Premiación y cierre", text: "Grupo ganador y foto final." },
+  { time: "15:40", title: "Cierre y reconocimiento a los jurados" },
+  { time: "15:50", title: "Detalle y anuncio de la gran final de Hult Prize UNI" },
 ];
 
 export const PLATFORM_SCREENS = [
@@ -92,21 +88,6 @@ export const PLATFORM_SCREENS = [
     title: "Consola del operador",
     text: "Abre y cierra rondas, revela el veredicto y vigila la salud del sistema.",
     tone: "muted",
-  },
-] as const;
-
-export const PRIZES = [
-  {
-    tag: "Shark Tank",
-    title: "Pase directo a la gran final de Hult Prize at UNI",
-    text: "Para la startup con el mayor puntaje al cierre de las 5 rondas.",
-    tone: "pink",
-  },
-  {
-    tag: "Idea millonaria en 20 minutos",
-    title: "Pase directo a Hult Prize at UNI con esa misma idea",
-    text: "Para el grupo ganador de la dinámica express.",
-    tone: "cyan",
   },
 ] as const;
 
