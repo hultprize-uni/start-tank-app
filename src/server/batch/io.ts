@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -7,32 +7,43 @@ import { join } from "node:path";
  * en un despliegue sin disco escribible se apunta a /tmp.
  */
 
-export function outDir(): string {
-  // En Vercel solo /tmp es escribible. shortcut: ahí el archivo dura lo que la instancia; para
+let privateTmp: Promise<string> | null = null;
+
+async function outDir(): Promise<string> {
+  if (process.env.BATCH_OUT_DIR) return process.env.BATCH_OUT_DIR;
+  if (!process.env.VERCEL) return join(process.cwd(), "batch-out");
+  // En Vercel solo /tmp es escribible, y es compartido: una carpeta propia con nombre aleatorio
+  // evita que otro proceso adivine la ruta del respaldo. shortcut: dura lo que la instancia; para
   // conservar respaldos del evento, correr `pnpm batch respaldo` desde una PC.
-  const fallback = process.env.VERCEL ? join(tmpdir(), "batch-out") : join(process.cwd(), "batch-out");
-  return process.env.BATCH_OUT_DIR ?? fallback;
+  privateTmp ??= mkdtemp(join(tmpdir(), "batch-out-"));
+  return privateTmp;
 }
 
-/** Marca de tiempo ordenable para el nombre del archivo, por ejemplo 2026-11-26T20-15-03. */
+/**
+ * Marca de tiempo ordenable para el nombre del archivo, por ejemplo 2026-11-26T20-15-03.123. Lleva
+ * milisegundos para que dos salidas del mismo segundo no choquen con "wx".
+ */
 function stamp(date: Date): string {
-  return date.toISOString().slice(0, 19).replace(/:/g, "-");
+  return date.toISOString().slice(0, 23).replace(/:/g, "-");
 }
 
 /** Escribe un archivo de salida y devuelve su ruta. */
 export async function writeOutput(name: string, ext: "json" | "csv", content: string): Promise<string> {
-  const dir = outDir();
-  await mkdir(dir, { recursive: true });
+  const dir = await outDir();
+  await mkdir(dir, { recursive: true, mode: 0o700 });
   const path = join(dir, `${stamp(new Date())}-${name}.${ext}`);
-  await writeFile(path, content, "utf8");
+  // Solo el dueño lee el respaldo (tiene los saldos), y "wx" falla en vez de pisar un archivo o
+  // enlace que ya exista con ese nombre.
+  await writeFile(path, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
   return path;
 }
 
 /** Último archivo de salida cuyo nombre contiene el fragmento indicado, o null. */
 export async function latestOutput(fragment: string): Promise<string | null> {
   try {
-    const files = (await readdir(outDir())).filter((file) => file.includes(fragment)).sort();
-    return files.length === 0 ? null : join(outDir(), files[files.length - 1]);
+    const dir = await outDir();
+    const files = (await readdir(dir)).filter((file) => file.includes(fragment)).sort();
+    return files.length === 0 ? null : join(dir, files[files.length - 1]);
   } catch {
     return null;
   }
