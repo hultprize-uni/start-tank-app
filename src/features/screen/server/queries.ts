@@ -1,51 +1,130 @@
 import { sql } from "@/server/db/client";
-import {
-  classifyRounds,
-  queryActiveUsers,
-  queryRoundVotes,
-  queryRounds,
-} from "@/server/db/rounds";
-import { buildScreen, screenReferenceRound, type RankingRow } from "./mappers";
+import { readEventConfig } from "@/server/db/config";
+import { classifyRounds, queryRoundVotes, queryRounds } from "@/server/db/rounds";
+import { buildScreen, resolvePhase, type RankingRow, type StartupExtra } from "./mappers";
 import type { ScreenViewModel } from "../types";
 
 /*
- * Consultas de lectura de la pantalla pública. Cada función obtiene las filas necesarias y delega
- * el armado del view model en los constructores de mappers.ts. No ejecuta escrituras.
+ * Consultas de la pantalla pública (RF-25). Solo lecturas: la pantalla no tiene sesión ni escribe.
+ * El único efecto es el cierre automático de la última llamada vencida que hace queryRounds.
  */
 
-/** Límite de filas del leaderboard, dimensionado para hasta 100 asistentes. */
-const RANKING_LIMIT = 100;
+const ISO = "YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"";
 
-/** Leaderboard de asistentes de una ronda, ordenado por posición. */
-async function queryRanking(roundId: string): Promise<RankingRow[]> {
+async function queryStartupExtras(): Promise<Map<string, StartupExtra>> {
+  const rows = await sql<StartupExtra & { id_ronda: string }>`
+    select r.id_ronda::text as id_ronda, s.descripcion, s.logo_url
+      from ronda r join startup s on s.id_startup = r.id_startup`;
+  return new Map(rows.map((row) => [row.id_ronda, row]));
+}
+
+async function queryInvestments(roundId: string) {
+  return sql<{ monto: string; creada_en: string }>`
+    select monto::text as monto,
+           to_char(creada_en at time zone 'UTC', ${ISO}) as creada_en
+      from inversion
+     where id_ronda = ${roundId}::bigint
+     order by creada_en, id_inversion`;
+}
+
+async function queryActions(roundId: string) {
+  return sql<{ accion: string; ejecutada_en: string }>`
+    select accion, to_char(ejecutada_en at time zone 'UTC', ${ISO}) as ejecutada_en
+      from accion_ronda
+     where id_ronda = ${roundId}::bigint
+     order by ejecutada_en`;
+}
+
+async function queryJuryTimes(roundId: string): Promise<string[]> {
+  const rows = await sql<{ emitido_en: string }>`
+    select to_char(emitido_en at time zone 'UTC', ${ISO}) as emitido_en
+      from veredicto
+     where id_ronda = ${roundId}::bigint
+     order by emitido_en`;
+  return rows.map((row) => row.emitido_en);
+}
+
+/** Top 8 del corte indicado; sin corte, los asistentes por saldo actual. */
+async function queryRanking(roundId: string | undefined): Promise<RankingRow[]> {
+  if (roundId === undefined) {
+    return sql<RankingRow>`
+      select id_usuario::text as id_usuario,
+             coalesce(nombre, 'Asistente ' || id_usuario::text) as nombre,
+             (row_number() over (order by saldo_actual desc, id_usuario))::int as posicion,
+             saldo_actual::text as saldo,
+             0 as aciertos
+        from usuario
+       order by saldo_actual desc, id_usuario
+       limit 8`;
+  }
   return sql<RankingRow>`
     select u.id_usuario::text as id_usuario,
            coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre,
-           l.posicion,
-           l.saldo::text as saldo,
-           l.aciertos
-      from leaderboard l
-      join usuario u on u.id_usuario = l.id_usuario
+           l.posicion, l.saldo::text as saldo, l.aciertos
+      from leaderboard l join usuario u on u.id_usuario = l.id_usuario
      where l.id_ronda = ${roundId}::bigint
      order by l.posicion
-     limit ${RANKING_LIMIT}`;
+     limit 8`;
 }
 
-/**
- * Lee el view model de la pantalla pública. Devuelve nulo cuando el evento no tiene rondas.
- * Solo ejecuta consultas de lectura.
- */
+async function queryPositions(roundId: string | undefined): Promise<Map<string, number>> {
+  if (roundId === undefined) return new Map();
+  const rows = await sql<{ id_usuario: string; posicion: number }>`
+    select id_usuario::text as id_usuario, posicion from leaderboard where id_ronda = ${roundId}::bigint`;
+  return new Map(rows.map((row) => [row.id_usuario, row.posicion]));
+}
+
+async function queryBestEye(roundId: string | undefined) {
+  if (roundId === undefined) return null;
+  const [row] = await sql<{ nombre: string; aciertos: number }>`
+    select coalesce(u.nombre, 'Asistente ' || u.id_usuario::text) as nombre, l.aciertos
+      from leaderboard l join usuario u on u.id_usuario = l.id_usuario
+     where l.id_ronda = ${roundId}::bigint
+     order by l.aciertos desc, l.posicion
+     limit 1`;
+  return row ?? null;
+}
+
+/** Lee el modelo del escenario. Devuelve nulo cuando el evento no tiene rondas. */
 export async function readScreen(now: Date = new Date()): Promise<ScreenViewModel | null> {
-  const rounds = await queryRounds();
-  const reference = screenReferenceRound(rounds);
+  const [rounds, { config, flags }, extras, attendeeRows] = await Promise.all([
+    queryRounds(),
+    readEventConfig(),
+    queryStartupExtras(),
+    sql<{ total: number }>`select count(*)::int as total from usuario`,
+  ]);
+  const { reference } = resolvePhase(rounds, now);
   if (reference === undefined) return null;
 
-  const lastFinished = classifyRounds(rounds).lastFinished;
-  const [votes, ranking, activeUsers] = await Promise.all([
+  const finished = rounds
+    .filter((r) => r.estado === "SETTLED" || r.estado === "CANCELLED")
+    .sort((a, b) => a.numero - b.numero);
+  const cut = classifyRounds(rounds).lastFinished?.id_ronda;
+  const previousCut = finished[finished.length - 2]?.id_ronda;
+
+  const [votes, juryTimes, investments, actions, ranking, previousPositions, bestEye] = await Promise.all([
     queryRoundVotes(reference.id_ronda),
-    lastFinished ? queryRanking(lastFinished.id_ronda) : Promise.resolve([]),
-    queryActiveUsers(),
+    queryJuryTimes(reference.id_ronda),
+    queryInvestments(reference.id_ronda),
+    queryActions(reference.id_ronda),
+    queryRanking(cut),
+    queryPositions(previousCut),
+    queryBestEye(cut),
   ]);
 
-  return buildScreen({ rounds, votes, ranking, activeUsers }, now);
+  return buildScreen({
+    now,
+    config,
+    manualMode: flags.manualMode,
+    rounds,
+    startups: extras,
+    votes,
+    juryTimes,
+    investments,
+    actions,
+    ranking,
+    previousPositions,
+    attendees: attendeeRows[0]?.total ?? 0,
+    bestEye,
+  });
 }

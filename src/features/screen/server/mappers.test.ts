@@ -1,215 +1,174 @@
 import { describe, expect, it } from "vitest";
+import { EVENT_CONFIG } from "@/shared/domain/config";
 import type { RoundRow, RoundVoteRow } from "@/server/db/rounds";
-import { buildScreen, type ScreenData } from "./mappers";
+import { buildScreen, resolvePhase, shortName, type ScreenData } from "./mappers";
 
-const NOW = new Date("2026-11-08T15:00:00.000Z");
+const NOW = new Date("2026-11-26T20:00:00.000Z");
+const at = (seconds: number) => new Date(NOW.getTime() + seconds * 1000).toISOString();
 
-/** Fila de ronda con valores por defecto que cada prueba sobrescribe. */
-function round(partial: Partial<RoundRow> & Pick<RoundRow, "numero" | "estado">): RoundRow {
+function round(numero: number, estado: RoundRow["estado"], extra: Partial<RoundRow> = {}): RoundRow {
   return {
-    id_ronda: String(partial.numero),
+    id_ronda: String(numero),
+    numero,
+    estado,
     multiplicador: null,
     segundos_ultima_llamada: null,
     fase_termina_en: null,
     segundos_restantes_pausa: null,
     liquidada_en: null,
-    puntaje_jurado: null,
-    startup_nombre: `Startup ${partial.numero}`,
+    startup_nombre: ["AgroSense", "AguaClara", "EduRuta", "SolRed", "SaludCerca"][numero - 1],
     ods: "ODS 6",
     monto_acumulado: "0",
     inversores_unicos: 0,
     precio_vivo: "100",
+    puntaje_jurado: null,
     fraccion_respaldo: null,
     puntaje: null,
     monto_invertido: "0",
     retorno_ronda: "0",
-    ...partial,
+    ...extra,
   };
 }
 
-function vote(id: string, name: string, decision: RoundVoteRow["decision"]): RoundVoteRow {
+function vote(sent: boolean, score: string | null, abstained = false): RoundVoteRow {
+  return { id_jurado: "1", nombre: "J", enviado: sent, se_abstiene: abstained, puntaje: score, decision: null };
+}
+
+function data(rounds: RoundRow[], extra: Partial<ScreenData> = {}): ScreenData {
   return {
-    id_jurado: id,
-    nombre: name,
-    enviado: decision !== null,
-    se_abstiene: decision === "ABSTAIN",
-    puntaje: null,
-    decision,
+    now: NOW,
+    config: { ...EVENT_CONFIG },
+    manualMode: false,
+    rounds,
+    startups: new Map(),
+    votes: [],
+    juryTimes: [],
+    investments: [],
+    actions: [],
+    ranking: [],
+    previousPositions: new Map(),
+    attendees: 80,
+    bestEye: null,
+    ...extra,
   };
 }
 
-const COMPLETE_VOTES: RoundVoteRow[] = [
-  vote("1", "Jurado 1", "BACK"),
-  vote("2", "Jurado 2", "BACK"),
-  vote("3", "Jurado 3", "REJECT"),
-  vote("4", "Jurado 4", "ABSTAIN"),
-];
+const scheduled = (from: number) =>
+  [1, 2, 3, 4, 5].filter((n) => n >= from).map((n) => round(n, "SCHEDULED"));
 
-function screen(
-  rounds: RoundRow[],
-  extra: Partial<ScreenData> = {},
-): ScreenData {
-  return { rounds, votes: [], ranking: [], activeUsers: 0, ...extra };
-}
+describe("shortName", () => {
+  it("keeps the first name and the initial of the surname", () => {
+    expect(shortName("Mariana Torres Díaz")).toBe("Mariana T.");
+    expect(shortName("Lucía")).toBe("Lucía");
+    expect(shortName("Asistente 12")).toBe("Asistente 12");
+  });
+});
+
+describe("resolvePhase", () => {
+  it("waits for the first startup before any round", () => {
+    expect(resolvePhase(scheduled(1), NOW)).toMatchObject({ phase: "WAITING", reference: { numero: 1 } });
+  });
+
+  it("shows the verdict during the result window and between rounds after it", () => {
+    const settledNow = round(1, "SETTLED", { fase_termina_en: at(60) });
+    expect(resolvePhase([settledNow, ...scheduled(2)], NOW).phase).toBe("REVEAL");
+    const settledBefore = round(1, "SETTLED", { fase_termina_en: at(-1) });
+    expect(resolvePhase([settledBefore, ...scheduled(2)], NOW).phase).toBe("BETWEEN");
+  });
+
+  it("closes the event once the final scores are loaded", () => {
+    const rounds = [1, 2, 3, 4, 5].map((n) => round(n, "SETTLED", { puntaje: "0.5" }));
+    expect(resolvePhase(rounds, NOW).phase).toBe("CLOSING");
+  });
+});
 
 describe("buildScreen", () => {
-  it("devuelve nulo cuando el evento no tiene rondas", () => {
-    expect(buildScreen(screen([]), NOW)).toBeNull();
+  it("splits the open market into pitch and Q&A with the server clock", () => {
+    const open = round(2, "OPEN", { fase_termina_en: at(700) });
+    const vm = buildScreen(data([round(1, "SETTLED", { multiplicador: "1.400" }), open, ...scheduled(3)]));
+
+    expect(vm.phase).toBe("MARKET");
+    expect(vm.clockLabel).toBe("Pitch");
+    expect(vm.clock?.phaseEndsAt).toBe(at(100));
+
+    const qa = buildScreen(data([round(1, "SETTLED"), round(2, "OPEN", { fase_termina_en: at(300) }), ...scheduled(3)]));
+    expect(qa.clockLabel).toBe("Toma y dame");
+    expect(qa.clock?.phaseEndsAt).toBe(at(300));
   });
 
-  it("muestra el mercado con precio, acumulado e inversores de la ronda abierta", () => {
-    const openRound = round({
-      numero: 1,
-      estado: "OPEN",
-      precio_vivo: "148.50",
-      monto_acumulado: "9500",
-      inversores_unicos: 31,
-    });
-    const vm = buildScreen(screen([openRound]), NOW);
-
-    expect(vm).toMatchObject({
-      phase: "MARKET",
-      updatedAt: NOW.toISOString(),
-      price: 148.5,
-      accumulated: 9500,
-      uniqueInvestors: 31,
-      round: { number: 1, startup: { name: "Startup 1", sdg: { number: 6 } } },
-    });
+  it("builds the stepped curve and announces big bets and milestones", () => {
+    const vm = buildScreen(
+      data([round(1, "OPEN", { monto_acumulado: "10500" }), ...scheduled(2)], {
+        investments: [
+          { monto: "8000", creada_en: at(-30) },
+          { monto: "2500", creada_en: at(-10) },
+        ],
+      }),
+    );
+    expect(vm.market?.points.map((p) => p.total)).toEqual([8000, 10500]);
+    expect(vm.feed.map((item) => item.text)).toEqual([
+      "Apuesta grande en AgroSense: 2,500 IC",
+      "AgroSense supera 10,000 IC",
+      "Apuesta grande en AgroSense: 8,000 IC",
+    ]);
   });
 
-  it("calcula la cuenta regresiva de la última llamada sin bajar de cero", () => {
-    const running = round({ numero: 2, estado: "LAST_CALL", segundos_ultima_llamada: 15 });
-    const expired = round({ numero: 2, estado: "LAST_CALL", segundos_ultima_llamada: 90 });
+  it("lights the seats without showing scores until the reveal", () => {
+    const votes = [vote(true, "4.000"), vote(true, "3.500"), vote(false, null), vote(true, null, true)];
+    const voting = buildScreen(data([round(1, "VOTING"), ...scheduled(2)], { votes }));
+    expect(voting.jury.map((s) => [s.label, s.sent, s.score])).toEqual([
+      ["Jurado 1", true, null],
+      ["Jurado 2", true, null],
+      ["Jurado 3", false, null],
+      ["Jurado 4", true, null],
+    ]);
 
-    expect(buildScreen(screen([running]), NOW)).toMatchObject({
-      phase: "LAST_CALL",
-      secondsRemaining: 45,
-    });
-    expect(buildScreen(screen([expired]), NOW)).toMatchObject({
-      secondsRemaining: 0,
-    });
-  });
-
-  it("no revela el sentido de los votos durante la votación", () => {
-    const voting = round({ numero: 2, estado: "VOTING" });
-    const votes = [
-      vote("1", "Jurado 1", "BACK"),
-      vote("2", "Jurado 2", null),
-      vote("3", "Jurado 3", null),
-      vote("4", "Jurado 4", null),
-    ];
-    const vm = buildScreen(screen([voting], { votes }), NOW);
-
-    expect(vm).toMatchObject({ phase: "VOTING", votesCast: 1, jurorsTotal: 4 });
-    expect(JSON.stringify(vm)).not.toContain("BACK");
-  });
-
-  it("revela los cuatro votos y el multiplicador en la liquidación", () => {
-    const settledRound = round({
-      numero: 1,
-      estado: "SETTLED",
+    const settled = round(1, "SETTLED", {
       multiplicador: "1.400",
-      fraccion_respaldo: "0.6667",
-      monto_invertido: "7500",
-      retorno_ronda: "10500",
+      puntaje_jurado: "4.0000",
+      liquidada_en: at(-1),
+      fase_termina_en: at(89),
+      monto_invertido: "56500",
+      retorno_ronda: "79100",
     });
-    const pending = round({ numero: 2, estado: "SCHEDULED" });
+    const reveal = buildScreen(data([settled, ...scheduled(2)], { votes }));
+    expect(reveal.phase).toBe("REVEAL");
+    expect(reveal.jury.map((s) => s.score)).toEqual([4, 3.5, null, null]);
+    expect(reveal.verdict).toMatchObject({ multiplier: 1.4, juryScore: 4, scorePct: 75, invested: 56500, returned: 79100 });
+    expect(reveal.feed[0].text).toBe("Multiplicador de AgroSense: 1.4x");
+  });
+
+  it("marks the ticker by state and shows the next startup between rounds", () => {
     const vm = buildScreen(
-      screen([settledRound, pending], { votes: COMPLETE_VOTES }),
-      NOW,
+      data([round(1, "SETTLED", { multiplicador: "0.600", fase_termina_en: at(-5) }), round(2, "CANCELLED"), ...scheduled(3)]),
     );
-
-    expect(vm).toMatchObject({
-      phase: "SETTLEMENT",
-      multiplier: 1.4,
-      backingFraction: 0.6667,
-      amountInvested: 7500,
-      roundReturn: 10500,
-    });
-    expect(vm?.phase === "SETTLEMENT" ? vm.votes : []).toEqual([
-      { juror: "Jurado 1", decision: "BACK" },
-      { juror: "Jurado 2", decision: "BACK" },
-      { juror: "Jurado 3", decision: "REJECT" },
-      { juror: "Jurado 4", decision: "ABSTAIN" },
+    expect(vm.phase).toBe("BETWEEN");
+    expect(vm.ticker.map((t) => [t.name, t.status, t.multiplier])).toEqual([
+      ["AgroSense", "done", 0.6],
+      ["AguaClara", "cancelled", null],
+      ["EduRuta", "next", null],
+      ["SolRed", "pending", null],
+      ["SaludCerca", "pending", null],
     ]);
+    expect(vm.next?.name).toBe("EduRuta");
   });
 
-  it("muestra el leaderboard entre rondas con las startups ordenadas por acumulado", () => {
-    const cancelledRound = round({ numero: 1, estado: "CANCELLED", multiplicador: "1.0" });
-    const pending = round({ numero: 2, estado: "SCHEDULED", monto_acumulado: "4000" });
-    const other = round({ numero: 3, estado: "SCHEDULED", monto_acumulado: "9000" });
-    const ranking = [
-      { id_usuario: "1", nombre: "Ana", posicion: 1, saldo: "12000", aciertos: 2 },
-      { id_usuario: "2", nombre: "Luis", posicion: 2, saldo: "9500", aciertos: 1 },
-    ];
-    const vm = buildScreen(screen([cancelledRound, pending, other], { ranking }), NOW);
-
-    expect(vm).toMatchObject({ phase: "BETWEEN_ROUNDS", closedRound: { number: 1 } });
-    if (vm?.phase !== "BETWEEN_ROUNDS") throw new Error("Fase inesperada");
-    expect(vm.investors).toEqual([
-      { position: 1, name: "Ana", balance: 12000 },
-      { position: 2, name: "Luis", balance: 9500 },
-    ]);
-    expect(vm.startups.map((s) => s.name)).toEqual(["Startup 3", "Startup 2", "Startup 1"]);
-    expect(vm.startups.map((s) => s.position)).toEqual([1, 2, 3]);
-  });
-
-  it("declara la ganadora, el top 3 y el mejor ojo al cerrar el evento", () => {
-    const rounds = [
-      round({
-        numero: 1,
-        estado: "SETTLED",
-        fraccion_respaldo: "0.7500",
-        puntaje: "0.6900",
-        inversores_unicos: 6,
-        startup_nombre: "AgroSense",
-        ods: "ODS 2",
-      }),
-      round({
-        numero: 2,
-        estado: "SETTLED",
-        fraccion_respaldo: "0.5000",
-        puntaje: "0.3800",
-        inversores_unicos: 2,
-        startup_nombre: "AguaClara",
-      }),
-    ];
-    const ranking = [
-      { id_usuario: "1", nombre: "Ana", posicion: 1, saldo: "18400", aciertos: 3 },
-      { id_usuario: "2", nombre: "Luis", posicion: 2, saldo: "17900", aciertos: 5 },
-      { id_usuario: "3", nombre: "Eva", posicion: 3, saldo: "16200", aciertos: 1 },
-      { id_usuario: "4", nombre: "Rosa", posicion: 4, saldo: "15000", aciertos: 0 },
-    ];
+  it("names the winner, the top 3 and the best eye at the close", () => {
+    const rounds = [1, 2, 3, 4, 5].map((n) =>
+      round(n, "SETTLED", { puntaje: n === 4 ? "0.8100" : "0.5000", puntaje_jurado: "4.4000", inversores_unicos: 62, multiplicador: "1.600" }),
+    );
     const vm = buildScreen(
-      screen(rounds, { ranking, activeUsers: 10 }),
-      NOW,
+      data(rounds, {
+        ranking: [
+          { id_usuario: "7", nombre: "Mariana Torres", posicion: 1, saldo: "16940", aciertos: 3 },
+          { id_usuario: "8", nombre: "Joaquín Ruiz", posicion: 2, saldo: "15210", aciertos: 2 },
+          { id_usuario: "9", nombre: "Valeria Quispe", posicion: 3, saldo: "14380", aciertos: 1 },
+        ],
+        bestEye: { nombre: "Lucía Huamán", aciertos: 5 },
+      }),
     );
-
-    if (vm?.phase !== "CLOSING") throw new Error("Fase inesperada");
-    expect(vm.winner.name).toBe("AgroSense");
-    expect(vm.winner.sdg).toEqual({ number: 2, name: "Hambre cero" });
-    expect(vm.winner.investorPercentage).toBeCloseTo(0.6);
-    expect(vm.winner.score).toBeCloseTo(0.6 * 0.75 + 0.4 * 0.6);
-    expect(vm.top3.map((f) => f.name)).toEqual(["Ana", "Luis", "Eva"]);
-    expect(vm.bestEye).toEqual({ name: "Luis", hits: 5 });
-  });
-
-  it("muestra la espera previa cuando ninguna ronda ha iniciado", () => {
-    const first = round({ numero: 1, estado: "SCHEDULED", startup_nombre: "Aqua Viva" });
-    const second = round({ numero: 2, estado: "SCHEDULED", startup_nombre: "Huella" });
-    const vm = buildScreen(screen([second, first]), NOW);
-
-    expect(vm).toMatchObject({
-      phase: "WAITING",
-      updatedAt: NOW.toISOString(),
-      nextRound: { number: 1, startup: { name: "Aqua Viva", sdg: { number: 6 } } },
-    });
-  });
-
-  it("no muestra la espera una vez iniciada la primera ronda", () => {
-    const open = round({ numero: 1, estado: "OPEN" });
-    const next = round({ numero: 2, estado: "SCHEDULED" });
-
-    expect(buildScreen(screen([open, next]), NOW)).toMatchObject({ phase: "MARKET" });
+    expect(vm.closing?.winner).toMatchObject({ name: "SolRed", finalScore: 0.81, investorShare: 0.775 });
+    expect(vm.closing?.top3.map((row) => row.name)).toEqual(["Mariana T.", "Joaquín R.", "Valeria Q."]);
+    expect(vm.closing?.bestEye).toEqual({ name: "Lucía H.", hits: 5, rounds: 5 });
   });
 });

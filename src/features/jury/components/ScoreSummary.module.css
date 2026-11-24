@@ -97,7 +97,8 @@
   color: var(--fg-2);
 }
 
-@media (min-width: 820px) {
+/* En fila solo con espacio de sobra: entre 820 y 1080 la barra lateral deja la columna angosta. */
+@media (min-width: 1080px) {
   .bar {
     flex-direction: row;
     align-items: center;

@@ -1,5 +1,5 @@
-/** API pública de la funcionalidad de la pantalla: cliente del proyector, manejador de la API y tipos compartidos. */
+/** API pública del escenario: cliente del proyector, manejador de la API y tipos. */
 export { ScreenClient } from "./components/ScreenClient";
-export { parsePhase } from "./components/phases";
+export { parsePhase } from "./api/mock";
 export { handleGetScreen } from "./server/handler";
-export type { ScreenPhase, ScreenViewModel } from "./types";
+export type { StagePhase, ScreenViewModel } from "./types";

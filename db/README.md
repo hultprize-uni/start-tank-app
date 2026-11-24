@@ -30,7 +30,12 @@ Aplicar los archivos en el orden listado. El orden coincide con el orden lexicog
 13. `migrations/20261124000500_fn_accion_operador_v2.sql`: acciones del conductor con cronómetros y pausa, y cierre automático de la última llamada.
 14. `migrations/20261124000600_fn_ajustar_saldo.sql`: ajuste manual de saldo.
 15. `migrations/20261124000700_datos_base.sql`: criterios de calificación y configuración por defecto (las funciones los leen para operar).
-16. `seed.sql`: startups, rondas, jurados y operadores de ejemplo. Ejecutar solo en entornos de desarrollo, porque contiene códigos de acceso ficticios.
+16. `migrations/20261125000000_fn_batch.sql`: funciones de los procesos batch (carga de resultados del cierre, reinicio del ensayo, respaldo, restauración y reconstrucción del leaderboard).
+17. `seed.sql`: startups, rondas, jurados y operadores de ejemplo. Ejecutar solo en entornos de desarrollo, porque contiene códigos de acceso ficticios.
+
+## Procesos batch
+
+`pnpm batch <proceso> [argumento]` corre los procesos de `src/server/batch/` con la base de `DATABASE_URL` y deja sus archivos en `batch-out/` (o en `BATCH_OUT_DIR`). Sin argumentos lista los procesos: `carga-inicial`, `cierre`, `ensayo`, `posiciones`, `estadisticas`, `respaldo`, `restaurar`, `reconstruir` y `mantenimiento`. El cierre y el ensayo también se ejecutan desde la consola del operador.
 
 ## Estado en Neon
 
