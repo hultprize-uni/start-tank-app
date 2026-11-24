@@ -1,3 +1,5 @@
+import { runCloseEvent } from "@/server/batch/cierre-evento";
+import { runRehearsalReset } from "@/server/batch/reinicio-ensayo";
 import { sql } from "@/server/db/client";
 import { readConfigRows, readEventConfig, writeConfigValue } from "@/server/db/config";
 import { queryRounds } from "@/server/db/rounds";
@@ -518,26 +520,28 @@ export function handleOperatorStartEvent(): Promise<Response> {
  * --------------------------------------------------------------------------------------------- */
 
 /**
- * POST: cierre del evento. Exige que todas las rondas estén liquidadas o anuladas. El proceso
- * batch (F7) devolverá EventCloseSummary; hasta entonces responde 501.
+ * POST: cierre del evento (proceso batch de F7). Exige todas las rondas liquidadas o anuladas y
+ * devuelve EventCloseSummary: ganadora, top 3 y mejor ojo.
  */
 export function handleOperatorCloseEvent(): Promise<Response> {
-  return withConductor(async () => {
+  return withConductor(async (operatorId) => {
     const rounds = await queryRounds();
     const pending = rounds.some((row) => row.estado !== "SETTLED" && row.estado !== "CANCELLED");
     if (rounds.length === 0 || pending) return errorResponse(409, "ROUNDS_PENDING");
-    return errorResponse(501, "NOT_IMPLEMENTED");
+    const result = await runCloseEvent(operatorId);
+    return result.ok ? jsonResponse(result.summary) : errorResponse(409, result.error);
   });
 }
 
 /**
- * POST: reinicio del ensayo. Se rechaza con el evento iniciado (RF-29). El proceso batch (F7)
- * reemplaza la respuesta 501.
+ * POST: reinicio del ensayo (proceso batch de F7), con respaldo previo. Se rechaza con el evento
+ * iniciado (RF-29).
  */
 export function handleOperatorRehearsal(): Promise<Response> {
-  return withConductor(async () => {
+  return withConductor(async (operatorId) => {
     const { flags } = await readEventConfig();
     if (flags.eventStarted) return errorResponse(409, "EVENT_STARTED");
-    return errorResponse(501, "NOT_IMPLEMENTED");
+    const result = await runRehearsalReset(operatorId);
+    return result.ok ? jsonResponse({ ok: true }) : errorResponse(409, result.error);
   });
 }

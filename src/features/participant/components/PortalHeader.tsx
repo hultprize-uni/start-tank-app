@@ -15,7 +15,7 @@ export function PortalHeader({ balance }: PortalHeaderProps) {
       <BrandLogo variant="horizontal" className={styles.logo} />
       <div className={styles.actions}>
         <WalletBalance balance={balance} />
-        <SignOutButton />
+        <SignOutButton compact />
       </div>
     </header>
   );

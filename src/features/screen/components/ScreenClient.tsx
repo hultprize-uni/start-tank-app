@@ -1,69 +1,138 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { BrandLogo } from "@/shared/ui";
+import { PAGE_ROUTES } from "@/shared/lib/api-routes";
+import { STAGE_PHASES } from "../api/mock";
 import { useScreenState } from "../hooks/useScreenState";
-import type { ScreenPhase, ScreenViewModel } from "../types";
-import { phaseStatus, roundNumberOf, type PhaseStatus } from "./phases";
-import { BetweenRoundsPhase } from "./BetweenRoundsPhase";
-import { ClosingPhase } from "./ClosingPhase";
-import { LastCallPhase } from "./LastCallPhase";
-import { MarketPhase } from "./MarketPhase";
-import { PhaseSelector } from "./PhaseSelector";
-import { ScreenStage } from "./ScreenStage";
-import { SettlementPhase } from "./SettlementPhase";
-import { VotingPhase } from "./VotingPhase";
-import { WaitingPhase } from "./WaitingPhase";
-import styles from "./screen.module.css";
+import type { ScreenViewModel, StagePhase } from "../types";
+import { StartupTicker } from "./parts";
+import { BetweenPhase, ClosingPhase, MarketPhase, Rail, RevealPhase, VotingPhase, WaitingPhase } from "./phases";
+import s from "./stage.module.css";
 
-interface ScreenClientProps {
-  /** Fase forzada por la query `fase`. El servidor la envia solo en desarrollo. */
-  forcedPhase?: ScreenPhase;
-  showSelector: boolean;
+const STAGE_W = 1920;
+const STAGE_H = 1080;
+
+interface StageFit {
+  scale: number;
+  width: number;
+  top: number;
 }
 
-/** Estado mostrado mientras no existe ninguna lectura del servidor. */
-const CONNECTING_STATUS: PhaseStatus = { label: "Conectando", tone: "neutral", live: true };
+/**
+ * Escala el escenario para que 1920×1080 quepa entero. En pantallas más anchas estira el ancho, así
+ * llena la ventana sin bandas laterales; en las más altas centra el bloque, porque estirar el alto
+ * solo deja espacio vacío. Se mide antes de pintar para que no salte.
+ */
+function useStageFit(): StageFit | null {
+  const [fit, setFit] = useState<StageFit | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const scale = Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
+      setFit({ scale, width: window.innerWidth / scale, top: (window.innerHeight - STAGE_H * scale) / 2 });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  return fit;
+}
 
-function renderPhase(vm: ScreenViewModel) {
+function renderPhase(vm: ScreenViewModel): ReactNode {
   switch (vm.phase) {
     case "WAITING":
       return <WaitingPhase vm={vm} />;
     case "MARKET":
-      return <MarketPhase vm={vm} />;
     case "LAST_CALL":
-      return <LastCallPhase vm={vm} />;
+    case "REVEAL":
+      // El panel lateral queda en la misma posición del árbol: la tabla no se vuelve a montar.
+      return (
+        <div className={s.split}>
+          {vm.phase === "REVEAL" ? <RevealPhase vm={vm} /> : <MarketPhase vm={vm} />}
+          <Rail vm={vm} />
+        </div>
+      );
     case "VOTING":
       return <VotingPhase vm={vm} />;
-    case "SETTLEMENT":
-      return <SettlementPhase vm={vm} />;
-    case "BETWEEN_ROUNDS":
-      return <BetweenRoundsPhase vm={vm} />;
+    case "BETWEEN":
+      return <BetweenPhase vm={vm} />;
     case "CLOSING":
       return <ClosingPhase vm={vm} />;
   }
 }
 
-/** Vista de solo lectura de la pantalla. Consulta el estado del evento y lo presenta por fase. */
-export function ScreenClient({ forcedPhase, showSelector }: ScreenClientProps) {
-  const { vm, offline } = useScreenState(forcedPhase);
+interface ScreenClientProps {
+  /** Fase forzada con ?phase= en desarrollo, con datos de muestra. */
+  forcedPhase?: StagePhase;
+  showSelector: boolean;
+}
 
-  if (vm === null) {
-    return (
-      <ScreenStage status={CONNECTING_STATUS} offline={offline}>
-        <p className={styles.lead}>Esperando datos del evento.</p>
-      </ScreenStage>
-    );
-  }
+/** Pantalla pública del escenario (RF-25): sin sesión y sin escrituras. */
+export function ScreenClient({ forcedPhase, showSelector }: ScreenClientProps) {
+  const { vm, offline, empty } = useScreenState(forcedPhase);
+  const fit = useStageFit();
+  const [joinHost, setJoinHost] = useState("");
+  useEffect(() => setJoinHost(`${window.location.host}${PAGE_ROUTES.participant}`), []);
 
   return (
-    <>
-      <ScreenStage
-        status={phaseStatus(vm.phase)}
-        roundNumber={roundNumberOf(vm)}
-        offline={offline}
+    <main className={s.viewport}>
+      <div
+        className={s.stage}
+        style={
+          fit
+            ? { width: fit.width, top: fit.top, transform: `scale(${fit.scale})` }
+            : { visibility: "hidden" }
+        }
+        data-phase={vm?.phase ?? "LOADING"}
       >
-        {renderPhase(vm)}
-      </ScreenStage>
-      {showSelector ? <PhaseSelector currentPhase={vm.phase} /> : null}
-    </>
+        <header className={s.top}>
+          <BrandLogo variant="horizontal" className={s.logo} priority />
+          {vm ? <StartupTicker items={vm.ticker} /> : <span />}
+          <div className={s.join}>
+            <span className={s.label}>Entra e invierte</span>
+            <span className={s.joinUrl}>{joinHost}</span>
+          </div>
+        </header>
+
+        {vm?.manualMode ? (
+          <p className={s.manual} role="status">
+            Modo manual activo: el conductor registra el veredicto a mano.
+          </p>
+        ) : null}
+
+        <div className={s.body}>
+          {vm ? (
+            renderPhase(vm)
+          ) : (
+            <section className={s.center}>
+              <p className={s.calm}>{empty ? "El evento aún no tiene rondas cargadas." : "Conectando con el evento."}</p>
+            </section>
+          )}
+        </div>
+
+        {offline ? (
+          <p className={s.offline} role="status">
+            Sin conexión. Se muestra la última lectura.
+          </p>
+        ) : null}
+      </div>
+
+      {showSelector ? (
+        <nav className={s.selector} aria-label="Fases de muestra">
+          {STAGE_PHASES.map((phase) => (
+            <Link
+              key={phase}
+              href={`?phase=${phase}`}
+              replace
+              scroll={false}
+              aria-current={phase === vm?.phase ? "page" : undefined}
+            >
+              {phase}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
+    </main>
   );
 }

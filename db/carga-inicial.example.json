@@ -1,0 +1,12 @@
+{
+  "configuracion": { "capital_inicial": 10000, "compra_minima": 250, "tope_ronda": 0.3 },
+  "startups": [
+    { "nombre": "AgroSense", "ods": "ODS 2", "orden": 1, "descripcion": "Monitoreo de cultivos con sensores de bajo costo para pequeños productores.", "logo_url": null }
+  ],
+  "jurados": [
+    { "codigo": "JUR-EJ-001", "nombre": "Jurado de ejemplo 1", "organizacion": "Organización de ejemplo A" }
+  ],
+  "operadores": [
+    { "codigo": "OPE-EJ-001", "nombre": "Conductor de ejemplo", "rol": "CONDUCTOR" }
+  ]
+}

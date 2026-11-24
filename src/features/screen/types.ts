@@ -1,136 +1,130 @@
-import type { Decision } from "@/shared/domain/types";
+import type { PhaseClock } from "@/shared/domain/types";
 
-/**
- * Fases de la pantalla del evento. Cada una corresponde a una fila del cuadro de la especificacion
- * (seccion 2.6), más la espera previa a la primera ronda.
+/*
+ * Modelo de la pantalla del escenario (WORKPLAN F6). Una sola forma para todas las fases: los
+ * componentes conservan su estado entre fases y las animaciones tienen continuidad.
  */
-export type ScreenPhase =
+
+export type StagePhase =
   | "WAITING"
   | "MARKET"
   | "LAST_CALL"
   | "VOTING"
-  | "SETTLEMENT"
-  | "BETWEEN_ROUNDS"
+  | "REVEAL"
+  | "BETWEEN"
   | "CLOSING";
 
-export interface SdgRef {
+export interface StageStartup {
+  name: string;
+  /** Por ejemplo "ODS 6: Agua limpia y saneamiento". */
+  sdg: string;
+  description: string;
+  logoUrl: string | null;
+  /** Dos letras para la marca cuando no hay logo, por ejemplo "AC". */
+  initials: string;
+}
+
+/** Estado de una startup en la cinta superior. */
+export type TickerStatus = "done" | "live" | "voting" | "next" | "pending" | "cancelled";
+
+export interface TickerItem {
   number: number;
   name: string;
+  status: TickerStatus;
+  /** Multiplicador final, cuando la ronda se liquidó. */
+  multiplier: number | null;
 }
 
-/** Startup en turno o recien liquidada. */
-export interface StartupRef {
-  name: string;
-  sdg: SdgRef;
-}
-
-/** Datos de la ronda que la pantalla proyecta. */
-export interface RoundRef {
-  number: number;
-  startup: StartupRef;
-}
-
-/** Voto revelado de un jurado. Se muestra solo en la fase de liquidacion. */
-export interface RevealedVote {
-  juror: string;
-  decision: Decision;
-}
-
-/** Fila del leaderboard de inversionistas. */
-export interface ScreenInvestorRow {
+export interface InvestorRow {
+  id: string;
   position: number;
+  /** Nombre y la inicial del apellido, por ejemplo "Mariana T.". */
   name: string;
   balance: number;
+  /** Posición en el corte anterior. Nula si no había corte. */
+  previousPosition: number | null;
 }
 
-/** Fila del acumulado por startup. */
-export interface ScreenStartupRow {
-  position: number;
-  name: string;
+export interface JurySeat {
+  label: string;
+  sent: boolean;
+  abstained: boolean;
+  /** Puntaje del jurado. Solo viaja después de revelar (RF-17): antes es nulo. */
+  score: number | null;
+}
+
+export type FeedTone = "bet" | "milestone" | "phase" | "jury" | "verdict";
+
+export interface FeedItem {
+  id: string;
+  text: string;
+  at: string;
+  tone: FeedTone;
+}
+
+export interface MarketPoint {
+  at: string;
+  /** Monto acumulado de la sala tras esa inversión. */
+  total: number;
+}
+
+export interface StageMarket {
   accumulated: number;
   price: number;
+  investors: number;
+  attendees: number;
+  /** Un punto por inversión, en orden: la curva escalonada. */
+  points: MarketPoint[];
 }
 
-interface ScreenBase {
-  phase: ScreenPhase;
-  /** Marca de tiempo ISO de la ultima lectura. */
-  updatedAt: string;
-}
-
-interface CurrentRound extends ScreenBase {
-  round: RoundRef;
-}
-
-/** Espera previa al evento: ninguna ronda ha iniciado. Presenta la primera startup del programa. */
-export interface Waiting extends ScreenBase {
-  phase: "WAITING";
-  nextRound: RoundRef;
-}
-
-export interface OpenMarket extends CurrentRound {
-  phase: "MARKET";
-  price: number;
-  accumulated: number;
-  uniqueInvestors: number;
-}
-
-export interface LastCall extends CurrentRound {
-  phase: "LAST_CALL";
-  price: number;
-  accumulated: number;
-  uniqueInvestors: number;
-  /** Segundos restantes de la cuenta regresiva al momento de la lectura. */
-  secondsRemaining: number;
-}
-
-export interface Voting extends CurrentRound {
-  phase: "VOTING";
-  votesCast: number;
-  jurorsTotal: number;
-}
-
-export interface Settlement extends CurrentRound {
-  phase: "SETTLEMENT";
-  votes: RevealedVote[];
-  backingFraction: number;
+export interface StageVerdict {
   multiplier: number;
-  amountInvested: number;
-  roundReturn: number;
+  /** Nulo en una ronda anulada. */
+  juryScore: number | null;
+  scorePct: number | null;
+  invested: number;
+  returned: number;
+  cancelled: boolean;
+  settledAt: string | null;
 }
 
-export interface BetweenRounds extends ScreenBase {
-  phase: "BETWEEN_ROUNDS";
-  closedRound: RoundRef;
-  investors: ScreenInvestorRow[];
-  startups: ScreenStartupRow[];
-}
-
-export interface WinningStartup {
+export interface StartupResult {
   name: string;
-  sdg: SdgRef;
-  score: number;
-  backingFraction: number;
-  investorPercentage: number;
+  juryScore: number | null;
+  multiplier: number | null;
+  cancelled: boolean;
 }
 
-export interface BestEyeInfo {
-  name: string;
-  hits: number;
+export interface ClosingInfo {
+  winner: StageStartup & {
+    multiplier: number | null;
+    juryScore: number | null;
+    investorShare: number;
+    finalScore: number;
+  };
+  top3: InvestorRow[];
+  bestEye: { name: string; hits: number; rounds: number } | null;
 }
 
-export interface Closing extends ScreenBase {
-  phase: "CLOSING";
-  winner: WinningStartup;
-  top3: ScreenInvestorRow[];
-  bestEye: BestEyeInfo;
+export interface ScreenViewModel {
+  phase: StagePhase;
+  serverTime: string;
+  manualMode: boolean;
+  round: { number: number; total: number } | null;
+  /** Startup en escena, la que se acaba de revelar o, en la espera, la siguiente. */
+  startup: StageStartup | null;
+  clock: PhaseClock | null;
+  /** Nombre de la etapa del cronómetro: Pitch, Toma y dame, Última llamada o Votación. */
+  clockLabel: string | null;
+  market: StageMarket | null;
+  jury: JurySeat[];
+  verdict: StageVerdict | null;
+  investors: InvestorRow[];
+  ticker: TickerItem[];
+  feed: FeedItem[];
+  /** Rondas terminadas, para la pantalla entre rondas. */
+  results: StartupResult[];
+  /** Startup que sube después, entre rondas. */
+  next: StageStartup | null;
+  closing: ClosingInfo | null;
 }
-
-/** Modelo completo que consume la pantalla. Discriminado por `fase`. */
-export type ScreenViewModel =
-  | Waiting
-  | OpenMarket
-  | LastCall
-  | Voting
-  | Settlement
-  | BetweenRounds
-  | Closing;
