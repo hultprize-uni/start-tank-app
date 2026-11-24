@@ -15,7 +15,7 @@ export function ProgramSection() {
               <time className={styles.scheduleTime}>{item.time}</time>
               <div>
                 <p className={styles.scheduleTitle}>{item.title}</p>
-                <p className={styles.scheduleText}>{item.text}</p>
+                {item.text ? <p className={styles.scheduleText}>{item.text}</p> : null}
               </div>
             </li>
           ))}

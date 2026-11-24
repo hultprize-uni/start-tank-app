@@ -4,7 +4,6 @@ import { HeroSection } from "./HeroSection";
 import { LandingFooter } from "./LandingFooter";
 import { LandingHeader } from "./LandingHeader";
 import { PlatformSection } from "./PlatformSection";
-import { PrizesSection } from "./PrizesSection";
 import { ProgramSection } from "./ProgramSection";
 import { RulesSection } from "./RulesSection";
 import { SignupSection } from "./SignupSection";
@@ -31,7 +30,6 @@ export function LandingPage() {
         <RulesSection />
         <ProgramSection />
         <PlatformSection />
-        <PrizesSection />
         <SignupSection />
       </main>
       <LandingFooter />

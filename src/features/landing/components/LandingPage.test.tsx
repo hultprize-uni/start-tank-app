@@ -59,10 +59,13 @@ describe("LandingPage: estructura", () => {
       "href",
       PAGE_ROUTES.operator,
     );
-    expect(screen.getByRole("link", { name: "Inscribirme en Luma" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inscribirme en Luma" })).toHaveAttribute(
+      "href",
+      "https://luma.com/yj5tp4fe",
+    );
   });
 
-  it("muestra los datos del evento, el programa y los premios", () => {
+  it("muestra los datos del evento y el programa", () => {
     render(<LandingPage />);
 
     expect(screen.getByText("26 nov")).toBeInTheDocument();
@@ -72,10 +75,9 @@ describe("LandingPage: estructura", () => {
 
     expect(screen.getByText("14:00")).toBeInTheDocument();
     expect(screen.getByText("14:30")).toBeInTheDocument();
-    expect(screen.getByText("16:50")).toBeInTheDocument();
-
-    expect(screen.getByText("Shark Tank")).toBeInTheDocument();
-    expect(screen.getByText("Idea millonaria en 20 minutos")).toBeInTheDocument();
+    expect(screen.getByText("Cierre y reconocimiento a los jurados")).toBeInTheDocument();
+    expect(screen.getByText("Detalle y anuncio de la gran final de Hult Prize UNI")).toBeInTheDocument();
+    expect(screen.queryByText("Idea millonaria en 20 minutos")).not.toBeInTheDocument();
   });
 });
 
