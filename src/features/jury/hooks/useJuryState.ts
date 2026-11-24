@@ -1,20 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
+import { EVENT_CONFIG } from "@/shared/domain/config";
 import { USE_MOCKS } from "@/shared/lib/env";
-import type { Decision } from "@/shared/domain/types";
-import { JURY_CRITERIA } from "../criteria";
-import { readJuryState, loginJury, logoutJury, voteJury } from "../api/client";
+import { usePolling } from "@/shared/lib/use-polling";
+import {
+  loginJury,
+  logoutJury,
+  readJuryState,
+  saveJuryDraft,
+  submitJuryVote,
+} from "../api/client";
 import { useJuryStateMock } from "../api/mock";
-import type { JuryAccessView, JuryActions, JuryViewModel, JuryVoteView } from "../types";
-
-/** Periodo del sondeo del estado del jurado, en milisegundos. */
-export const JURY_POLL_INTERVAL_MS = 3_000;
+import { DEFAULT_JURY_CRITERIA, type ScoreValue } from "../criteria";
+import type {
+  JuryAccessView,
+  JuryActions,
+  JuryViewModel,
+  JuryVoteUiState,
+} from "../types";
+import { useDraft } from "./useDraft";
 
 const INITIAL_ACCESS: JuryAccessView = { status: "idle", errorMessage: null };
 
-const INITIAL_VOTE: JuryVoteView = {
-  draft: null,
-  confirming: false,
+const INITIAL_VOTE: JuryVoteUiState = {
+  sheet: null,
   submitting: false,
   errorMessage: null,
 };
@@ -23,63 +31,78 @@ const INITIAL_VOTE: JuryVoteView = {
 export const INITIAL_JURY_STATE: JuryViewModel = {
   screen: "access",
   phase: null,
+  clock: null,
   access: INITIAL_ACCESS,
   jurorLabel: null,
   round: null,
   rail: [],
-  criteria: JURY_CRITERIA,
+  criteria: DEFAULT_JURY_CRITERIA,
+  draftNotes: {},
+  draftStatus: "idle",
+  draftError: null,
   vote: INITIAL_VOTE,
   votes: { emitted: 0, total: 0 },
-  ownVote: null,
+  ownVerdict: null,
   reveal: null,
 };
 
 /**
- * Combina el estado recibido del servidor con los datos locales del voto. El borrador y la
- * confirmación solo se conservan mientras la ronda siga en votación.
+ * Combina el estado recibido del servidor con el estado local del diálogo de confirmación. Los
+ * diálogos y errores de envío se conservan mientras siga la misma ronda en calificación.
  */
 export function mergeJuryState(prev: JuryViewModel, view: JuryViewModel): JuryViewModel {
-  const sameVoting = prev.screen === "voting" && view.screen === "voting";
+  const sameGrading =
+    prev.screen === "grading" &&
+    view.screen === "grading" &&
+    prev.round?.id === view.round?.id;
   return {
     ...view,
     access: INITIAL_ACCESS,
-    vote: sameVoting ? prev.vote : INITIAL_VOTE,
+    vote: sameGrading ? prev.vote : INITIAL_VOTE,
   };
 }
 
 /**
  * Estado del portal del jurado conectado a la API. Tras el acceso con código, sondea el estado
- * cada JURY_POLL_INTERVAL_MS y devuelve al acceso cuando la sesión deja de ser válida.
+ * cada EVENT_CONFIG.juryPollMs (3 s), persiste el borrador de notas y devuelve al acceso cuando la
+ * sesión vence.
  */
 export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
-  const [state, setState] = useState<JuryViewModel>(INITIAL_JURY_STATE);
+  const [serverState, setServerState] = useState<JuryViewModel>(INITIAL_JURY_STATE);
   const [sessionActive, setSessionActive] = useState(false);
-  const stateRef = useRef(state);
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
 
   const endSession = useCallback((message: string) => {
     setSessionActive(false);
-    setState({ ...INITIAL_JURY_STATE, access: { status: "idle", errorMessage: message } });
+    setServerState({ ...INITIAL_JURY_STATE, access: { status: "idle", errorMessage: message } });
   }, []);
+
+  const draft = useDraft({
+    roundId: serverState.round?.id ?? null,
+    serverNotes: serverState.draftNotes,
+    saveNote: saveJuryDraft,
+    onSessionExpired: endSession,
+  });
+
+  const draftScoresRef = useRef(draft.scores);
+  useEffect(() => {
+    draftScoresRef.current = draft.scores;
+  }, [draft.scores]);
+
+  const criteriaRef = useRef(serverState.criteria);
+  useEffect(() => {
+    criteriaRef.current = serverState.criteria;
+  }, [serverState.criteria]);
 
   const refresh = useCallback(async () => {
     const result = await readJuryState();
     if (result.ok) {
-      setState((prev) => mergeJuryState(prev, result.value));
+      setServerState((prev) => mergeJuryState(prev, result.value));
     } else if (result.sessionExpired) {
       endSession(result.message);
     }
   }, [endSession]);
 
-  useEffect(() => {
-    if (!sessionActive) return;
-    void refresh();
-    const id = window.setInterval(() => void refresh(), JURY_POLL_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [sessionActive, refresh]);
+  usePolling(refresh, EVENT_CONFIG.juryPollMs, sessionActive);
 
   /*
    * Al montar, consulta el estado para restaurar una sesión vigente (por ejemplo tras recargar la
@@ -90,7 +113,7 @@ export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions 
     void (async () => {
       const result = await readJuryState();
       if (!active || !result.ok) return;
-      setState((prev) => mergeJuryState(prev, result.value));
+      setServerState((prev) => mergeJuryState(prev, result.value));
       setSessionActive(true);
     })();
     return () => {
@@ -99,54 +122,73 @@ export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions 
   }, []);
 
   const submitCode = useCallback((code: string) => {
-    setState((prev) => ({ ...prev, access: { status: "validating", errorMessage: null } }));
+    setServerState((prev) => ({
+      ...prev,
+      access: { status: "validating", errorMessage: null },
+    }));
     void (async () => {
       const result = await loginJury(code);
       if (!result.ok) {
-        setState((prev) => ({
+        setServerState((prev) => ({
           ...prev,
           access: { status: "error", errorMessage: result.message },
         }));
         return;
       }
-      setState((prev) => ({ ...prev, access: INITIAL_ACCESS }));
+      setServerState((prev) => ({ ...prev, access: INITIAL_ACCESS }));
       setSessionActive(true);
     })();
   }, []);
 
-  const selectDecision = useCallback((decision: Decision) => {
-    setState((prev) => ({
+  const openConfirmSend = useCallback(() => {
+    setServerState((prev) => ({
       ...prev,
-      vote: { ...prev.vote, draft: decision, confirming: false, errorMessage: null },
+      vote: { ...prev.vote, sheet: "confirm_send", errorMessage: null },
     }));
   }, []);
 
-  const requestConfirm = useCallback(() => {
-    setState((prev) => {
-      if (prev.vote.draft === null) return prev;
-      return { ...prev, vote: { ...prev.vote, confirming: true } };
+  const openAbstain = useCallback(() => {
+    setServerState((prev) => ({
+      ...prev,
+      vote: { ...prev.vote, sheet: "abstain", errorMessage: null },
+    }));
+  }, []);
+
+  const closeSheet = useCallback(() => {
+    setServerState((prev) => ({ ...prev, vote: { ...prev.vote, sheet: null } }));
+  }, []);
+
+  const confirmSend = useCallback(() => {
+    const criteria = criteriaRef.current;
+    const scores = draftScoresRef.current;
+    const notes = criteria.flatMap((criterion) => {
+      const value = scores[criterion.id];
+      return value === undefined ? [] : [{ criterionId: criterion.id, value }];
     });
-  }, []);
+    if (notes.length !== criteria.length || criteria.length === 0) return;
 
-  const cancelConfirm = useCallback(() => {
-    setState((prev) => ({ ...prev, vote: { ...prev.vote, confirming: false } }));
-  }, []);
-
-  const confirmVote = useCallback(() => {
-    const decision = stateRef.current.vote.draft;
-    if (decision === null) return;
-
-    setState((prev) => ({
+    setServerState((prev) => ({
       ...prev,
       vote: { ...prev.vote, submitting: true, errorMessage: null },
     }));
+
     void (async () => {
-      const result = await voteJury(decision);
+      const result = await submitJuryVote({ abstain: false, notes });
       if (result.ok) {
-        setState((prev) => ({
+        const submittedScores: Partial<Record<string, ScoreValue>> = {};
+        for (const item of notes) {
+          submittedScores[item.criterionId] = item.value;
+        }
+        draft.resetDraft();
+        setServerState((prev) => ({
           ...prev,
           screen: "vote_registered",
-          ownVote: decision,
+          draftNotes: {},
+          ownVerdict: {
+            abstained: false,
+            score: result.value.score,
+            notes: submittedScores,
+          },
           vote: INITIAL_VOTE,
         }));
         await refresh();
@@ -156,41 +198,97 @@ export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions 
         endSession(result.message);
         return;
       }
-      setState((prev) => ({
+      setServerState((prev) => ({
         ...prev,
         vote: {
-          draft: prev.vote.draft,
-          confirming: false,
+          sheet: null,
           submitting: false,
           errorMessage: result.message,
         },
       }));
       await refresh();
     })();
-  }, [refresh, endSession]);
+  }, [draft, refresh, endSession]);
+
+  const confirmAbstain = useCallback(() => {
+    setServerState((prev) => ({
+      ...prev,
+      vote: { ...prev.vote, submitting: true, errorMessage: null },
+    }));
+
+    void (async () => {
+      const result = await submitJuryVote({ abstain: true });
+      if (result.ok) {
+        draft.resetDraft();
+        setServerState((prev) => ({
+          ...prev,
+          screen: "vote_registered",
+          draftNotes: {},
+          ownVerdict: { abstained: true, score: null, notes: {} },
+          vote: INITIAL_VOTE,
+        }));
+        await refresh();
+        return;
+      }
+      if (result.sessionExpired) {
+        endSession(result.message);
+        return;
+      }
+      setServerState((prev) => ({
+        ...prev,
+        vote: {
+          sheet: null,
+          submitting: false,
+          errorMessage: result.message,
+        },
+      }));
+      await refresh();
+    })();
+  }, [draft, refresh, endSession]);
 
   const logout = useCallback(() => {
     setSessionActive(false);
+    draft.resetDraft();
     void (async () => {
       await logoutJury();
-      setState({ ...INITIAL_JURY_STATE });
+      setServerState({ ...INITIAL_JURY_STATE });
     })();
-  }, []);
+  }, [draft]);
 
-  return useMemo(
+  const state = useMemo<JuryViewModel>(
     () => ({
-      state,
-      actions: {
-        submitCode,
-        selectDecision,
-        requestConfirm,
-        cancelConfirm,
-        confirmVote,
-        logout,
-      },
+      ...serverState,
+      draftNotes: draft.scores,
+      draftStatus: draft.status,
+      draftError: draft.errorMessage,
     }),
-    [state, submitCode, selectDecision, requestConfirm, cancelConfirm, confirmVote, logout],
+    [serverState, draft.scores, draft.status, draft.errorMessage],
   );
+
+  const actions = useMemo<JuryActions>(
+    () => ({
+      submitCode,
+      setScore: draft.setScore,
+      openConfirmSend,
+      openAbstain,
+      closeSheet,
+      confirmSend,
+      confirmAbstain,
+      logout,
+    }),
+    [
+      submitCode,
+      draft.setScore,
+      openConfirmSend,
+      openAbstain,
+      closeSheet,
+      confirmSend,
+      confirmAbstain,
+      logout,
+    ],
+  );
+
+  return { state, actions };
 }
 
 /**

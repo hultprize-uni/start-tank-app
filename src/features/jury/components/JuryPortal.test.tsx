@@ -5,7 +5,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { API_ROUTES } from "@/shared/lib/api-routes";
-import { JURY_CRITERIA } from "../criteria";
+import { DEFAULT_JURY_CRITERIA } from "../criteria";
 import type { JuryViewModel } from "../types";
 import { JuryPortal } from "./JuryPortal";
 
@@ -15,20 +15,26 @@ const fetchMock = vi.fn();
 const WAITING_STATE: JuryViewModel = {
   screen: "waiting",
   phase: "scheduled",
+  clock: null,
   access: { status: "idle", errorMessage: null },
   jurorLabel: "Jurado 2",
   round: {
+    id: "1",
     number: 1,
     total: 2,
     startupName: "AguaClara",
     sdg: "ODS 6",
     description: "Filtros comunitarios de agua.",
+    logoUrl: null,
   },
-  rail: [{ number: 1, startupName: "AguaClara", status: "current", ownDecision: null }],
-  criteria: JURY_CRITERIA,
-  vote: { draft: null, confirming: false, submitting: false, errorMessage: null },
+  rail: [{ number: 1, startupName: "AguaClara", status: "current", ownVerdict: null }],
+  criteria: DEFAULT_JURY_CRITERIA,
+  draftNotes: {},
+  draftStatus: "idle",
+  draftError: null,
+  vote: { sheet: null, submitting: false, errorMessage: null },
   votes: { emitted: 0, total: 4 },
-  ownVote: null,
+  ownVerdict: null,
   reveal: null,
 };
 

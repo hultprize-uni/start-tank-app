@@ -39,9 +39,18 @@ describe("AccessForm", () => {
   it("expone el campo de código con nombre accesible y el botón de entrada", () => {
     render(<AccessForm access={IDLE} onSubmit={vi.fn()} />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Tu voto define el retorno." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Tu calificación define el retorno." })).toBeInTheDocument();
     expect(screen.getByLabelText("Código de acceso")).toHaveAttribute("autocomplete", "off");
     expect(screen.getByRole("button", { name: "Entrar" })).toBeInTheDocument();
+  });
+
+  it("envía una cadena vacía cuando se intenta entrar sin código", async () => {
+    const onSubmit = vi.fn();
+    render(<AccessForm access={IDLE} onSubmit={onSubmit} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(onSubmit).toHaveBeenCalledWith("");
   });
 
   it("envía el código sin espacios laterales", async () => {

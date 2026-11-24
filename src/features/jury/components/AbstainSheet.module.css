@@ -1,0 +1,77 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lead {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
+.lead strong {
+  color: var(--fg-1);
+}
+
+.reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reason {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  background: var(--bg-page);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-2);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.reason:hover {
+  border-color: var(--line-strong);
+  color: var(--fg-1);
+}
+
+.reason:has(input:focus-visible) {
+  outline: 2px solid var(--st-cyan-light);
+  outline-offset: 2px;
+}
+
+.selected {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, var(--bg-band));
+  color: var(--fg-1);
+}
+
+.warning {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warning);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reason {
+    transition: none;
+  }
+}

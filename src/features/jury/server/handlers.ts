@@ -1,18 +1,55 @@
-import type { Decision } from "@/shared/domain/types";
 import { readAccessCode } from "@/server/auth/access-code";
 import { noSessionResponse, requireJury, startSession } from "@/server/auth/code-session";
 import { sql } from "@/server/db/client";
-import { normalizeFunctionResult } from "@/server/db/values";
 import {
   errorResponse,
   jsonResponse,
   readJsonBody,
   stateResponse,
 } from "@/server/http/responses";
-import { findJurorByCode, readJuryView, registerVote } from "./queries";
+import type { ScoreValue } from "../criteria";
+import type { CriterionScoreItem, JuryVotePayload } from "../types";
+import { findJurorByCode, readJuryView, registerVote, saveDraftNote } from "./queries";
+
+function parseVotePayload(body: Record<string, unknown> | null): JuryVotePayload | null {
+  if (body === null) return null;
+  if (body.abstain === true) {
+    return { abstain: true };
+  }
+  if (body.abstain !== undefined && body.abstain !== false) {
+    return null;
+  }
+  if (!Array.isArray(body.notes) || body.notes.length === 0) {
+    return null;
+  }
+
+  const parsed: CriterionScoreItem[] = [];
+  for (const item of body.notes) {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) {
+      return null;
+    }
+    const candidate = item as { criterionId?: unknown; value?: unknown };
+    if (
+      typeof candidate.criterionId !== "string" ||
+      !/^\d+$/.test(candidate.criterionId) ||
+      typeof candidate.value !== "number" ||
+      !Number.isInteger(candidate.value) ||
+      candidate.value < 1 ||
+      candidate.value > 5
+    ) {
+      return null;
+    }
+    parsed.push({
+      criterionId: candidate.criterionId,
+      value: candidate.value as ScoreValue,
+    });
+  }
+
+  return { abstain: false, notes: parsed };
+}
 
 /**
- * Guarda en el borrador la nota de un criterio de la ronda en curso (RF-15). Cuerpo:
+ * Guarda en el borrador la nota de un criterio de la ronda en curso (RF-14). Cuerpo:
  * { criterionId: string, value: 1..5 }. Responde { ok: true } o un error 409 con el código.
  */
 export async function handleJuryDraft(request: Request): Promise<Response> {
@@ -25,38 +62,20 @@ export async function handleJuryDraft(request: Request): Promise<Response> {
       typeof criterionId !== "string" ||
       !/^\d+$/.test(criterionId) ||
       typeof value !== "number" ||
-      !Number.isInteger(value)
+      !Number.isInteger(value) ||
+      value < 1 ||
+      value > 5
     ) {
       return errorResponse(400, "INVALID_NOTE");
     }
 
-    const [round] = await sql<{ id_ronda: string }>`
-      select id_ronda::text as id_ronda
-        from ronda
-       where estado in ('ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')
-       order by numero
-       limit 1`;
-    if (round === undefined) {
-      return errorResponse(409, "ROUND_NOT_GRADABLE");
-    }
-
-    const [row] = await sql<{ resultado: Record<string, unknown> }>`
-      select fn_guardar_borrador(${session.id}::bigint, ${round.id_ronda}::bigint,
-                                 ${criterionId}::bigint, ${value}::int) as resultado`;
-    const result = normalizeFunctionResult(row?.resultado ?? {});
+    const result = await saveDraftNote(session.id, criterionId, value);
     return result.ok ? jsonResponse({ ok: true }) : errorResponse(409, result.error ?? "DRAFT_REJECTED");
   } catch (error) {
     const noSession = noSessionResponse(error);
     if (noSession !== null) return noSession;
     throw error;
   }
-}
-
-/** Decisiones admitidas para el voto del jurado. */
-const DECISIONS: readonly Decision[] = ["BACK", "REJECT", "ABSTAIN"];
-
-function isDecision(value: unknown): value is Decision {
-  return typeof value === "string" && (DECISIONS as readonly string[]).includes(value);
 }
 
 /**
@@ -100,24 +119,24 @@ export async function handleJuryState(): Promise<Response> {
 }
 
 /**
- * Registra el voto definitivo del jurado en la ronda activa. La validación de estado, de unicidad
- * del voto y de existencia del jurado se realiza en fn_registrar_voto.
+ * Registra el envío definitivo del jurado (notas por criterio o abstención) en la ronda activa.
+ * La validación de estado, completitud de criterios y unicidad se realiza en fn_registrar_voto.
  */
 export async function handleJuryVote(request: Request): Promise<Response> {
   try {
     const session = await requireJury();
 
     const body = await readJsonBody(request);
-    const decision = body?.decision;
-    if (!isDecision(decision)) {
-      return errorResponse(400, "INVALID_DECISION");
+    const payload = parseVotePayload(body);
+    if (payload === null) {
+      return errorResponse(400, "INVALID_NOTES");
     }
 
-    const result = await registerVote(session.id, decision);
+    const result = await registerVote(session.id, payload);
     if (!result.ok) {
       return errorResponse(409, result.error ?? "VOTE_REJECTED");
     }
-    return jsonResponse({ ok: true });
+    return jsonResponse({ ok: true, score: result.score ?? null });
   } catch (error) {
     const noSession = noSessionResponse(error);
     if (noSession !== null) return noSession;
