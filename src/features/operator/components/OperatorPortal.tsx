@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { AnimatedBackground, Toast } from "@/shared/ui";
+import { AnimatedBackground, StartTankLoader, Toast } from "@/shared/ui";
 import { USE_MOCKS } from "@/shared/lib/env";
 
 import {
@@ -81,9 +81,7 @@ export function OperatorPortal() {
   if (session.status === "checking") {
     return (
       <main className={gateStyles.page}>
-        <p className={gateStyles.lead} role="status">
-          Verificando la sesión...
-        </p>
+        <StartTankLoader label="Verificando la sesión..." />
       </main>
     );
   }
@@ -204,9 +202,13 @@ function OperatorWorkspace({ onExpired, onLogout }: OperatorWorkspaceProps) {
   if (viewModel === null) {
     return (
       <main className={gateStyles.page}>
-        <p className={gateStyles.lead} role="status">
-          {notice ?? "Cargando la ronda..."}
-        </p>
+        {notice ? (
+          <p className={gateStyles.lead} role="status">
+            {notice}
+          </p>
+        ) : (
+          <StartTankLoader label="Cargando la ronda..." />
+        )}
       </main>
     );
   }

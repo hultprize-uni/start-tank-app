@@ -58,7 +58,7 @@
   align-items: center;
   gap: 24px;
   width: min(100% - 48px, 1200px);
-  height: 88px;
+  height: 72px;
   margin-inline: auto;
 }
 
@@ -66,9 +66,9 @@
   display: inline-flex;
 }
 
-.brandLogo {
-  width: clamp(132px, 38vw, 180px);
-  height: auto;
+.brand .brandLogo {
+  width: auto;
+  height: 40px;
 }
 
 .navLinks {
@@ -147,19 +147,23 @@
   gap: 8px;
   margin: 0;
   max-width: 100%;
-  padding: 5px 12px;
+  min-height: 30px;
+  padding: 6px 14px;
   border-radius: var(--r-pill);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .pill {
+  border: 1px solid rgba(139, 218, 245, 0.18);
   background: rgba(41, 37, 99, 0.7);
   color: var(--fg-2);
 }
 
 .pillPink {
-  background: rgba(234, 72, 153, 0.16);
+  border: 1px solid rgba(243, 132, 188, 0.22);
+  background: rgba(234, 72, 153, 0.14);
   color: var(--st-pink-light);
 }
 
@@ -216,7 +220,7 @@
 /* Entrada de la portada: un solo momento orquestado al cargar. */
 .enter,
 .enterCard {
-  animation: rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: rise 0.9s var(--ease-out) backwards;
 }
 
 .heroCopy > .enter:nth-child(1) {
@@ -252,15 +256,33 @@
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(24px);
+    clip-path: inset(-10% 100% -10% 0);
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(-10% -2% -10% 0);
+    transform: none;
   }
 }
 
 @keyframes riseCard {
   from {
     opacity: 0;
-    transform: translateY(32px) rotate(-2deg);
+    clip-path: inset(0 100% 0 0 round 28px);
+    transform: translateX(32px);
   }
+  to {
+    opacity: 1;
+    clip-path: inset(-60px -60px -60px -60px);
+    transform: none;
+  }
+}
+
+/* Mientras la intro está en pantalla, la entrada de la portada espera. */
+.page:has(.intro[data-intro="hold"]) .enter,
+.page:has(.intro[data-intro="hold"]) .enterCard {
+  animation-play-state: paused;
 }
 
 /* Demo de mercado en vivo */
@@ -445,11 +467,11 @@
 
 .section,
 .facts {
-  scroll-margin-top: 96px;
+  scroll-margin-top: 88px;
 }
 
 .section {
-  padding: 72px 0;
+  padding: 64px 0;
 }
 
 .sectionTitle {
@@ -777,28 +799,303 @@
 
 .footer {
   border-top: 1px solid var(--line-1);
+  background: var(--bg-band);
 }
 
-.footerRow {
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px 24px;
+  padding: 56px 0 40px;
+}
+
+/* En teléfono, marca y contacto ocupan el ancho; los dos menús van lado a lado. */
+.footerBrand,
+.footerGrid > :last-child {
+  grid-column: 1 / -1;
+}
+
+.footerBrand {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 40px 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  max-width: 340px;
 }
 
 .footerLogo {
-  width: 128px;
+  width: 120px;
   height: auto;
-  border-radius: 8px;
-  background: #fff; /* el logo está hecho para fondo blanco */
 }
 
 .footerText {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.65;
   color: var(--fg-3);
+}
+
+.socials {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.social {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg-2);
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.social:hover {
+  border-color: rgba(234, 72, 153, 0.5);
+  background: rgba(234, 72, 153, 0.12);
+  color: var(--fg-1);
+  transform: translateY(-2px);
+}
+
+.footerCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.footerHeading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-1);
+}
+
+.footerLinks {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footerLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  font-size: 15px;
+  color: var(--fg-3);
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.footerLink:hover {
+  color: var(--fg-1);
+  transform: translateX(3px);
+}
+
+.footerContact {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
+.footerContact li {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: start;
+  gap: 12px;
+}
+
+.footerContact svg {
+  margin-top: 1px;
+  color: var(--st-pink-light);
+}
+
+.footerCta {
+  margin-top: 4px;
+}
+
+.footerBottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 20px 0 28px;
+  border-top: 1px solid var(--line-1);
+  font-size: 13px;
+  color: var(--fg-4);
+}
+
+.footerBottom p {
+  margin: 0;
+}
+
+@media (min-width: 1024px) {
+  .footerGrid {
+    grid-template-columns: 1.5fr 1fr 1fr 1.5fr;
+    padding: 72px 0 56px;
+  }
+
+  .footerBrand,
+  .footerGrid > :last-child {
+    grid-column: auto;
+  }
+}
+
+/* Barrido de entrada al recorrer la portada (lo activa ScrollReveal). La animación solo rellena
+ * hacia atrás, así que al terminar no bloquea las transiciones de hover de cada elemento. */
+
+.page[data-reveal-ready] [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+}
+
+.page[data-reveal-ready] [data-reveal][data-revealed] {
+  animation: sweepIn 0.95s var(--ease-out) var(--reveal-delay, 0s) backwards;
+}
+
+/* Títulos: una franja de la marca barre el texto y lo deja a la vista al retirarse. */
+.page[data-reveal-ready] [data-reveal="sweep"] {
+  position: relative;
+  width: fit-content;
+}
+
+.page[data-reveal-ready] [data-reveal="sweep"][data-revealed] {
+  animation-name: sweepText;
+  animation-duration: 1.1s;
+}
+
+.page[data-reveal-ready] [data-reveal="sweep"]::after {
+  content: "";
+  position: absolute;
+  inset: 0 -8px;
+  border-radius: 8px;
+  background: var(--grad-brand);
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+.page[data-reveal-ready] [data-reveal="sweep"][data-revealed]::after {
+  animation: sweepBar 1.1s var(--ease-out) var(--reveal-delay, 0s) both;
+}
+
+@keyframes sweepIn {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: none;
+  }
+}
+
+@keyframes sweepText {
+  0%,
+  44% {
+    color: transparent;
+  }
+  45%,
+  100% {
+    color: var(--fg-1);
+  }
+}
+
+@keyframes sweepBar {
+  0% {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  44% {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+  56% {
+    transform: scaleX(1);
+    transform-origin: right;
+  }
+  100% {
+    transform: scaleX(0);
+    transform-origin: right;
+  }
+}
+
+/* Intro: logo sobre fondo sólido; luego el fondo se desarma en celdas en diagonal (LandingIntro). */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--st-indigo);
+  /* Respaldo: si el JavaScript no llega, la capa se retira sola. */
+  animation: introFailsafe 0.4s ease 10s forwards;
+}
+
+/* Con la cuadrícula montada, las celdas son el fondo. */
+.intro:has(.introCell) {
+  background: transparent;
+}
+
+.introGrid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+}
+
+.introCell {
+  background: var(--st-indigo);
+  /* Cubre las juntas de medio píxel entre celdas cuando la altura no es múltiplo exacto. */
+  box-shadow: 0 0 0 1px var(--st-indigo);
+  transform: scale(1.02);
+  will-change: transform, opacity;
+}
+
+.introBrand {
+  position: relative;
+  z-index: 2;
+  animation: introBrandIn 0.7s var(--ease-out) both;
+}
+
+.introBrand .introLogo {
+  width: clamp(180px, 24vw, 300px);
+  height: auto;
+}
+
+@keyframes introBrandIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes introFailsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 /* Escritorio */
@@ -845,7 +1142,7 @@
   }
 
   .section {
-    padding: 104px 0;
+    padding: 96px 0;
   }
 
   .steps {

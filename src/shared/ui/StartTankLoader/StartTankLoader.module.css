@@ -1,0 +1,238 @@
+/*
+ * Loader de marca. Un solo ciclo (--cycle) coordina todo con porcentajes:
+ *   0-32 %   el cohete sube y la estela pinta el logo de abajo hacia arriba
+ *   32-40 %  el cohete se funde con el del logo
+ *   42-56 %  el tiburón entra, abre la mandíbula y muerde la K (cambio de logo en 54 %)
+ *   56-74 %  sacudida del logo y salida del tiburón
+ * En modo loop el escenario se desvanece al final para reiniciar sin salto.
+ */
+
+.loader {
+  --cycle: 3.4s;
+  --size: 168px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.once {
+  --cycle: 2.6s;
+}
+
+.stage {
+  position: relative;
+  width: var(--size);
+  aspect-ratio: 480 / 451;
+}
+
+.logoWrap {
+  position: absolute;
+  inset: 0;
+}
+
+.logoWhole,
+.logoBitten {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.logoWhole {
+  animation: paint var(--cycle) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.logoBitten {
+  animation: bite var(--cycle) steps(1, end) both;
+}
+
+.rocket {
+  position: absolute;
+  left: 40%;
+  top: 0;
+  width: 20%;
+  height: auto;
+  overflow: visible;
+  animation: launch var(--cycle) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.flame {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: flicker 0.12s ease-in-out infinite alternate;
+}
+
+.shark {
+  position: absolute;
+  left: 96%;
+  top: 56%;
+  width: 46%;
+  height: auto;
+  overflow: visible;
+  animation: swim var(--cycle) cubic-bezier(0.3, 0.8, 0.3, 1) both;
+}
+
+.jaw {
+  transform-box: view-box;
+  transform-origin: 34px 41px;
+  animation: chomp var(--cycle) ease-in-out both;
+}
+
+.loop .stage {
+  animation: shake var(--cycle) ease-in-out infinite, restart var(--cycle) linear infinite;
+}
+
+.loop .logoWhole,
+.loop .logoBitten,
+.loop .rocket,
+.loop .shark,
+.loop .jaw {
+  animation-iteration-count: infinite;
+}
+
+.once .stage {
+  animation: shake var(--cycle) ease-in-out both;
+}
+
+.label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-3);
+}
+
+/* El borde del recorte sigue la cola del cohete: misma curva y mismo tramo (0-32 %). El cohete
+ * mide el 51 % del escenario y su cuerpo termina al 33 %, así que el borde va de 133 % a 33 %. */
+@keyframes paint {
+  0% {
+    clip-path: inset(133% 0 0 0);
+  }
+  32% {
+    clip-path: inset(33% 0 0 0);
+  }
+  38%,
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes bite {
+  0% {
+    opacity: 0;
+  }
+  53%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes launch {
+  0% {
+    opacity: 0;
+    transform: translateY(196%);
+  }
+  4% {
+    opacity: 1;
+  }
+  32% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  40%,
+  100% {
+    opacity: 0;
+    transform: translateY(-4%);
+  }
+}
+
+@keyframes flicker {
+  to {
+    transform: scaleY(0.7);
+  }
+}
+
+@keyframes swim {
+  0%,
+  40% {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+  48% {
+    opacity: 1;
+    transform: translateX(6%);
+  }
+  54% {
+    transform: translateX(-8%);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  74%,
+  100% {
+    opacity: 0;
+    transform: translateX(130%);
+  }
+}
+
+@keyframes chomp {
+  0%,
+  44% {
+    transform: rotate(0deg);
+  }
+  51% {
+    transform: rotate(-30deg);
+  }
+  54%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes shake {
+  0%,
+  54% {
+    transform: translateX(0);
+  }
+  56% {
+    transform: translateX(-3%) rotate(-1.5deg);
+  }
+  58% {
+    transform: translateX(2%) rotate(1deg);
+  }
+  61%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes restart {
+  0%,
+  86% {
+    opacity: 1;
+  }
+  96%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Movimiento reducido: logo final quieto, sin cohete ni tiburón. */
+@media (prefers-reduced-motion: reduce) {
+  .stage,
+  .logoWhole,
+  .logoBitten,
+  .jaw {
+    animation: none !important;
+  }
+
+  .logoBitten {
+    opacity: 1;
+  }
+
+  .rocket,
+  .shark {
+    display: none;
+  }
+}

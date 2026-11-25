@@ -1,0 +1,6 @@
+/* Loader de entrada centrado en la ventana. */
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+}

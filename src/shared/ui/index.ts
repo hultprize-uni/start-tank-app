@@ -14,5 +14,6 @@ export * from "./MarketCard";
 export * from "./ProgressBar";
 export * from "./SegmentedChoice";
 export * from "./Spinner";
+export * from "./StartTankLoader";
 export * from "./StatBlock";
 export * from "./Toast";

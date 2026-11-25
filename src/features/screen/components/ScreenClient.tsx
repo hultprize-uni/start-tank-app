@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
-import { BrandLogo } from "@/shared/ui";
+import { BrandLogo, StartTankLoader } from "@/shared/ui";
+import { useMinDelay } from "@/shared/lib/use-min-delay";
 import { PAGE_ROUTES } from "@/shared/lib/api-routes";
 import { STAGE_PHASES } from "../api/mock";
 import { useScreenState } from "../hooks/useScreenState";
@@ -74,6 +75,8 @@ export function ScreenClient({ forcedPhase, showSelector }: ScreenClientProps) {
   const fit = useStageFit();
   const [joinHost, setJoinHost] = useState("");
   useEffect(() => setJoinHost(`${window.location.host}${PAGE_ROUTES.participant}`), []);
+  // El loader de entrada cubre la medición del escenario y la primera lectura del evento.
+  const ready = useMinDelay(fit !== null && (vm !== null || empty), 1200);
 
   return (
     <main className={s.viewport}>
@@ -117,6 +120,12 @@ export function ScreenClient({ forcedPhase, showSelector }: ScreenClientProps) {
           </p>
         ) : null}
       </div>
+
+      {!ready ? (
+        <div className={s.loading}>
+          <StartTankLoader label="Conectando con el evento..." className={s.loader} />
+        </div>
+      ) : null}
 
       {showSelector ? (
         <nav className={s.selector} aria-label="Fases de muestra">

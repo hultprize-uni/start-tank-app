@@ -6,7 +6,7 @@ import styles from "./landing.module.css";
 export function SignupSection() {
   return (
     <section id="inscripcion" className={styles.section} aria-labelledby="signup-title">
-      <div className={`${styles.container} ${styles.signup}`}>
+      <div className={`${styles.container} ${styles.signup}`} data-reveal>
         <div>
           <h2 id="signup-title" className={styles.signupTitle}>
             Reserva tu lugar en el auditorio

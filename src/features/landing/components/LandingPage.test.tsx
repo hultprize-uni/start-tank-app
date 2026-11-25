@@ -59,10 +59,9 @@ describe("LandingPage: estructura", () => {
       "href",
       PAGE_ROUTES.operator,
     );
-    expect(screen.getByRole("link", { name: "Inscribirme en Luma" })).toHaveAttribute(
-      "href",
-      "https://luma.com/yj5tp4fe",
-    );
+    for (const link of screen.getAllByRole("link", { name: "Inscribirme en Luma" })) {
+      expect(link).toHaveAttribute("href", "https://luma.com/yj5tp4fe");
+    }
   });
 
   it("muestra los datos del evento y el programa", () => {

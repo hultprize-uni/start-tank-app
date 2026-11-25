@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { AnimatedBackground, Toast } from "@/shared/ui";
+import { AnimatedBackground, StartTankLoader, Toast } from "@/shared/ui";
 import { formatCoins } from "../format";
 import { useInvestSheet } from "../hooks/useInvestSheet";
 import { DESKTOP_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
@@ -102,9 +102,15 @@ export function ParticipantPortal() {
     return (
       <main className={styles.portal}>
         <AnimatedBackground />
-        <p className={styles.status} role="status">
-          {status === "error" && errorMessage !== null ? errorMessage : "Cargando..."}
-        </p>
+        {status === "error" && errorMessage !== null ? (
+          <p className={styles.status} role="status">
+            {errorMessage}
+          </p>
+        ) : (
+          <div className={styles.loading}>
+            <StartTankLoader label="Cargando..." />
+          </div>
+        )}
       </main>
     );
   }

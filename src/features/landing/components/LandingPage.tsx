@@ -3,9 +3,11 @@ import { EventFacts } from "./EventFacts";
 import { HeroSection } from "./HeroSection";
 import { LandingFooter } from "./LandingFooter";
 import { LandingHeader } from "./LandingHeader";
+import { LandingIntro } from "./LandingIntro";
 import { PlatformSection } from "./PlatformSection";
 import { ProgramSection } from "./ProgramSection";
 import { RulesSection } from "./RulesSection";
+import { ScrollReveal } from "./ScrollReveal";
 import { SignupSection } from "./SignupSection";
 import styles from "./landing.module.css";
 
@@ -15,7 +17,9 @@ import styles from "./landing.module.css";
  */
 export function LandingPage() {
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-reveal-root>
+      <LandingIntro />
+      <ScrollReveal />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(EVENT_JSON_LD) }}

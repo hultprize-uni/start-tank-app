@@ -15,6 +15,13 @@
   color: var(--fg-3);
 }
 
+.loading {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+}
+
 .toastLayer {
   position: fixed;
   top: 16px;

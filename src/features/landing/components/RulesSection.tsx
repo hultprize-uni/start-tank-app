@@ -9,14 +9,14 @@ export function RulesSection() {
   return (
     <section id="como-se-juega" className={styles.section} aria-labelledby="rules-title">
       <div className={styles.container}>
-        <p className={styles.pillPink}>Cómo se juega</p>
-        <h2 id="rules-title" className={styles.sectionTitle}>
+        <p className={styles.pillPink} data-reveal>Cómo se juega</p>
+        <h2 id="rules-title" className={styles.sectionTitle} data-reveal="sweep">
           Inviertes una vez por ronda. El jurado mueve tu dinero.
         </h2>
 
         <ol className={styles.steps}>
           {HOW_TO_PLAY.map((step, index) => (
-            <li key={step.title} className={styles.step}>
+            <li key={step.title} className={styles.step} data-reveal style={{ "--reveal-delay": `${index * 90}ms` } as React.CSSProperties}>
               <span className={styles.stepNumber} aria-hidden="true">
                 {index + 1}
               </span>
@@ -26,7 +26,7 @@ export function RulesSection() {
           ))}
         </ol>
 
-        <figure className={styles.multiplier}>
+        <figure className={styles.multiplier} data-reveal>
           <figcaption className={styles.multiplierCopy}>
             <h3 className={styles.multiplierTitle}>Así se calcula tu retorno</h3>
             <p className={styles.multiplierText}>

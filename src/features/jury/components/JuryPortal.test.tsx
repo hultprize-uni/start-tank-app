@@ -71,7 +71,8 @@ describe("JuryPortal: salir de la sesión", () => {
     routeFetch(() => Promise.resolve(jsonResponse({ ok: true })));
     render(<JuryPortal />);
 
-    const [logoutButton] = await screen.findAllByRole("button", { name: "Salir" });
+    // El portal muestra el loader de entrada al menos 1.2 s.
+    const [logoutButton] = await screen.findAllByRole("button", { name: "Salir" }, { timeout: 3000 });
     expect(logoutButton).toHaveAttribute("type", "button");
 
     await user.click(logoutButton);
@@ -91,7 +92,7 @@ describe("JuryPortal: salir de la sesión", () => {
     routeFetch(() => Promise.reject(new TypeError("fetch failed")));
     render(<JuryPortal />);
 
-    const [logoutButton] = await screen.findAllByRole("button", { name: "Salir" });
+    const [logoutButton] = await screen.findAllByRole("button", { name: "Salir" }, { timeout: 3000 });
     await user.click(logoutButton);
 
     await waitFor(() =>

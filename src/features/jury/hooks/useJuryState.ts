@@ -67,9 +67,17 @@ export function mergeJuryState(prev: JuryViewModel, view: JuryViewModel): JuryVi
  * cada EVENT_CONFIG.juryPollMs (3 s), persiste el borrador de notas y devuelve al acceso cuando la
  * sesión vence.
  */
-export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions } {
+/** Estado del portal y, mientras se consulta si hay una sesión vigente, `restoring` en verdadero. */
+export interface JuryStateHook {
+  state: JuryViewModel;
+  actions: JuryActions;
+  restoring?: boolean;
+}
+
+export function useJuryStateApi(): JuryStateHook {
   const [serverState, setServerState] = useState<JuryViewModel>(INITIAL_JURY_STATE);
   const [sessionActive, setSessionActive] = useState(false);
+  const [restoring, setRestoring] = useState(true);
 
   const endSession = useCallback((message: string) => {
     setSessionActive(false);
@@ -112,7 +120,9 @@ export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions 
     let active = true;
     void (async () => {
       const result = await readJuryState();
-      if (!active || !result.ok) return;
+      if (!active) return;
+      setRestoring(false);
+      if (!result.ok) return;
       setServerState((prev) => mergeJuryState(prev, result.value));
       setSessionActive(true);
     })();
@@ -288,13 +298,13 @@ export function useJuryStateApi(): { state: JuryViewModel; actions: JuryActions 
     ],
   );
 
-  return { state, actions };
+  return { state, actions, restoring };
 }
 
 /**
  * Estado del portal del jurado. Usa los datos de muestra solo con NEXT_PUBLIC_USE_MOCKS=true; en
  * otro caso consume la API. La selección ocurre en tiempo de compilación.
  */
-export const useJuryState: () => { state: JuryViewModel; actions: JuryActions } = USE_MOCKS
+export const useJuryState: () => JuryStateHook = USE_MOCKS
   ? useJuryStateMock
   : useJuryStateApi;

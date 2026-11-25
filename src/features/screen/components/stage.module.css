@@ -974,3 +974,17 @@
     transition: none;
   }
 }
+
+/* Loader de entrada: cubre la ventana hasta medir el escenario y leer el evento. */
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: var(--bg-page);
+}
+
+.loading .loader {
+  --size: clamp(220px, 22vw, 360px);
+}
