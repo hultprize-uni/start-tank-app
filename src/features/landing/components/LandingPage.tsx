@@ -6,6 +6,7 @@ import { LandingHeader } from "./LandingHeader";
 import { LandingIntro } from "./LandingIntro";
 import { PlatformSection } from "./PlatformSection";
 import { ProgramSection } from "./ProgramSection";
+import { StartupsSection } from "./StartupsSection";
 import { RulesSection } from "./RulesSection";
 import { ScrollReveal } from "./ScrollReveal";
 import { SignupSection } from "./SignupSection";
@@ -33,6 +34,7 @@ export function LandingPage() {
         <EventFacts />
         <RulesSection />
         <ProgramSection />
+        <StartupsSection />
         <PlatformSection />
         <SignupSection />
       </main>

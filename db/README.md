@@ -33,6 +33,8 @@ Aplicar los archivos en el orden listado. El orden coincide con el orden lexicog
 16. `migrations/20261125000000_fn_batch.sql`: funciones de los procesos batch (carga de resultados del cierre, reinicio del ensayo, respaldo, restauración y reconstrucción del leaderboard).
 
 16b. `migrations/20261126000000_fase_pitch_y_reinicios.sql`: estado `PITCH` (la ronda empieza con el pitch y el mercado cerrado; `ABRIR_MERCADO` abre el toma y dame), `REINICIAR_FASE`, `REINICIAR_RONDA` y `fn_reiniciar_evento` (reinicio total). Se aplica con `pnpm db:apply 20261126`.
+
+16c. `migrations/20261126000100_logos_startups.sql`: asigna `logo_url` a las 5 startups reales (archivos en `public/startups/`). Se aplica con `pnpm db:apply 20261126000100`.
 17. `seed.sql`: startups, rondas, jurados y operadores de ejemplo. Ejecutar solo en entornos de desarrollo, porque contiene códigos de acceso ficticios.
 
 ## Procesos batch

@@ -30,6 +30,7 @@
     }
   },
   "include": [
+    ".next-loadtest/types/**/*.ts",
     ".next-start-tank-local-db/types/**/*.ts",
     ".next/types/**/*.ts",
     "e2e/**/*.ts",
@@ -38,7 +39,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "vitest.config.mts",
-    ".next-loadtest/types/**/*.ts"
+    ".next-start-tank-mocks/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

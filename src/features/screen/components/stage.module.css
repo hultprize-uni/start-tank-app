@@ -267,7 +267,8 @@
 .mark img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  padding: 8%;
+  object-fit: contain;
 }
 
 .startupName {
@@ -985,4 +986,9 @@
 
 .loading .loader {
   --size: clamp(220px, 22vw, 360px);
+}
+
+/* Con logo, la ficha es clara para que se lea cualquier logo, también los de fondo transparente. */
+.mark:has(img) {
+  background: #f1ece6;
 }

@@ -71,6 +71,7 @@ export function MarketScreen({ round, startup, market, wallet, lastCall, clock, 
         investorsLabel="Inversionistas"
         roundLabel={roundLabel}
         headingLevel={2}
+        logoUrl={startup.logoUrl}
       />
 
       {wallet.alreadyInvested ? (

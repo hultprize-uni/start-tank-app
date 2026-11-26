@@ -23,6 +23,12 @@ export function ScheduledScreen({ round, startup, balance, streak, pitch = false
       <Badge tone={pitch ? "cyan" : "yellow"} live={pitch}>
         Ronda {round.number} de {round.total} · {pitch ? "Pitch en curso" : "Programada"}
       </Badge>
+      {startup.logoUrl ? (
+        <span className={styles.logo} aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo de tamaño fijo */}
+          <img src={startup.logoUrl} alt="" />
+        </span>
+      ) : null}
       <h1 className={styles.name}>{startup.name}</h1>
       <p className={styles.sdg}>{startup.sdg}</p>
       <p className={styles.description}>{startup.description}</p>

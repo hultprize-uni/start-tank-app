@@ -28,6 +28,8 @@ export interface MarketCardProps {
   roundLabel?: ReactNode;
   /** Nivel del encabezado que contiene el nombre. Predeterminado: 3. */
   headingLevel?: 2 | 3 | 4;
+  /** Logo de la startup. Se omite si no se recibe. */
+  logoUrl?: string | null;
   className?: string;
 }
 
@@ -48,6 +50,7 @@ export function MarketCard({
   status,
   roundLabel,
   headingLevel = 3,
+  logoUrl,
   className,
 }: MarketCardProps) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
@@ -66,6 +69,12 @@ export function MarketCard({
         </div>
       ) : null}
 
+      {logoUrl ? (
+        <span className={styles.logo} aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo de tamaño fijo */}
+          <img src={logoUrl} alt="" />
+        </span>
+      ) : null}
       <Heading className={styles.name}>{name}</Heading>
       <p className={styles.ods}>{ods}</p>
 

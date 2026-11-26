@@ -18,6 +18,15 @@ export const LOGIN_HREF = PAGE_ROUTES.participant;
 /** Inscripción al evento en Luma. */
 export const SIGNUP_HREF = "https://luma.com/yj5tp4fe";
 
+/** Startups que presentan en el Shark Tank, en orden de pitch. Los logos están en public/startups/. */
+export const STARTUPS = [
+  { name: "Monedita", logo: "/startups/monedita.png" },
+  { name: "Rockie OS", logo: "/startups/rockie-os.png" },
+  { name: "Provdu", logo: "/startups/provdu.png" },
+  { name: "Agrolif", logo: "/startups/agrolif.png" },
+  { name: "Tracta", logo: "/startups/tracta.png" },
+] as const;
+
 export const EVENT_FACTS = [
   { value: "26 nov", label: "Jueves" },
   { value: "2:00 p. m.", label: "a 5:00 p. m." },

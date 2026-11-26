@@ -1182,3 +1182,67 @@
     transition: none;
   }
 }
+
+/* Carrusel de startups */
+
+.marquee {
+  padding: 8px 0 24px;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.marqueeTrack {
+  display: flex;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: marquee 60s linear infinite;
+}
+
+.marquee:hover .marqueeTrack {
+  animation-play-state: paused;
+}
+
+/* Logos sueltos, sin ficha ni borde: cada uno a su altura y con aire entre ellos. */
+.marqueeItem {
+  display: grid;
+  flex: none;
+  place-items: center;
+  margin-right: 96px;
+  opacity: 0.85;
+  transition: opacity 0.25s var(--ease-out), transform 0.25s var(--ease-out);
+}
+
+.marqueeItem:hover {
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+.marqueeItem img {
+  width: auto;
+  max-width: 260px;
+  height: 112px;
+  object-fit: contain;
+}
+
+/* Cada mitad mide lo mismo, así que desplazar 50 % deja el bucle sin salto. */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marqueeTrack {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: auto;
+    row-gap: 16px;
+    animation: none;
+  }
+  /* Sin movimiento no hace falta la copia. */
+  .marqueeItem[aria-hidden="true"] {
+    display: none;
+  }
+}
