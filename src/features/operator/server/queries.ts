@@ -30,6 +30,7 @@ import {
 /** Acciones de ronda que la API acepta (RF-06 a RF-10, RF-18). */
 export const API_OPERATOR_ACTIONS = [
   "OPEN",
+  "OPEN_MARKET",
   "LAST_CALL",
   "CLOSE",
   "ENABLE_VOTING",
@@ -39,6 +40,8 @@ export const API_OPERATOR_ACTIONS = [
   "REVEAL",
   "CANCEL_REFUND",
   "CANCEL_SETTLE_1X",
+  "RESTART_PHASE",
+  "RESTART_ROUND",
 ] as const;
 
 export type ApiOperatorAction = (typeof API_OPERATOR_ACTIONS)[number];
@@ -47,6 +50,7 @@ export type ApiOperatorAction = (typeof API_OPERATOR_ACTIONS)[number];
 export const ACTIONS_WITH_REASON: ReadonlySet<ApiOperatorAction> = new Set<ApiOperatorAction>([
   "CANCEL_REFUND",
   "CANCEL_SETTLE_1X",
+  "RESTART_ROUND",
 ]);
 
 /** Límite de acciones mostradas en el log del operador. */
@@ -250,7 +254,8 @@ export async function executeOperatorAction(
 ): Promise<ActionResult> {
   const rounds = await queryRounds();
   const c = classifyRounds(rounds);
-  const round = action === "OPEN" ? c.pending : c.active;
+  const round =
+    action === "OPEN" ? c.pending : action === "RESTART_ROUND" ? (c.active ?? c.lastFinished) : c.active;
   if (round === undefined) {
     return { ok: false, error: "ROUND_UNAVAILABLE" };
   }
@@ -310,7 +315,7 @@ export async function logAdminAction(
     insert into accion_ronda (id_operador, id_ronda, accion, motivo)
     select ${operatorId}::bigint, r.id_ronda, ${action}, ${reason}
       from ronda r
-     order by (r.estado in ('ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')) desc,
+     order by (r.estado in ('PITCH', 'ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')) desc,
               (r.estado <> 'PROGRAMADA') desc,
               case when r.estado <> 'PROGRAMADA' then -r.numero else r.numero end
      limit 1`;
@@ -320,7 +325,7 @@ export async function logAdminAction(
 export async function hasActiveRound(): Promise<boolean> {
   const [row] = await sql<{ active: boolean }>`
     select exists (
-      select 1 from ronda where estado in ('ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')
+      select 1 from ronda where estado in ('PITCH', 'ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')
     ) as active`;
   return row?.active === true;
 }

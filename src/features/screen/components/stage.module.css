@@ -217,6 +217,22 @@
   height: 100%;
 }
 
+/*
+ * Las fases ocupan el alto del cuerpo y nunca más: la fila no crece con el contenido y sus columnas
+ * pueden encogerse, así la card del gráfico se adapta y nada queda cortado al borde del escenario.
+ */
+.split,
+.betweenGrid,
+.closingGrid {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.split > *,
+.betweenGrid > *,
+.closingGrid > * {
+  min-height: 0;
+}
+
 .main {
   display: flex;
   flex-direction: column;
@@ -806,6 +822,14 @@
   gap: 24px;
 }
 
+/* La tabla entre rondas y la última card de cada lateral llegan al fondo del escenario: sin franjas vacías. */
+.betweenMain > :last-child,
+.rail > :last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .betweenTitle {
   margin: 0;
   font-size: 60px;
@@ -927,32 +951,6 @@
   background: rgba(234, 72, 153, 0.2);
   font-size: 15px;
   color: var(--st-pink-light);
-}
-
-.selector {
-  position: fixed;
-  bottom: 12px;
-  left: 50%;
-  z-index: 3;
-  display: flex;
-  gap: 6px;
-  padding: 6px;
-  border-radius: var(--r-pill);
-  background: rgba(0, 0, 0, 0.6);
-  transform: translateX(-50%);
-}
-
-.selector a {
-  padding: 4px 10px;
-  border-radius: var(--r-pill);
-  font-size: 12px;
-  color: var(--fg-2);
-  text-decoration: none;
-}
-
-.selector a[aria-current="page"] {
-  background: var(--st-pink);
-  color: var(--fg-1);
 }
 
 @media (prefers-reduced-motion: reduce) {

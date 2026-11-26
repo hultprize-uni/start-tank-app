@@ -493,12 +493,22 @@ function seconds(key: string): number {
   return state.settings[key];
 }
 
+/** Clave de duración de cada fase con cronómetro, para reiniciarla. */
+const PHASE_KEYS: Partial<Record<RoundStatus, string>> = {
+  PITCH: "duracion_pitch_s",
+  OPEN: "duracion_toma_y_dame_s",
+  LAST_CALL: "duracion_ultima_llamada_s",
+  VOTING: "duracion_votacion_s",
+};
+
 /** Ejecuta una acción de ronda con las reglas de fn_accion_operador y fn_revelar_veredicto. */
 function runAction(action: string, reason: string | null, now: number): Raw<{ ok: true; multiplier: number | null }> {
   advance(state, now);
   const active = state.rounds.find((round) => ACTIVE_ROUND_STATUSES.has(round.status));
   const pending = state.rounds.find((round) => round.status === "SCHEDULED");
-  const round = action === "OPEN" ? pending : active;
+  const finished = state.rounds.filter((item) => item.status === "SETTLED" || item.status === "CANCELLED");
+  const round =
+    action === "OPEN" ? pending : action === "RESTART_ROUND" ? (active ?? finished[finished.length - 1]) : active;
   if (round === undefined) return fail(409, "ROUND_UNAVAILABLE");
   const done = (multiplier: number | null = null) => {
     log(state, now, round.number, action, reason);
@@ -508,9 +518,31 @@ function runAction(action: string, reason: string | null, now: number): Raw<{ ok
   switch (action) {
     case "OPEN": {
       if (active !== undefined) return fail(409, "ANOTHER_ROUND_ACTIVE");
-      round.status = "OPEN";
+      round.status = "PITCH";
       round.openedAt = now;
-      round.phaseEndsAt = now + (seconds("duracion_pitch_s") + seconds("duracion_toma_y_dame_s")) * 1000;
+      round.phaseEndsAt = now + seconds("duracion_pitch_s") * 1000;
+      return done();
+    }
+    case "OPEN_MARKET":
+      if (round.status !== "PITCH") return fail(409, "TRANSITION_NOT_ALLOWED");
+      round.status = "OPEN";
+      round.pausedSeconds = null;
+      round.phaseEndsAt = now + seconds("duracion_toma_y_dame_s") * 1000;
+      return done();
+    case "RESTART_PHASE": {
+      const key = PHASE_KEYS[round.status];
+      if (key === undefined) return fail(409, "TRANSITION_NOT_ALLOWED");
+      round.pausedSeconds = null;
+      round.phaseEndsAt = now + seconds(key) * 1000;
+      return done();
+    }
+    case "RESTART_ROUND": {
+      if (reason === null) return fail(409, "REASON_REQUIRED");
+      for (const [attendeeId, amount] of round.investments) {
+        const attendee = state.attendees.find((item) => item.id === attendeeId);
+        if (attendee !== undefined) attendee.balance += amount - (round.returns.get(attendeeId) ?? 0);
+      }
+      Object.assign(round, newRound(round.number));
       return done();
     }
     case "LAST_CALL":
@@ -534,7 +566,7 @@ function runAction(action: string, reason: string | null, now: number): Raw<{ ok
       round.phaseEndsAt = now + seconds("duracion_votacion_s") * 1000;
       return done();
     case "PAUSE": {
-      if (!["OPEN", "LAST_CALL", "VOTING"].includes(round.status)) {
+      if (!["PITCH", "OPEN", "LAST_CALL", "VOTING"].includes(round.status)) {
         return fail(409, "TRANSITION_NOT_ALLOWED");
       }
       if (round.pausedSeconds !== null) return fail(409, "ALREADY_PAUSED");
@@ -549,7 +581,7 @@ function runAction(action: string, reason: string | null, now: number): Raw<{ ok
       round.pausedSeconds = null;
       return done();
     case "ADD_MINUTE":
-      if (!["OPEN", "LAST_CALL", "VOTING"].includes(round.status)) {
+      if (!["PITCH", "OPEN", "LAST_CALL", "VOTING"].includes(round.status)) {
         return fail(409, "TRANSITION_NOT_ALLOWED");
       }
       if (round.pausedSeconds !== null) round.pausedSeconds += 60;
@@ -871,6 +903,13 @@ export const mockServer = {
     state.eventStarted = true;
     log(state, now, 1, "INICIAR_EVENTO", null);
     return ok({ ok: true });
+  },
+
+  resetEvent(now = Date.now()): Raw<{ ok: boolean }> {
+    const denied = requireConductor();
+    if (denied) return denied;
+    state.eventStarted = false;
+    return this.rehearsal(now);
   },
 
   rehearsal(now = Date.now()): Raw<{ ok: boolean }> {

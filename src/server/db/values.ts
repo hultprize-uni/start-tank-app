@@ -49,6 +49,7 @@ export function parseSdg(text: string | null): Sdg {
 /** Estados de ronda de la base de datos y su equivalente en el dominio. */
 const ROUND_STATES: Readonly<Record<string, RoundState>> = {
   PROGRAMADA: "SCHEDULED",
+  PITCH: "PITCH",
   ABIERTA: "OPEN",
   ULTIMA_LLAMADA: "LAST_CALL",
   CERRADA: "CLOSED",
@@ -73,6 +74,9 @@ const DECISIONS_TO_DB: Readonly<Record<Decision, string>> = {
 /** Acciones registradas en accion_ronda y su equivalente en el dominio. */
 const ACTIONS_FROM_DB: Readonly<Record<string, OperatorAction>> = {
   ABRIR: "OPEN",
+  ABRIR_MERCADO: "OPEN_MARKET",
+  REINICIAR_FASE: "RESTART_PHASE",
+  REINICIAR_RONDA: "RESTART_ROUND",
   ULTIMA_LLAMADA: "LAST_CALL",
   CERRAR: "CLOSE",
   HABILITAR_VOTO: "ENABLE_VOTING",
@@ -89,6 +93,9 @@ const ACTIONS_FROM_DB: Readonly<Record<string, OperatorAction>> = {
 
 const ACTIONS_TO_DB: Readonly<Record<OperatorAction, string>> = {
   OPEN: "ABRIR",
+  OPEN_MARKET: "ABRIR_MERCADO",
+  RESTART_PHASE: "REINICIAR_FASE",
+  RESTART_ROUND: "REINICIAR_RONDA",
   LAST_CALL: "ULTIMA_LLAMADA",
   CLOSE: "CERRAR",
   ENABLE_VOTING: "HABILITAR_VOTO",

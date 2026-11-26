@@ -11,6 +11,7 @@ export type JuryScreen = "access" | "waiting" | "grading" | "vote_registered" | 
  */
 export type JuryPhase =
   | "scheduled"
+  | "pitch"
   | "open"
   | "last_call"
   | "closed"

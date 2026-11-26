@@ -4,6 +4,7 @@ import type { PhaseClock } from "@/shared/domain/types";
 export type ParticipantPhase =
   | "login"
   | "scheduled"
+  | "pitch"
   | "open"
   | "lastCall"
   | "voting"

@@ -9,14 +9,19 @@ interface ScheduledScreenProps {
   balance: number;
   /** Aciertos seguidos: la racha de mejor ojo. */
   streak: number;
+  /** La startup ya está en su pitch; el mercado abre al terminar. */
+  pitch?: boolean;
 }
 
-/** Espera antes de la ronda (RF-23): la startup que viene, tu saldo y tu racha de mejor ojo. */
-export function ScheduledScreen({ round, startup, balance, streak }: ScheduledScreenProps) {
+/**
+ * Espera antes del mercado (RF-23): la startup que viene o la que está en su pitch, tu saldo y tu
+ * racha de mejor ojo.
+ */
+export function ScheduledScreen({ round, startup, balance, streak, pitch = false }: ScheduledScreenProps) {
   return (
     <section className={styles.screen}>
-      <Badge tone="yellow">
-        Ronda {round.number} de {round.total} · Programada
+      <Badge tone={pitch ? "cyan" : "yellow"} live={pitch}>
+        Ronda {round.number} de {round.total} · {pitch ? "Pitch en curso" : "Programada"}
       </Badge>
       <h1 className={styles.name}>{startup.name}</h1>
       <p className={styles.sdg}>{startup.sdg}</p>
@@ -32,7 +37,9 @@ export function ScheduledScreen({ round, startup, balance, streak }: ScheduledSc
         </div>
       </dl>
       <p className={styles.note}>
-        El mercado abre cuando empiece el pitch. Esta pantalla se actualiza sola.
+        {pitch
+          ? "Escucha el pitch: el mercado abre cuando termine y empiece el intercambio con el jurado."
+          : "El mercado abre después del pitch. Esta pantalla se actualiza sola."}
       </p>
     </section>
   );

@@ -58,6 +58,8 @@ function renderConsole(viewModel: OperatorViewModel) {
       onRun={onRun}
       onTimer={vi.fn()}
       onCancel={vi.fn()}
+      onRestartRound={vi.fn()}
+      onResetEvent={vi.fn()}
       onRescue={vi.fn()}
       onManualSettle={vi.fn()}
       onExport={vi.fn()}
@@ -67,16 +69,16 @@ function renderConsole(viewModel: OperatorViewModel) {
 }
 
 describe("OperatorConsole", () => {
-  it("con la ronda 2 programada, el conductor ve solo Abrir mercado (RF-06)", async () => {
+  it("con la ronda 2 programada, el conductor ve solo Iniciar pitch (RF-06)", async () => {
     const user = userEvent.setup();
     const { onRun } = renderConsole(view("CONDUCTOR"));
 
     expect(screen.getByRole("heading", { name: "AguaClara" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Abrir mercado" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Iniciar pitch" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Anunciar última llamada" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Revelar veredicto" })).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Abrir mercado" }));
+    await user.click(screen.getByRole("button", { name: "Iniciar pitch" }));
     expect(onRun).toHaveBeenCalledWith("open");
   });
 

@@ -5,7 +5,7 @@ import { usePhaseSeconds } from "@/shared/lib/use-server-clock";
 import type { PhaseClock } from "@/shared/domain/types";
 
 import { formatClock, formatScheduleDelta, formatShortTime } from "../labels";
-import type { PhaseDurations, RoundStatus, ScheduleView, TimerCommand } from "../types";
+import type { RoundStatus, ScheduleView, TimerCommand } from "../types";
 
 import styles from "./Admin.module.css";
 
@@ -15,7 +15,6 @@ const LOW_SECONDS = 10;
 interface PhaseTimerProps {
   status: RoundStatus;
   clock: PhaseClock;
-  durations: PhaseDurations;
   schedule: ScheduleView;
   /** La fase admite pausa y +1 min. */
   adjustable: boolean;
@@ -25,20 +24,15 @@ interface PhaseTimerProps {
   onCommand: (command: TimerCommand) => void;
 }
 
-/**
- * Fase y segundos que se muestran. Con el mercado abierto el cronómetro cubre el pitch y el toma y
- * dame: mientras quede más que el toma y dame, se muestra lo que resta del pitch.
- */
+/** Fase y segundos que se muestran. El pitch y el toma y dame tienen cada uno su cronómetro. */
 export function phaseDisplay(
   status: RoundStatus,
   secondsLeft: number | null,
-  durations: PhaseDurations,
 ): { label: string; seconds: number | null } {
   switch (status) {
+    case "PITCH":
+      return { label: "Pitch", seconds: secondsLeft };
     case "OPEN":
-      if (secondsLeft !== null && secondsLeft > durations.qa) {
-        return { label: "Pitch", seconds: secondsLeft - durations.qa };
-      }
       return { label: "Toma y dame", seconds: secondsLeft };
     case "LAST_CALL":
       return { label: "Última llamada", seconds: secondsLeft };
@@ -56,7 +50,6 @@ export function phaseDisplay(
 export function PhaseTimer({
   status,
   clock,
-  durations,
   schedule,
   adjustable,
   canControl,
@@ -64,7 +57,7 @@ export function PhaseTimer({
   onCommand,
 }: PhaseTimerProps) {
   const secondsLeft = usePhaseSeconds(clock);
-  const display = phaseDisplay(status, secondsLeft, durations);
+  const display = phaseDisplay(status, secondsLeft);
   const low = display.seconds !== null && display.seconds <= LOW_SECONDS && !clock.paused;
   const className = [
     styles.timer,
@@ -96,6 +89,14 @@ export function PhaseTimer({
             onClick={() => onCommand(clock.paused ? "resume" : "pause")}
           >
             {clock.paused ? "Reanudar" : "Pausa"}
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() => onCommand("restart_phase")}
+            title="Vuelve a poner el cronómetro de esta fase en su duración completa"
+          >
+            Reiniciar fase
           </Button>
         </div>
       ) : null}

@@ -12,6 +12,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Los enlaces del navbar (#seccion) se desplazan suave; el bloque de movimiento reducido lo anula. */
+  scroll-behavior: smooth;
 }
 
 img,

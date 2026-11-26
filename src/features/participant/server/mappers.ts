@@ -30,6 +30,7 @@ const OWN_NAME = "Tú";
 const PODIUM_SIZE = 3;
 
 const ACTIVE_STATES: ReadonlySet<RoundState> = new Set<RoundState>([
+  "PITCH",
   "OPEN",
   "LAST_CALL",
   "CLOSED",
@@ -270,7 +271,8 @@ export function buildParticipantState(data: ParticipantStateData): ParticipantVi
   let reference: ParticipantRoundRow | undefined;
   if (active !== undefined) {
     reference = active;
-    if (active.estado === "OPEN") phase = "open";
+    if (active.estado === "PITCH") phase = "pitch";
+    else if (active.estado === "OPEN") phase = "open";
     else if (active.estado === "LAST_CALL") phase = "lastCall";
     else phase = "voting";
   } else if (last !== undefined) {

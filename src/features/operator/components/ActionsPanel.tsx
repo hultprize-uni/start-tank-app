@@ -14,12 +14,13 @@ interface ActionsPanelProps {
   onRun: (id: OperatorActionId) => void;
   onOpenCancel: () => void;
   onOpenRescue: () => void;
+  onOpenRestart: () => void;
 }
 
 /**
  * Acciones del conductor sobre la ronda: el botón principal con el único paso válido (RF-06),
- * Anular ronda (RF-10) y, en la votación con envíos pendientes, revelar con los presentes (RF-18).
- * Con todas las rondas terminadas ofrece el cierre del evento (RF-30).
+ * Anular ronda (RF-10), Reiniciar ronda y, en la votación con envíos pendientes, revelar con los
+ * presentes (RF-18). Con todas las rondas terminadas ofrece el cierre del evento (RF-30).
  */
 export function ActionsPanel({
   viewModel,
@@ -27,11 +28,24 @@ export function ActionsPanel({
   onRun,
   onOpenCancel,
   onOpenRescue,
+  onOpenRestart,
 }: ActionsPanelProps) {
-  const { mainAction } = viewModel;
+  const { mainAction, restartRound } = viewModel;
+
+  const restart =
+    restartRound !== null ? (
+      <Button variant="ghost" size="lg" disabled={busy} onClick={onOpenRestart}>
+        Reiniciar ronda {restartRound.number}…
+      </Button>
+    ) : null;
 
   if (mainAction === null) {
-    return viewModel.canCloseEvent ? <CloseEventPanel /> : null;
+    return (
+      <>
+        {viewModel.canCloseEvent ? <CloseEventPanel /> : null}
+        {restart !== null ? <div className={styles.mainRow}>{restart}</div> : null}
+      </>
+    );
   }
 
   return (
@@ -42,6 +56,7 @@ export function ActionsPanel({
           Revelar con presentes…
         </Button>
       ) : null}
+      {restart}
       {viewModel.canCancel ? (
         <Button variant="danger" size="lg" disabled={busy} onClick={onOpenCancel}>
           Anular ronda…

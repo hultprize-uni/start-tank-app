@@ -78,7 +78,8 @@ describe("referenceRound", () => {
 
 describe("buildMainAction (RF-06)", () => {
   it.each<[RoundStatus, string]>([
-    ["SCHEDULED", "Abrir mercado"],
+    ["SCHEDULED", "Iniciar pitch"],
+    ["PITCH", "Terminar pitch y abrir mercado"],
     ["OPEN", "Anunciar última llamada"],
     ["LAST_CALL", "Cerrar mercado"],
     ["CLOSED", "Habilitar votación"],
@@ -117,6 +118,7 @@ describe("buildMainAction (RF-06)", () => {
 describe("buildSteps", () => {
   it("marca los pasos hechos, el actual y los pendientes", () => {
     expect(buildSteps("CLOSED").map((step) => step.state)).toEqual([
+      "done",
       "done",
       "done",
       "done",

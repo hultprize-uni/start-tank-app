@@ -450,7 +450,7 @@
 
 .steps {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--sp-2);
   margin: 0;
   padding: 0;
@@ -537,7 +537,7 @@
 .consoleGrid {
   display: grid;
   gap: var(--sp-4);
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (min-width: 1100px) {
@@ -551,6 +551,11 @@
   flex-direction: column;
   gap: var(--sp-4);
   min-width: 0;
+}
+
+/* Las dos columnas terminan a la misma altura: la última card absorbe la diferencia. */
+.column > :last-child {
+  flex: 1 1 auto;
 }
 
 .readOnly {
@@ -760,7 +765,7 @@
 .twoColumns {
   display: grid;
   gap: var(--sp-4);
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (min-width: 1100px) {

@@ -71,6 +71,8 @@ export const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   PREFLIGHT_NOT_READY: "Faltan puntos del checklist en verde.",
   EVENT_STARTED: "El evento ya está iniciado: el modo ensayo está bloqueado.",
   ROUNDS_PENDING: "Aún hay rondas sin liquidar ni anular.",
+  RONDA_POSTERIOR_INICIADA: "Ya empezó una ronda posterior: reinicia primero esa.",
+  BACKUP_FAILED: "No se pudo guardar el respaldo previo; no se borró nada.",
   NOT_IMPLEMENTED: "El proceso batch aún no está disponible en este entorno (F7).",
   PUNTAJE_INVALIDO: "El puntaje debe estar entre 1 y 5.",
   RONDA_YA_LIQUIDADA: "La ronda ya fue liquidada.",
@@ -135,10 +137,12 @@ export type OperatorCommand =
   | { type: "step"; id: OperatorActionId }
   | { type: "timer"; command: TimerCommand }
   | { type: "rescue"; reason: string }
-  | { type: "cancel"; mode: CancelMode; reason: string };
+  | { type: "cancel"; mode: CancelMode; reason: string }
+  | { type: "restart_round"; reason: string };
 
 const STEP_ACTIONS: Record<OperatorActionId, string> = {
   open: "OPEN",
+  open_market: "OPEN_MARKET",
   last_call: "LAST_CALL",
   close: "CLOSE",
   enable_voting: "ENABLE_VOTING",
@@ -149,6 +153,7 @@ const TIMER_ACTIONS: Record<TimerCommand, string> = {
   pause: "PAUSE",
   resume: "RESUME",
   add_minute: "ADD_MINUTE",
+  restart_phase: "RESTART_PHASE",
 };
 
 /** Cuerpo de POST /api/operator/action para un comando. */
@@ -165,6 +170,8 @@ export function actionBody(command: OperatorCommand): { action: string; reason?:
         action: command.mode === "refund" ? "CANCEL_REFUND" : "CANCEL_SETTLE_1X",
         reason: command.reason,
       };
+    case "restart_round":
+      return { action: "RESTART_ROUND", reason: command.reason };
   }
 }
 
@@ -265,6 +272,14 @@ export async function resetRehearsal(): Promise<OperatorResult> {
   const response = USE_MOCKS
     ? mockServer.rehearsal()
     : await post<{ ok: boolean }>(API_ROUTES.operator.rehearsal);
+  return toResult(response, () => null);
+}
+
+/** Reinicio total del evento: borra movimientos y log, y deja los saldos en el capital inicial. */
+export async function resetEvent(): Promise<OperatorResult> {
+  const response = USE_MOCKS
+    ? mockServer.resetEvent()
+    : await post<{ ok: boolean }>(API_ROUTES.operator.rehearsal, { full: true });
   return toResult(response, () => null);
 }
 

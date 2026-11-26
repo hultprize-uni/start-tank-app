@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
  * montaje. Sirve para que un loader de entrada no destelle cuando la carga es instantánea.
  */
 export function useMinDelay(ready: boolean, ms: number): boolean {
-  const [elapsed, setElapsed] = useState(false);
+  const [elapsed, setElapsed] = useState(ms <= 0);
 
   useEffect(() => {
     const id = window.setTimeout(() => setElapsed(true), ms);
@@ -14,3 +14,6 @@ export function useMinDelay(ready: boolean, ms: number): boolean {
 
   return ready && elapsed;
 }
+
+/** Un ciclo completo del StartTankLoader en bucle (--cycle: 3.4s): despegue, mordida y salida. En las pruebas es 0 para no esperar la animación. */
+export const LOADER_MIN_MS = process.env.NODE_ENV === "test" ? 0 : 3_400;

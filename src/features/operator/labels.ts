@@ -3,6 +3,7 @@ import type { JurorStatus, OperatorActionId, RoundStatus } from "./types";
 /** Etiquetas visibles de cada estado de ronda. */
 export const ROUND_STATUS_LABELS: Record<RoundStatus, string> = {
   SCHEDULED: "Programada",
+  PITCH: "Pitch",
   OPEN: "Mercado abierto",
   LAST_CALL: "Última llamada",
   CLOSED: "Mercado cerrado",
@@ -13,7 +14,8 @@ export const ROUND_STATUS_LABELS: Record<RoundStatus, string> = {
 
 /** Etiqueta corta de cada paso de la ronda, para la línea de pasos. */
 export const STEP_LABELS: Record<OperatorActionId, string> = {
-  open: "Abrir mercado",
+  open: "Pitch",
+  open_market: "Abrir mercado",
   last_call: "Última llamada",
   close: "Cerrar",
   enable_voting: "Habilitar voto",
@@ -22,7 +24,8 @@ export const STEP_LABELS: Record<OperatorActionId, string> = {
 
 /** Texto del botón principal para cada paso de la ronda (RF-06). */
 export const MAIN_ACTION_LABELS: Record<OperatorActionId, string> = {
-  open: "Abrir mercado",
+  open: "Iniciar pitch",
+  open_market: "Terminar pitch y abrir mercado",
   last_call: "Anunciar última llamada",
   close: "Cerrar mercado",
   enable_voting: "Habilitar votación",
@@ -42,7 +45,11 @@ export const JUROR_STATUS_LABELS: Record<JurorStatus, string> = {
  * guarda sin traducir (REVELAR_PRESENTES, AJUSTE_SALDO y los de administración).
  */
 export const OPERATOR_ACTION_LABELS: Readonly<Record<string, string>> = {
-  OPEN: "Abrió el mercado",
+  OPEN: "Inició el pitch",
+  OPEN_MARKET: "Abrió el mercado",
+  RESTART_PHASE: "Reinició el cronómetro de la fase",
+  RESTART_ROUND: "Reinició la ronda",
+  REINICIAR_EVENTO: "Reinició el evento",
   LAST_CALL: "Anunció la última llamada",
   CLOSE: "Cerró el mercado",
   ENABLE_VOTING: "Habilitó la votación",

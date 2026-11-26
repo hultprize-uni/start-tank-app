@@ -236,7 +236,7 @@ export async function saveDraftNote(
   const [round] = await sql<{ id_ronda: string }>`
     select id_ronda::text as id_ronda
       from ronda
-     where estado in ('ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')
+     where estado in ('PITCH', 'ABIERTA', 'ULTIMA_LLAMADA', 'CERRADA', 'EN_VOTACION')
      order by numero
      limit 1`;
   if (round === undefined) {

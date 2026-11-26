@@ -139,7 +139,7 @@ describe("antes del evento (RF-29)", () => {
     await signInAs("CONDUCTOR", {
       "from configuracion": [{ clave: "evento_iniciado", valor: "true" }],
     });
-    const response = await handleOperatorRehearsal();
+    const response = await handleOperatorRehearsal(new Request("http://test/api/operator/rehearsal", { method: "POST" }));
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({ error: "EVENT_STARTED" });
   });

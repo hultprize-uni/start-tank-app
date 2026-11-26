@@ -6,7 +6,7 @@ import { USE_MOCKS } from "@/shared/lib/env";
 import { usePolling } from "@/shared/lib/use-polling";
 import { fetchScreen } from "../api/client";
 import { mockScreen } from "../api/mock";
-import type { ScreenViewModel, StagePhase } from "../types";
+import type { ScreenViewModel } from "../types";
 
 export interface ScreenReading {
   /** Modelo vigente; nulo mientras no hay datos o el evento no tiene rondas. */
@@ -19,11 +19,11 @@ export interface ScreenReading {
 
 /**
  * Estado del escenario (RF-25). Consulta cada 2 segundos y cada 1 durante la votación y el
- * veredicto, para que la revelación llegue en menos de 1 segundo (RNF-04). Con datos de muestra o
- * con una fase forzada en desarrollo no consulta la red.
+ * veredicto, para que la revelación llegue en menos de 1 segundo (RNF-04). Con datos de muestra
+ * (NEXT_PUBLIC_USE_MOCKS) no consulta la red.
  */
-export function useScreenState(forcedPhase?: StagePhase): ScreenReading {
-  const simulated = USE_MOCKS || forcedPhase !== undefined;
+export function useScreenState(): ScreenReading {
+  const simulated = USE_MOCKS;
   const [reading, setReading] = useState<ScreenReading>({ vm: null, offline: false, empty: false });
 
   const poll = useCallback(async () => {
@@ -41,8 +41,8 @@ export function useScreenState(forcedPhase?: StagePhase): ScreenReading {
   usePolling(poll, fast ? EVENT_CONFIG.screenVotingPollMs : EVENT_CONFIG.screenPollMs, !simulated);
 
   const mock = useMemo(
-    () => (simulated ? mockScreen(forcedPhase ?? "MARKET") : null),
-    [simulated, forcedPhase],
+    () => (simulated ? mockScreen("MARKET") : null),
+    [simulated],
   );
   return mock ? { vm: mock, offline: false, empty: false } : reading;
 }

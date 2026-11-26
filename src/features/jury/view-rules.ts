@@ -2,7 +2,7 @@ import type { JuryPhase, JuryScreen } from "./types";
 
 /** Fases en las que el jurado puede calificar en borrador los cuatro criterios (RF-14). */
 export function isGradablePhase(phase: JuryPhase): boolean {
-  return phase === "open" || phase === "last_call" || phase === "closed" || phase === "voting";
+  return phase === "pitch" || phase === "open" || phase === "last_call" || phase === "closed" || phase === "voting";
 }
 
 /**

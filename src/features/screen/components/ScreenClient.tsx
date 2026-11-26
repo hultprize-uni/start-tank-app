@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { BrandLogo, StartTankLoader } from "@/shared/ui";
-import { useMinDelay } from "@/shared/lib/use-min-delay";
+import { LOADER_MIN_MS, useMinDelay } from "@/shared/lib/use-min-delay";
 import { PAGE_ROUTES } from "@/shared/lib/api-routes";
-import { STAGE_PHASES } from "../api/mock";
 import { useScreenState } from "../hooks/useScreenState";
-import type { ScreenViewModel, StagePhase } from "../types";
+import type { ScreenViewModel } from "../types";
 import { StartupTicker } from "./parts";
 import { BetweenPhase, ClosingPhase, MarketPhase, Rail, RevealPhase, VotingPhase, WaitingPhase } from "./phases";
 import s from "./stage.module.css";
@@ -63,20 +61,14 @@ function renderPhase(vm: ScreenViewModel): ReactNode {
   }
 }
 
-interface ScreenClientProps {
-  /** Fase forzada con ?phase= en desarrollo, con datos de muestra. */
-  forcedPhase?: StagePhase;
-  showSelector: boolean;
-}
-
 /** Pantalla pública del escenario (RF-25): sin sesión y sin escrituras. */
-export function ScreenClient({ forcedPhase, showSelector }: ScreenClientProps) {
-  const { vm, offline, empty } = useScreenState(forcedPhase);
+export function ScreenClient() {
+  const { vm, offline, empty } = useScreenState();
   const fit = useStageFit();
   const [joinHost, setJoinHost] = useState("");
   useEffect(() => setJoinHost(`${window.location.host}${PAGE_ROUTES.participant}`), []);
   // El loader de entrada cubre la medición del escenario y la primera lectura del evento.
-  const ready = useMinDelay(fit !== null && (vm !== null || empty), 1200);
+  const ready = useMinDelay(fit !== null && (vm !== null || empty), LOADER_MIN_MS);
 
   return (
     <main className={s.viewport}>
@@ -125,22 +117,6 @@ export function ScreenClient({ forcedPhase, showSelector }: ScreenClientProps) {
         <div className={s.loading}>
           <StartTankLoader label="Conectando con el evento..." className={s.loader} />
         </div>
-      ) : null}
-
-      {showSelector ? (
-        <nav className={s.selector} aria-label="Fases de muestra">
-          {STAGE_PHASES.map((phase) => (
-            <Link
-              key={phase}
-              href={`?phase=${phase}`}
-              replace
-              scroll={false}
-              aria-current={phase === vm?.phase ? "page" : undefined}
-            >
-              {phase}
-            </Link>
-          ))}
-        </nav>
       ) : null}
     </main>
   );

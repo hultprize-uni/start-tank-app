@@ -535,13 +535,14 @@ export function handleOperatorCloseEvent(): Promise<Response> {
 
 /**
  * POST: reinicio del ensayo (proceso batch de F7), con respaldo previo. Se rechaza con el evento
- * iniciado (RF-29).
+ * iniciado (RF-29). Con { full: true } es el reinicio total del evento, permitido siempre.
  */
-export function handleOperatorRehearsal(): Promise<Response> {
+export function handleOperatorRehearsal(request: Request): Promise<Response> {
   return withConductor(async (operatorId) => {
+    const full = (await readJsonBody(request))?.full === true;
     const { flags } = await readEventConfig();
-    if (flags.eventStarted) return errorResponse(409, "EVENT_STARTED");
-    const result = await runRehearsalReset(operatorId);
+    if (flags.eventStarted && !full) return errorResponse(409, "EVENT_STARTED");
+    const result = await runRehearsalReset(operatorId, full);
     return result.ok ? jsonResponse({ ok: true }) : errorResponse(409, result.error);
   });
 }

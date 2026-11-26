@@ -23,7 +23,14 @@ export const PHASE_COPY: Readonly<Record<JuryPhase, PhaseCopy>> = {
     tone: "yellow",
     live: false,
     waitTitle: "Aún no empieza esta ronda",
-    waitText: "Espera a que el operador abra el mercado.",
+    waitText: "Espera a que el operador inicie el pitch.",
+  },
+  pitch: {
+    name: "Pitch",
+    tone: "cyan",
+    live: true,
+    waitTitle: "",
+    waitText: "",
   },
   open: {
     name: "Mercado abierto",

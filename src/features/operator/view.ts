@@ -89,6 +89,8 @@ export function currentStepOf(status: RoundStatus): OperatorActionId | null {
   switch (status) {
     case "SCHEDULED":
       return "open";
+    case "PITCH":
+      return "open_market";
     case "OPEN":
       return "last_call";
     case "LAST_CALL":
@@ -155,6 +157,10 @@ export function buildMainAction(
     hint: null,
   };
 
+  if (id === "open_market") {
+    view.hint = "Pásalo cuando la startup termine su pitch, aunque quede tiempo.";
+  }
+
   if (id === "close") {
     view.hint = "Se cierra sola al llegar a 0:00.";
   }
@@ -212,6 +218,8 @@ function plannedOffsetOf(status: RoundStatus, durations: PhaseDurations): number
   switch (status) {
     case "SCHEDULED":
       return 0;
+    case "PITCH":
+      return durations.pitch;
     case "OPEN":
       return market;
     case "LAST_CALL":
@@ -283,6 +291,16 @@ function buildLog(actions: readonly SnapshotAction[]): LogEntryView[] {
   }));
 }
 
+/** Ronda que se puede reiniciar: la que está en curso o, si no hay, la última terminada. */
+function restartTargetOf(
+  sorted: readonly SnapshotRound[],
+): { number: number; startupName: string } | null {
+  const target =
+    sorted.find((round) => ACTIVE_ROUND_STATUSES.has(round.status)) ??
+    [...sorted].reverse().find((round) => FINISHED.has(round.status));
+  return target === undefined ? null : { number: target.number, startupName: target.startupName };
+}
+
 /** Arma el view model de la consola. Devuelve null cuando el evento no tiene rondas. */
 export function buildOperatorView(snapshot: OperatorSnapshot): OperatorViewModel | null {
   const current = referenceRound(snapshot.rounds);
@@ -294,7 +312,7 @@ export function buildOperatorView(snapshot: OperatorSnapshot): OperatorViewModel
   const lastSettled = settled[settled.length - 1];
   const paused = current.pausedSeconds !== null;
   const secondsLeft = secondsLeftOf(current, snapshot.now);
-  const timed = status === "OPEN" || status === "LAST_CALL" || status === "VOTING";
+  const timed = status === "PITCH" || status === "OPEN" || status === "LAST_CALL" || status === "VOTING";
   const sent = snapshot.jurors.filter((juror) => juror.sent).length;
   const scored = snapshot.jurors.filter((juror) => juror.sent && !juror.abstains).length;
 
@@ -354,6 +372,7 @@ export function buildOperatorView(snapshot: OperatorSnapshot): OperatorViewModel
     standings: buildStandings(sorted),
     log: buildLog(snapshot.actions),
     canCancel: ACTIVE_ROUND_STATUSES.has(status),
+    restartRound: restartTargetOf(sorted),
     canRescue: status === "VOTING" && sent < snapshot.jurors.length && scored > 0,
     canManualSettle: status === "CLOSED" || status === "VOTING",
     canCloseEvent: sorted.length > 0 && sorted.every((round) => FINISHED.has(round.status)),

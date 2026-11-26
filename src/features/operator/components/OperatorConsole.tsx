@@ -19,6 +19,7 @@ import { JurorVotesPanel } from "./JurorVotesPanel";
 import { MarketPanel } from "./MarketPanel";
 import { PhaseTimer } from "./PhaseTimer";
 import { RescueRevealDialog } from "./RescueRevealDialog";
+import { RestartDialog } from "./RestartDialog";
 import { RoundSteps } from "./RoundSteps";
 import { StandingsPanel } from "./StandingsPanel";
 import styles from "./Admin.module.css";
@@ -28,15 +29,15 @@ const CONSOLE_LOG_ENTRIES = 6;
 
 function toneOf(status: RoundStatus): BadgeTone {
   if (status === "VOTING") return "pink";
-  if (status === "OPEN" || status === "LAST_CALL") return "cyan";
+  if (status === "PITCH" || status === "OPEN" || status === "LAST_CALL") return "cyan";
   return "yellow";
 }
 
 function isLive(status: RoundStatus): boolean {
-  return status === "OPEN" || status === "LAST_CALL" || status === "VOTING";
+  return status === "PITCH" || status === "OPEN" || status === "LAST_CALL" || status === "VOTING";
 }
 
-export type ConsoleDialog = "cancel" | "rescue" | null;
+export type ConsoleDialog = "cancel" | "rescue" | "restart_round" | "reset_event" | null;
 
 interface OperatorConsoleProps {
   viewModel: OperatorViewModel;
@@ -47,6 +48,8 @@ interface OperatorConsoleProps {
   onRun: (id: OperatorActionId) => void;
   onTimer: (command: TimerCommand) => void;
   onCancel: (mode: CancelMode, reason: string) => Promise<string | null>;
+  onRestartRound: (reason: string) => Promise<string | null>;
+  onResetEvent: () => Promise<string | null>;
   onRescue: (reason: string) => Promise<string | null>;
   onManualSettle: (
     score: number,
@@ -69,6 +72,8 @@ export function OperatorConsole({
   onTimer,
   onCancel,
   onRescue,
+  onRestartRound,
+  onResetEvent,
   onManualSettle,
   onExport,
 }: OperatorConsoleProps) {
@@ -105,7 +110,6 @@ export function OperatorConsole({
         <PhaseTimer
           status={round.status}
           clock={viewModel.clock}
-          durations={viewModel.durations}
           schedule={viewModel.schedule}
           adjustable={viewModel.timerAdjustable}
           canControl={canWrite}
@@ -121,6 +125,7 @@ export function OperatorConsole({
           onRun={onRun}
           onOpenCancel={() => onDialog("cancel")}
           onOpenRescue={() => onDialog("rescue")}
+          onOpenRestart={() => onDialog("restart_round")}
         />
       ) : null}
 
@@ -138,6 +143,7 @@ export function OperatorConsole({
             canManualSettle={viewModel.canManualSettle}
             onExport={onExport}
             onManualSettle={onManualSettle}
+            onOpenResetEvent={() => onDialog("reset_event")}
           />
         </div>
       </div>
@@ -152,6 +158,25 @@ export function OperatorConsole({
       ) : null}
       {dialog === "rescue" && canWrite && viewModel.canRescue ? (
         <RescueRevealDialog jurors={jurors} onClose={() => onDialog(null)} onConfirm={onRescue} />
+      ) : null}
+      {dialog === "restart_round" && canWrite && viewModel.restartRound !== null ? (
+        <RestartDialog
+          title={`¿Reiniciar la ronda ${viewModel.restartRound.number}?`}
+          description={`${viewModel.restartRound.startupName} vuelve a Programada: se devuelve lo invertido a cada asistente y se borran sus inversiones, notas del jurado y posiciones de esa ronda.`}
+          confirmLabel="Reiniciar ronda"
+          onClose={() => onDialog(null)}
+          onConfirm={onRestartRound}
+        />
+      ) : null}
+      {dialog === "reset_event" && canWrite ? (
+        <RestartDialog
+          title="¿Reiniciar todo el evento?"
+          description="Se borran todas las inversiones, notas, posiciones y el log de acciones. Todas las rondas vuelven a Programada y cada asistente vuelve al capital inicial. Se guarda un respaldo antes de borrar."
+          confirmLabel="Reiniciar evento"
+          confirmWord="REINICIAR"
+          onClose={() => onDialog(null)}
+          onConfirm={() => onResetEvent()}
+        />
       ) : null}
     </>
   );

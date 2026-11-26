@@ -56,7 +56,7 @@ export interface ScreenData {
   bestEye: { nombre: string; aciertos: number } | null;
 }
 
-const ACTIVE = new Set(["OPEN", "LAST_CALL", "CLOSED", "VOTING"]);
+const ACTIVE = new Set(["PITCH", "OPEN", "LAST_CALL", "CLOSED", "VOTING"]);
 const FINISHED = new Set(["SETTLED", "CANCELLED"]);
 
 /** "Mariana Torres Díaz" queda "Mariana T.". Los nombres de respaldo ("Asistente 12") no cambian. */
@@ -90,7 +90,7 @@ export function resolvePhase(rounds: RoundRow[], now: Date): { phase: StagePhase
   const sorted = sortRounds(rounds);
   const active = sorted.find((r) => ACTIVE.has(r.estado));
   if (active) {
-    if (active.estado === "OPEN") return { phase: "MARKET", reference: active };
+    if (active.estado === "PITCH" || active.estado === "OPEN") return { phase: "MARKET", reference: active };
     if (active.estado === "LAST_CALL") return { phase: "LAST_CALL", reference: active };
     return { phase: "VOTING", reference: active };
   }
@@ -104,7 +104,7 @@ export function resolvePhase(rounds: RoundRow[], now: Date): { phase: StagePhase
   return { phase: "BETWEEN", reference: last };
 }
 
-/** Cronómetro de la fase. Con el mercado abierto separa el pitch del toma y dame. */
+/** Cronómetro de la fase. El pitch y el toma y dame tienen cada uno su cronómetro. */
 function buildClock(row: RoundRow, phase: StagePhase, data: ScreenData): { clock: PhaseClock | null; label: string | null } {
   const serverTime = data.now.toISOString();
   const paused = row.segundos_restantes_pausa !== null;
@@ -114,25 +114,7 @@ function buildClock(row: RoundRow, phase: StagePhase, data: ScreenData): { clock
     paused,
     pausedSeconds: row.segundos_restantes_pausa,
   };
-  if (phase === "MARKET") {
-    const qa = data.config.qaSeconds;
-    const left = paused
-      ? (row.segundos_restantes_pausa ?? 0)
-      : row.fase_termina_en === null
-        ? 0
-        : (Date.parse(row.fase_termina_en) - data.now.getTime()) / 1000;
-    if (left > qa) {
-      return {
-        label: "Pitch",
-        clock: {
-          ...base,
-          phaseEndsAt: row.fase_termina_en === null ? null : new Date(Date.parse(row.fase_termina_en) - qa * 1000).toISOString(),
-          pausedSeconds: paused ? (row.segundos_restantes_pausa ?? 0) - qa : null,
-        },
-      };
-    }
-    return { label: "Toma y dame", clock: base };
-  }
+  if (phase === "MARKET") return { label: row.estado === "PITCH" ? "Pitch" : "Toma y dame", clock: base };
   if (phase === "LAST_CALL") return { label: "Última llamada", clock: base };
   if (phase === "VOTING" && row.estado === "VOTING") return { label: "Votación", clock: base };
   return { label: null, clock: null };
@@ -147,7 +129,7 @@ function buildTicker(rounds: RoundRow[], phase: StagePhase): TickerItem[] {
     let status: TickerItem["status"] = "pending";
     if (row.estado === "SETTLED") status = "done";
     else if (row.estado === "CANCELLED") status = "cancelled";
-    else if (row.estado === "OPEN" || row.estado === "LAST_CALL") status = "live";
+    else if (row.estado === "PITCH" || row.estado === "OPEN" || row.estado === "LAST_CALL") status = "live";
     else if (row.estado === "CLOSED" || row.estado === "VOTING") status = "voting";
     else if (row.id_ronda === nextPending?.id_ronda) status = "next";
     return {
@@ -179,6 +161,8 @@ function buildJury(data: ScreenData, revealed: boolean): JurySeat[] {
 }
 
 const ACTION_TEXT: Record<string, (name: string) => string> = {
+  ABRIR: (name) => `${name} sube al escenario`,
+  ABRIR_MERCADO: (name) => `Mercado abierto para ${name}`,
   ULTIMA_LLAMADA: (name) => `Última llamada para ${name}`,
   CERRAR: () => "Mercado cerrado",
   HABILITAR_VOTO: () => "El jurado empieza a calificar",

@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { AnimatedBackground, StartTankLoader, Toast } from "@/shared/ui";
+import { LOADER_MIN_MS, useMinDelay } from "@/shared/lib/use-min-delay";
 import { formatCoins } from "../format";
 import { useInvestSheet } from "../hooks/useInvestSheet";
 import { DESKTOP_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
@@ -31,8 +32,10 @@ function renderRoundScreen(vm: ParticipantViewModel, onInvest: () => void): Reac
     case "login":
       return null;
     case "scheduled":
+    case "pitch":
       return round && startup && wallet ? (
         <ScheduledScreen
+          pitch={vm.phase === "pitch"}
           round={round}
           startup={startup}
           balance={wallet.balance}
@@ -73,6 +76,7 @@ function renderRoundScreen(vm: ParticipantViewModel, onInvest: () => void): Reac
  */
 export function ParticipantPortal() {
   const { vm, status, errorMessage, actions } = useParticipantState();
+  const ready = useMinDelay(vm !== null, LOADER_MIN_MS);
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const { toast, showToast } = usePortalToast();
 
@@ -98,7 +102,7 @@ export function ParticipantPortal() {
     return result;
   };
 
-  if (vm === null) {
+  if (vm === null || !ready) {
     return (
       <main className={styles.portal}>
         <AnimatedBackground />

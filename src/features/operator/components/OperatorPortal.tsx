@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import { AnimatedBackground, StartTankLoader, Toast } from "@/shared/ui";
 import { USE_MOCKS } from "@/shared/lib/env";
+import { LOADER_MIN_MS, useMinDelay } from "@/shared/lib/use-min-delay";
 
 import {
   loginOperator,
   logoutOperator,
   OPERATOR_SESSION_EXPIRED_MESSAGE,
   readOperatorState,
+  resetEvent,
   setManualMode,
   submitManualSettlement,
 } from "../api/client";
@@ -51,6 +53,7 @@ async function checkOperatorSession(): Promise<boolean> {
 /** Punto de entrada del portal del operador: restaura la sesión, controla el acceso y monta la consola. */
 export function OperatorPortal() {
   const session = useSessionRestore(checkOperatorSession);
+  const ready = useMinDelay(session.status !== "checking", LOADER_MIN_MS);
   const { setStatus } = session;
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -78,7 +81,7 @@ export function OperatorPortal() {
     });
   }, [setStatus]);
 
-  if (session.status === "checking") {
+  if (!ready) {
     return (
       <main className={gateStyles.page}>
         <StartTankLoader label="Verificando la sesión..." />
@@ -158,6 +161,22 @@ function OperatorWorkspace({ onExpired, onLogout }: OperatorWorkspaceProps) {
     },
     [run],
   );
+  const onRestartRound = useCallback(
+    async (reason: string) => {
+      const result = await run({ type: "restart_round", reason });
+      return result.ok ? null : result.message;
+    },
+    [run],
+  );
+  const onResetEvent = useCallback(async () => {
+    const result = await resetEvent();
+    if (!result.ok) {
+      if (result.sessionExpired) onExpired();
+      return result.message;
+    }
+    await operator.refresh();
+    return null;
+  }, [onExpired, operator]);
   const onManualSettle = useCallback(
     async (score: number, reason: string) => {
       const result = await submitManualSettlement(score, reason);
@@ -256,6 +275,8 @@ function OperatorWorkspace({ onExpired, onLogout }: OperatorWorkspaceProps) {
               onTimer={onTimer}
               onCancel={onCancel}
               onRescue={onRescue}
+              onRestartRound={onRestartRound}
+              onResetEvent={onResetEvent}
               onManualSettle={onManualSettle}
               onExport={operator.exportCsv}
             />

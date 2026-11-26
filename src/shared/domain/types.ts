@@ -1,5 +1,6 @@
 export type RoundState =
   | "SCHEDULED"
+  | "PITCH"
   | "OPEN"
   | "LAST_CALL"
   | "CLOSED"
@@ -12,12 +13,15 @@ export type Decision = "BACK" | "REJECT" | "ABSTAIN";
 
 export type OperatorAction =
   | "OPEN"
+  | "OPEN_MARKET"
   | "LAST_CALL"
   | "CLOSE"
   | "ENABLE_VOTING"
   | "PAUSE"
   | "RESUME"
   | "ADD_MINUTE"
+  | "RESTART_PHASE"
+  | "RESTART_ROUND"
   | "REVEAL"
   | "NEXT"
   | "CANCEL_REFUND"

@@ -3,7 +3,11 @@ import { isMarketOpen, nextState } from "./round-machine";
 
 describe("nextState", () => {
   it.each([
-    ["SCHEDULED", "OPEN", "OPEN"],
+    ["SCHEDULED", "OPEN", "PITCH"],
+    ["PITCH", "OPEN_MARKET", "OPEN"],
+    ["PITCH", "RESTART_PHASE", "PITCH"],
+    ["SETTLED", "RESTART_ROUND", "SCHEDULED"],
+    ["VOTING", "RESTART_ROUND", "SCHEDULED"],
     ["OPEN", "LAST_CALL", "LAST_CALL"],
     ["OPEN", "CLOSE", "CLOSED"],
     ["LAST_CALL", "CLOSE", "CLOSED"],
@@ -23,6 +27,9 @@ describe("nextState", () => {
     ["SETTLED", "OPEN"],
     ["CANCELLED", "CANCEL_REFUND"],
     ["SCHEDULED", "CANCEL_REFUND"],
+    ["PITCH", "LAST_CALL"],
+    ["SCHEDULED", "RESTART_ROUND"],
+    ["CLOSED", "RESTART_PHASE"],
   ] as const)("rejects %s + %s", (state, action) => {
     expect(nextState(state, action)).toEqual({ ok: false, reason: "INVALID_TRANSITION" });
   });

@@ -83,8 +83,8 @@ describe("resolvePhase", () => {
 });
 
 describe("buildScreen", () => {
-  it("splits the open market into pitch and Q&A with the server clock", () => {
-    const open = round(2, "OPEN", { fase_termina_en: at(700) });
+  it("labels the pitch and the Q&A, each with its own server clock", () => {
+    const open = round(2, "PITCH", { fase_termina_en: at(100) });
     const vm = buildScreen(data([round(1, "SETTLED", { multiplicador: "1.400" }), open, ...scheduled(3)]));
 
     expect(vm.phase).toBe("MARKET");

@@ -68,22 +68,29 @@ export function WaitingPhase({ vm }: Props) {
   );
 }
 
-/** Mercado abierto y última llamada (E1). */
+/** Pitch, mercado abierto y última llamada (E1). */
 export function MarketPhase({ vm }: Props) {
   const market = vm.market;
   const price = useAnimatedNumber(market?.price ?? 100, 700);
   const lastCall = vm.phase === "LAST_CALL";
+  // El mapeador etiqueta el cronómetro "Pitch" solo con la ronda en PITCH: el mercado sigue cerrado.
+  const pitch = vm.clockLabel === "Pitch";
+  const status = lastCall
+    ? "Última llamada"
+    : vm.clock?.paused
+      ? pitch ? "Pitch en pausa" : "Mercado en pausa"
+      : pitch ? "Pitch en curso" : "Mercado abierto";
   if (!market) return null;
   return (
       <section className={`${s.main} ${s.phaseIn}`} aria-label="Mercado de la ronda">
         <div className={s.mainHead}>
-          <StartupHeading vm={vm} status={lastCall ? "Última llamada" : vm.clock?.paused ? "Mercado en pausa" : "Mercado abierto"} />
+          <StartupHeading vm={vm} status={status} />
           <StageClock clock={vm.clock} label={vm.clockLabel} big={lastCall} />
         </div>
         <div className={s.chartPanel}>
           <div className={s.chartHead}>
             <div>
-              <p className={s.label}>Monto acumulado de la sala</p>
+              <p className={s.label}>{pitch ? "El mercado abre cuando termine el pitch" : "Monto acumulado de la sala"}</p>
               <p className={s.hugeNumber}>
                 <Count value={market.accumulated} /> IC
               </p>

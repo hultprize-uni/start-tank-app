@@ -137,6 +137,3 @@ export function mockScreen(phase: StagePhase, now: number = Date.now()): ScreenV
   }
 }
 
-export function parsePhase(value: string | undefined): StagePhase | undefined {
-  return STAGE_PHASES.find((phase) => phase === value?.toUpperCase());
-}

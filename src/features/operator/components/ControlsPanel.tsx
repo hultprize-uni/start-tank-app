@@ -6,6 +6,7 @@ import { ManualSettlementPanel } from "./ManualSettlementPanel";
 import panel from "./Panel.module.css";
 
 interface ControlsPanelProps {
+  onOpenResetEvent: () => void;
   canManualSettle: boolean;
   /** Solo el conductor liquida a mano; el soporte puede exportar. */
   canWrite: boolean;
@@ -16,12 +17,13 @@ interface ControlsPanelProps {
   ) => Promise<{ multiplier: number } | { error: string }>;
 }
 
-/** Controles del operador: exportación de saldos y liquidación manual (RF-31, tarea 5.6). */
+/** Controles del operador: exportación de saldos, liquidación manual (RF-31, tarea 5.6) y reinicio total. */
 export function ControlsPanel({
   canManualSettle,
   canWrite,
   onExport,
   onManualSettle,
+  onOpenResetEvent,
 }: ControlsPanelProps) {
   return (
     <section className={panel.panel} aria-labelledby="controles-operador">
@@ -39,6 +41,17 @@ export function ControlsPanel({
         </div>
         {canWrite ? (
           <ManualSettlementPanel available={canManualSettle} onSettle={onManualSettle} />
+        ) : null}
+        {canWrite ? (
+          <div className={panel.controlItem}>
+            <Button variant="danger" onClick={onOpenResetEvent}>
+              Reiniciar evento completo…
+            </Button>
+            <p className={panel.note}>
+              Caso extremo: borra inversiones, notas, posiciones y log, y devuelve los saldos al capital
+              inicial.
+            </p>
+          </div>
         ) : null}
       </div>
     </section>

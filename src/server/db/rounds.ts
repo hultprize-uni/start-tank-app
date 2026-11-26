@@ -66,6 +66,7 @@ export interface RoundVoteRow {
 
 /** Estados en los que una ronda ocupa el turno de la sala. Solo puede existir una a la vez. */
 const ACTIVE_STATES: ReadonlySet<RoundState> = new Set<RoundState>([
+  "PITCH",
   "OPEN",
   "LAST_CALL",
   "CLOSED",

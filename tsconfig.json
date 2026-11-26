@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -20,9 +24,24 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", "vitest.config.mts", "playwright.config.ts", "e2e/**/*.ts", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", ".next"]
+  "include": [
+    ".next-start-tank-local-db/types/**/*.ts",
+    ".next/types/**/*.ts",
+    "e2e/**/*.ts",
+    "next-env.d.ts",
+    "playwright.config.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "vitest.config.mts",
+    ".next-loadtest/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next"
+  ]
 }

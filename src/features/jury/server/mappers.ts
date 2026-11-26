@@ -64,6 +64,7 @@ export interface JuryData {
 /** Fase del jurado asociada a cada estado de la ronda. */
 const PHASE_BY_STATE: Readonly<Record<RoundState, JuryPhase>> = {
   SCHEDULED: "scheduled",
+  PITCH: "pitch",
   OPEN: "open",
   LAST_CALL: "last_call",
   CLOSED: "closed",

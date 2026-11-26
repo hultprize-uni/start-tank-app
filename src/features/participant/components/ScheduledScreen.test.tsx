@@ -23,6 +23,6 @@ describe("ScheduledScreen", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Aurora Agro" })).toBeInTheDocument();
     expect(screen.getByText("ODS 2 · Hambre cero")).toBeInTheDocument();
     expect(screen.getByText("Agro de precisión.")).toBeInTheDocument();
-    expect(screen.getByText(/El mercado abre cuando empiece el pitch/)).toBeInTheDocument();
+    expect(screen.getByText(/El mercado abre después del pitch/)).toBeInTheDocument();
   });
 });

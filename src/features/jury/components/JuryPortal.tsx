@@ -1,7 +1,7 @@
 "use client";
 
 import { StartTankLoader } from "@/shared/ui";
-import { useMinDelay } from "@/shared/lib/use-min-delay";
+import { LOADER_MIN_MS, useMinDelay } from "@/shared/lib/use-min-delay";
 import { useJuryState } from "../hooks/useJuryState";
 import { AccessForm } from "./AccessForm";
 import { JuryShell } from "./JuryShell";
@@ -12,7 +12,7 @@ import styles from "./JuryPortal.module.css";
 export function JuryPortal() {
   const { state, actions, restoring = false } = useJuryState();
   // El loader de entrada cubre la consulta de la sesión vigente y dura al menos un despegue.
-  const ready = useMinDelay(!restoring, 1200);
+  const ready = useMinDelay(!restoring, LOADER_MIN_MS);
 
   return (
     <JuryShell>

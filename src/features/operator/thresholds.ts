@@ -8,6 +8,7 @@ import type { RoundStatus } from "./types";
 
 /** Estados en que la ronda está en curso. Solo puede haber una ronda así a la vez. */
 export const ACTIVE_ROUND_STATUSES: ReadonlySet<RoundStatus> = new Set<RoundStatus>([
+  "PITCH",
   "OPEN",
   "LAST_CALL",
   "CLOSED",

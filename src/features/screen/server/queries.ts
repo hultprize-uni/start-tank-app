@@ -29,10 +29,12 @@ async function queryInvestments(roundId: string) {
 
 async function queryActions(roundId: string) {
   return sql<{ accion: string; ejecutada_en: string }>`
-    select accion, to_char(ejecutada_en at time zone 'UTC', ${ISO}) as ejecutada_en
-      from accion_ronda
-     where id_ronda = ${roundId}::bigint
-     order by ejecutada_en`;
+    select a.accion, to_char(a.ejecutada_en at time zone 'UTC', ${ISO}) as ejecutada_en
+      from accion_ronda a join ronda r on r.id_ronda = a.id_ronda
+     where a.id_ronda = ${roundId}::bigint
+       -- Solo desde la apertura vigente: tras reiniciar la ronda, su log anterior no vuelve al feed.
+       and a.ejecutada_en >= r.abierta_en
+     order by a.ejecutada_en`;
 }
 
 async function queryJuryTimes(roundId: string): Promise<string[]> {
@@ -44,17 +46,26 @@ async function queryJuryTimes(roundId: string): Promise<string[]> {
   return rows.map((row) => row.emitido_en);
 }
 
-/** Top 8 del corte indicado; sin corte, los asistentes por saldo actual. */
+/**
+ * Top 8 del corte indicado. Sin corte, por patrimonio vivo: saldo disponible más lo invertido aún
+ * sin liquidar, para que invertir no haga caer a nadie en la tabla (BASES 3.3).
+ */
 async function queryRanking(roundId: string | undefined): Promise<RankingRow[]> {
   if (roundId === undefined) {
     return sql<RankingRow>`
+      with patrimonio as (
+        select u.id_usuario, u.nombre,
+               u.saldo_actual + coalesce(sum(i.monto) filter (where i.retorno is null), 0) as total
+          from usuario u left join inversion i on i.id_usuario = u.id_usuario
+         group by u.id_usuario
+      )
       select id_usuario::text as id_usuario,
              coalesce(nombre, 'Asistente ' || id_usuario::text) as nombre,
-             (row_number() over (order by saldo_actual desc, id_usuario))::int as posicion,
-             saldo_actual::text as saldo,
+             (row_number() over (order by total desc, id_usuario))::int as posicion,
+             total::text as saldo,
              0 as aciertos
-        from usuario
-       order by saldo_actual desc, id_usuario
+        from patrimonio
+       order by total desc, id_usuario
        limit 8`;
   }
   return sql<RankingRow>`

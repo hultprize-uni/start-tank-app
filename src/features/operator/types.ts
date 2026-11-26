@@ -10,6 +10,7 @@ import type { EventCloseSummary, PhaseClock } from "@/shared/domain/types";
 /** Estados que una ronda recorre en orden. El estado CANCELLED puede alcanzarse desde varios puntos. */
 export const ROUND_STATUS_SEQUENCE = [
   "SCHEDULED",
+  "PITCH",
   "OPEN",
   "LAST_CALL",
   "CLOSED",
@@ -23,12 +24,12 @@ export type RoundStatus = (typeof ROUND_STATUS_SEQUENCE)[number] | "CANCELLED";
 export type OperatorRole = "CONDUCTOR" | "SUPPORT";
 
 /** Pasos del ciclo de la ronda, en orden (RF-06). */
-export const ROUND_STEPS = ["open", "last_call", "close", "enable_voting", "reveal"] as const;
+export const ROUND_STEPS = ["open", "open_market", "last_call", "close", "enable_voting", "reveal"] as const;
 
 export type OperatorActionId = (typeof ROUND_STEPS)[number];
 
 /** Comandos del cronómetro de la fase (RF-07). */
-export type TimerCommand = "pause" | "resume" | "add_minute";
+export type TimerCommand = "pause" | "resume" | "add_minute" | "restart_phase";
 
 /** Modo de anulación: devolver lo invertido al saldo, o liquidar a 1.0x (RF-10). */
 export type CancelMode = "refund" | "settle_1x";
@@ -176,6 +177,8 @@ export interface OperatorViewModel {
   standings: StandingView[];
   log: LogEntryView[];
   canCancel: boolean;
+  /** Ronda que reinicia «Reiniciar ronda»: la que está en curso o, si no hay, la última terminada. */
+  restartRound: { number: number; startupName: string } | null;
   /** Revelar con los jurados presentes: votación con al menos una nota y envíos pendientes. */
   canRescue: boolean;
   canManualSettle: boolean;

@@ -4,20 +4,16 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { PhaseDurations } from "../types";
-
 import { PhaseTimer, phaseDisplay } from "./PhaseTimer";
 
 afterEach(cleanup);
 
-const DURATIONS: PhaseDurations = { pitch: 300, qa: 600, lastCall: 60, voting: 150, result: 90 };
-
 describe("phaseDisplay", () => {
   it("separa el pitch del toma y dame con el mercado abierto", () => {
-    expect(phaseDisplay("OPEN", 761, DURATIONS)).toEqual({ label: "Pitch", seconds: 161 });
-    expect(phaseDisplay("OPEN", 500, DURATIONS)).toEqual({ label: "Toma y dame", seconds: 500 });
-    expect(phaseDisplay("VOTING", 90, DURATIONS)).toEqual({ label: "Votación", seconds: 90 });
-    expect(phaseDisplay("CLOSED", null, DURATIONS).seconds).toBeNull();
+    expect(phaseDisplay("PITCH", 161)).toEqual({ label: "Pitch", seconds: 161 });
+    expect(phaseDisplay("OPEN", 500)).toEqual({ label: "Toma y dame", seconds: 500 });
+    expect(phaseDisplay("VOTING", 90)).toEqual({ label: "Votación", seconds: 90 });
+    expect(phaseDisplay("CLOSED", null).seconds).toBeNull();
   });
 });
 
@@ -31,7 +27,6 @@ describe("PhaseTimer (RF-07)", () => {
       <PhaseTimer
         status="LAST_CALL"
         clock={paused}
-        durations={DURATIONS}
         schedule={{ deltaSeconds: 180, plannedAt: "2026-11-26T19:56:00.000Z" }}
         adjustable
         canControl
@@ -54,7 +49,6 @@ describe("PhaseTimer (RF-07)", () => {
       <PhaseTimer
         status="LAST_CALL"
         clock={paused}
-        durations={DURATIONS}
         schedule={{ deltaSeconds: null, plannedAt: null }}
         adjustable
         canControl={false}

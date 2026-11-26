@@ -5,31 +5,47 @@ export type TransitionResult =
   | { ok: true; state: RoundState }
   | { ok: false; reason: "INVALID_TRANSITION" };
 
-const CANCELS = { CANCEL_REFUND: "CANCELLED", CANCEL_SETTLE_1X: "SETTLED" } as const;
+const CANCELS = {
+  CANCEL_REFUND: "CANCELLED",
+  CANCEL_SETTLE_1X: "SETTLED",
+  RESTART_ROUND: "SCHEDULED",
+} as const;
 
 /**
- * Transiciones válidas, igual que fn_accion_operador v2. La última llamada también se cierra sola
- * al vencer (fn_cerrar_ultima_llamada_vencida), lo que equivale a CLOSE. PAUSE, RESUME y
- * ADD_MINUTE no cambian el estado: solo el cronómetro.
+ * Transiciones válidas, igual que fn_accion_operador (migración 20261126). La ronda empieza con el
+ * pitch y el mercado cerrado; OPEN_MARKET abre el toma y dame. La última llamada también se cierra
+ * sola al vencer (fn_cerrar_ultima_llamada_vencida), lo que equivale a CLOSE. PAUSE, RESUME,
+ * ADD_MINUTE y RESTART_PHASE no cambian el estado: solo el cronómetro.
  */
 export const ROUND_TRANSITIONS: Readonly<
   Record<RoundState, Readonly<Partial<Record<OperatorAction, RoundState>>>>
 > = {
-  SCHEDULED: { OPEN: "OPEN" },
+  SCHEDULED: { OPEN: "PITCH" },
+  PITCH: { OPEN_MARKET: "OPEN", ...CANCELS },
   OPEN: { LAST_CALL: "LAST_CALL", CLOSE: "CLOSED", ...CANCELS },
   LAST_CALL: { CLOSE: "CLOSED", ...CANCELS },
   CLOSED: { ENABLE_VOTING: "VOTING", ...CANCELS },
   VOTING: { REVEAL: "SETTLED", ...CANCELS },
-  SETTLED: {},
-  CANCELLED: {},
+  SETTLED: { RESTART_ROUND: "SCHEDULED" },
+  CANCELLED: { RESTART_ROUND: "SCHEDULED" },
 };
 
-/** Estados con cronómetro, en los que el conductor puede pausar y sumar un minuto. */
-export const TIMED_STATES: ReadonlySet<RoundState> = new Set(["OPEN", "LAST_CALL", "VOTING"]);
+/** Estados con cronómetro, en los que el conductor puede pausar, sumar un minuto o reiniciar. */
+export const TIMED_STATES: ReadonlySet<RoundState> = new Set([
+  "PITCH",
+  "OPEN",
+  "LAST_CALL",
+  "VOTING",
+]);
 
 /** Aplica una acción del operador. Las acciones de cronómetro conservan el estado. */
 export function nextState(state: RoundState, action: OperatorAction): TransitionResult {
-  if (action === "PAUSE" || action === "RESUME" || action === "ADD_MINUTE") {
+  if (
+    action === "PAUSE" ||
+    action === "RESUME" ||
+    action === "ADD_MINUTE" ||
+    action === "RESTART_PHASE"
+  ) {
     return TIMED_STATES.has(state) ? { ok: true, state } : { ok: false, reason: "INVALID_TRANSITION" };
   }
   const target = ROUND_TRANSITIONS[state][action];
